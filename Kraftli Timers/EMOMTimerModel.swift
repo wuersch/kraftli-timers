@@ -15,7 +15,7 @@ public class EMOMTimerModel: WorkoutTimer {
     @MainActor private(set) var isRunning: Bool = false
     
     // MARK: - Private Properties
-    private let intervalWarningThreshold: TimeInterval = 5
+    private let intervalWarningThreshold: TimeInterval
     private let totalDuration: TimeInterval
     private let intervalDuration: TimeInterval
     private let timerProvider: TimerProvider
@@ -52,10 +52,12 @@ public class EMOMTimerModel: WorkoutTimer {
     init(
         totalDuration: TimeInterval = 20 * 60,
         intervalDuration: TimeInterval = 60,
+        intervalWarningThreshold: TimeInterval = 5,
         timerProvider: TimerProvider = DisplayLinkTimerProvider()
     ) {
         self.totalDuration = totalDuration
         self.intervalDuration = intervalDuration
+        self.intervalWarningThreshold = intervalWarningThreshold
         self.timerProvider = timerProvider
         self.totalTimeRemaining = totalDuration
         self.intervalTimeRemaining = intervalDuration
