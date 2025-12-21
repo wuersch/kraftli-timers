@@ -12,6 +12,8 @@ struct EMOMTimerView: View {
     // MARK: - Properties
     @State
     private var timerModel: EMOMTimerModel
+    @State
+    private var showConfetti = false
 
     // MARK: - Initialization
     init(
@@ -56,95 +58,110 @@ struct EMOMTimerView: View {
 
     // MARK: - Body
     var body: some View {
+        ZStack {
+            VStack(spacing: 40) {
+                ZStack {
+                    ProgressRing(
+                        size: 280,
+                        lineWidth: 20,
+                        progress: timerModel.intervalProgress,
+                        color: accentColor,
+                        backgroundColor: Color.gray.opacity(0.2),
+                        rotationDegrees: -89.5
+                    )
+                    .accessibilityHidden(true)
 
-        VStack(spacing: 40) {
+                    ProgressRing(
+                        size: 320,
+                        lineWidth: 10,
+                        progress: timerModel.overallProgress,
+                        color: .primary,
+                        backgroundColor: Color.gray.opacity(0.2),
+                        rotationDegrees: -90.5
+                    )
+                    .accessibilityHidden(true)
 
-            ZStack {
-                ProgressRing(
-                    size: 280,
-                    lineWidth: 20,
-                    progress: timerModel.intervalProgress,
-                    color: accentColor,
-                    backgroundColor: Color.gray.opacity(0.2),
-                    rotationDegrees: -89.5
-                )
-                .accessibilityHidden(true)
+                    VStack(spacing: 8) {
+                        Text("INTERVAL")
+                            .font(.subheadline)
+                            .foregroundStyle(.gray)
 
-                ProgressRing(
-                    size: 320,
-                    lineWidth: 10,
-                    progress: timerModel.overallProgress,
-                    color: .primary,
-                    backgroundColor: Color.gray.opacity(0.2),
-                    rotationDegrees: -90.5
-                )
-                .accessibilityHidden(true)
+                        Text(timerModel.intervalTimeRemaining.mmSS)
+                            .font(
+                                .system(
+                                    size: 56,
+                                    weight: .semibold,
+                                    design: .rounded
+                                )
+                            )
+                            .foregroundStyle(accentColor)
+                            .monospacedDigit()
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Interval time")
+                            .accessibilityValue(
+                                timerModel.intervalTimeRemaining.mmSS
+                            )
+
+                        Text(repsAttributedString)
+                            .font(.subheadline)
+                            .monospacedDigit()
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 12)
+                            .background(
+                                Capsule()
+                                    .fill(accentColor.opacity(0.25))
+                                    .stroke(
+                                        accentColor,
+                                        style: StrokeStyle(
+                                            lineWidth: 1,
+                                            lineCap: .round
+                                        )
+                                    )
+                            )
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    handleTap()
+                }.onLongPressGesture(minimumDuration: 0.8) {
+                    handleLongPress()
+                }
 
                 VStack(spacing: 8) {
-                    Text("INTERVAL")
+                    Text("TOTAL")
                         .font(.subheadline)
                         .foregroundStyle(.gray)
 
-                    Text(timerModel.intervalTimeRemaining.mmSS)
+                    Text(timerModel.totalTimeRemaining.mmSS)
                         .font(
-                            .system(
-                                size: 56,
-                                weight: .semibold,
-                                design: .rounded
-                            )
+                            .system(size: 60, weight: .bold, design: .rounded)
                         )
-                        .foregroundStyle(accentColor)
                         .monospacedDigit()
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Interval time")
-                        .accessibilityValue(
-                            timerModel.intervalTimeRemaining.mmSS
-                        )
-
-                    Text(repsAttributedString)
-                        .font(.subheadline)
-                        .monospacedDigit()
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 12)
-                        .background(
-                            Capsule()
-                                .fill(accentColor.opacity(0.25))
-                                .stroke(
-                                    accentColor,
-                                    style: StrokeStyle(
-                                        lineWidth: 1,
-                                        lineCap: .round
-                                    )
-                                )
-                        )
+                        .accessibilityLabel("Total time")
+                        .accessibilityValue(timerModel.totalTimeRemaining.mmSS)
                 }
             }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                handleTap()
-            }.onLongPressGesture(minimumDuration: 0.8) {
-                handleLongPress()
+            // Konfetti Overlay
+            if showConfetti {
+                ConfettiView()
+                    .ignoresSafeArea(.all)
+                    .allowsHitTesting(false)
             }
-
-            VStack(spacing: 8) {
-                Text("TOTAL")
-                    .font(.subheadline)
-                    .foregroundStyle(.gray)
-
-                Text(timerModel.totalTimeRemaining.mmSS)
-                    .font(.system(size: 60, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Total time")
-                    .accessibilityValue(timerModel.totalTimeRemaining.mmSS)
-            }
-        }
-
-        .navigationTitle("Burpees ⸱ EMOM").navigationBarTitleDisplayMode(
+        }.navigationTitle("Burpees ⸱ EMOM").navigationBarTitleDisplayMode(
             .inline
         )
         .onDisappear {
             timerModel.pause()
+        }.onChange(of: timerModel.totalTimeRemaining) {
+            oldValue,
+            newValue in
+            if oldValue > 0 && newValue == 0 {
+                showConfetti = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    showConfetti = false
+                }
+            }
         }
     }
 }
