@@ -16,8 +16,8 @@ struct EMOMTimerView: View {
     // MARK: - Initialization
     init(
         timerModel: EMOMTimerModel = EMOMTimerModel(
-            totalReps: 100,
-            totalMinutes: 20
+            totalReps: 5,
+            totalMinutes: 1
         )
     ) {
         self.timerModel = timerModel
