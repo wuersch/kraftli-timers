@@ -28,6 +28,11 @@ public class EMOMTimerModel: WorkoutTimer {
     
     // MARK: - Computed Properties
     @MainActor
+    var overallProgress: Double {
+        totalTimeRemaining / totalDuration
+    }
+    
+    @MainActor
     var intervalProgress: Double {
         intervalTimeRemaining / intervalDuration
     }
@@ -55,6 +60,11 @@ public class EMOMTimerModel: WorkoutTimer {
         intervalWarningThreshold: TimeInterval = 5,
         timerProvider: TimerProvider = DisplayLinkTimerProvider()
     ) {
+        precondition(totalDuration > 0, "totalDuration must be > 0")
+        precondition(intervalDuration > 0, "intervalDuration must be > 0")
+        precondition(totalDuration >= intervalDuration, "totalDuration must be >= intervalDuration")
+        precondition(intervalWarningThreshold >= 0, "intervalWarningThreshold must be >= 0")
+        
         self.totalDuration = totalDuration
         self.intervalDuration = intervalDuration
         self.intervalWarningThreshold = intervalWarningThreshold
@@ -69,6 +79,9 @@ public class EMOMTimerModel: WorkoutTimer {
         totalMinutes: Int,
         timerProvider: TimerProvider = DisplayLinkTimerProvider()
     ) {
+        precondition(totalReps > 0, "totalReps must be > 0")
+        precondition(totalMinutes > 0, "totalMinutes must be > 0")
+        
         let totalSeconds = totalMinutes * 60
         let intervalSeconds = totalSeconds / totalReps
         

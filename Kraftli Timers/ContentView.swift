@@ -13,13 +13,31 @@ struct ContentView: View {
             NavigationStack {
                 EMOMTimerView()
             }.tabItem{
-                Label("EMOM", systemImage: "timer")
+                Label("Timers", systemImage: "timer")
             }
             
             NavigationStack {
-                AMRAPTimerView()
+                Text("Coming soon")
             }.tabItem{
-                Label("AMRAP", systemImage: "figure.run")
+                Label("Programs", systemImage: "flowchart")
+            }
+            
+            NavigationStack {
+                Text("Coming soon")
+            }.tabItem{
+                Label("Goals", systemImage: "trophy")
+            }
+            
+            NavigationStack {
+                Text("Coming soon")
+            }.tabItem{
+                Label("Statistics", systemImage: "chart.bar")
+            }
+            
+            NavigationStack {
+                Text("Coming soon")
+            }.tabItem{
+                Label("Settings", systemImage: "gearshape")
             }
         }
     }
