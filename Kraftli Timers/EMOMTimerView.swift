@@ -86,7 +86,7 @@ struct EMOMTimerView: View {
                             .font(.subheadline)
                             .foregroundStyle(.gray)
 
-                        Text(timerModel.intervalTimeRemaining.mmSS)
+                        Text(timerModel.intervalTimeRemaining.formatted)
                             .font(
                                 .system(
                                     size: 56,
@@ -99,7 +99,7 @@ struct EMOMTimerView: View {
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel("Interval time")
                             .accessibilityValue(
-                                timerModel.intervalTimeRemaining.mmSS
+                                timerModel.intervalTimeRemaining.formatted
                             )
 
                         Text(repsAttributedString)
@@ -132,14 +132,14 @@ struct EMOMTimerView: View {
                         .font(.subheadline)
                         .foregroundStyle(.gray)
 
-                    Text(timerModel.totalTimeRemaining.mmSS)
+                    Text(timerModel.totalTimeRemaining.formatted)
                         .font(
                             .system(size: 60, weight: .bold, design: .rounded)
                         )
                         .monospacedDigit()
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("Total time")
-                        .accessibilityValue(timerModel.totalTimeRemaining.mmSS)
+                        .accessibilityValue(timerModel.totalTimeRemaining.formatted)
                 }
             }
             // Konfetti Overlay
