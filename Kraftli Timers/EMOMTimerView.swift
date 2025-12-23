@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // MARK: - EMOMTimerView
 struct EMOMTimerView: View {
@@ -41,6 +42,12 @@ struct EMOMTimerView: View {
         }
         return attr
     }
+    
+    // MARK: - Haptics
+    private func haptic(_ type: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let generator = UIImpactFeedbackGenerator(style: type)
+        generator.impactOccurred()
+    }
 
     // MARK: - Actions
     private func handleTap() {
@@ -49,10 +56,13 @@ struct EMOMTimerView: View {
         } else {
             startIfNeededAndScheduleHintHide()
         }
+        
+        haptic(.light)
     }
 
     private func handleLongPress() {
         timerModel.reset()
+        haptic(.heavy)
     }
 
     private func startIfNeededAndScheduleHintHide() {

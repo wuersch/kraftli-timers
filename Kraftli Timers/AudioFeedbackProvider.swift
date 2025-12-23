@@ -25,16 +25,7 @@ final class AudioFeedbackProvider: FeedbackProvider {
     }
 
     func playWarning() {
-        let soundID = SystemSoundID(1104)  // Short beep
-
-        // Three short beep for count-down
-        AudioServicesPlaySystemSound(1104)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            AudioServicesPlaySystemSound(soundID)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-            AudioServicesPlaySystemSound(soundID)
-        }
+        // no warning sound for now
     }
 
     func playWorkoutComplete() {
