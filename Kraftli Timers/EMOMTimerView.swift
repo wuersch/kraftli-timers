@@ -32,13 +32,10 @@ struct EMOMTimerView: View {
         timerModel.isIntervalWarning ? .orange : .blue
     }
 
-    private var repsAttributedString: AttributedString {
-        var attr = AttributedString(
-            "\(timerModel.completedIntervals)/\(timerModel.totalIntervals) REPS"
-        )
-        // Color entire string with accentColor first
-        attr.foregroundColor = accentColor
-        // Then override the " REPS" segment to primary (exclude from accent coloring)
+    // MARK: - Helpers
+    private func makeRepsText(accent: Color) -> AttributedString {
+        var attr = AttributedString("\(timerModel.completedIntervals)/\(timerModel.totalIntervals) REPS")
+        attr.foregroundColor = accent
         if let repsRange = attr.range(of: " REPS") {
             attr[repsRange].foregroundColor = .primary
         }
@@ -50,20 +47,26 @@ struct EMOMTimerView: View {
         if timerModel.isRunning {
             timerModel.pause()
         } else {
-            timerModel.start()
-            // Hide hint 5 seconds after the timer actually starts (only once)
-            if showHint {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        showHint = false
-                    }
-                }
-            }
+            startIfNeededAndScheduleHintHide()
         }
     }
 
     private func handleLongPress() {
         timerModel.reset()
+    }
+
+    private func startIfNeededAndScheduleHintHide() {
+        guard !timerModel.isRunning else { return }
+        
+        timerModel.start()
+        
+        if showHint {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showHint = false
+                }
+            }
+        }
     }
 
     // MARK: - Body
@@ -128,22 +131,7 @@ struct EMOMTimerView: View {
                                 .opacity.combined(with: .scale(scale: 0.98))
                             )
                         } else {
-                            Text(repsAttributedString)
-                                .font(.subheadline)
-                                .monospacedDigit()
-                                .padding(.vertical, 6)
-                                .padding(.horizontal, 12)
-                                .background(
-                                    Capsule()
-                                        .fill(accentColor.opacity(0.25))
-                                        .stroke(
-                                            accentColor,
-                                            style: StrokeStyle(
-                                                lineWidth: 1,
-                                                lineCap: .round
-                                            )
-                                        )
-                                )
+                            RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor)
                         }
                     }
                 }
@@ -222,6 +210,30 @@ private struct ProgressRing: View {
     }
 }
 
+private struct RepsPill: View {
+    let text: AttributedString
+    let accentColor: Color
+
+    var body: some View {
+        Text(text)
+            .font(.subheadline)
+            .monospacedDigit()
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .background(
+                Capsule()
+                    .fill(accentColor.opacity(0.25))
+                    .stroke(
+                        accentColor,
+                        style: StrokeStyle(
+                            lineWidth: 1,
+                            lineCap: .round
+                        )
+                    )
+            )
+    }
+}
+
 // MARK: - Preview
 #Preview("EMOM Timer") {
     NavigationStack {
@@ -230,3 +242,4 @@ private struct ProgressRing: View {
         )
     }
 }
+
