@@ -8,6 +8,7 @@
 import QuartzCore
 
 final class DisplayLinkTimerProvider: TimerProvider {
+    // Ignores `interval` and `repeats`; ticks at the display's refresh rate (via CADisplayLink).
     func scheduleTimer(
         interval: TimeInterval,
         repeats: Bool,
@@ -19,6 +20,9 @@ final class DisplayLinkTimerProvider: TimerProvider {
             }),
             selector: #selector(DisplayLinkTarget.fire)
         )
+        if #available(iOS 15.0, *) {
+              displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 120, preferred: 60)
+        }
         displayLink.add(to: .main, forMode: .common)
         return displayLink
     }

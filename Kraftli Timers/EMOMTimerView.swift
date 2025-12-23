@@ -14,6 +14,8 @@ struct EMOMTimerView: View {
     private var timerModel: EMOMTimerModel
     @State
     private var showConfetti = false
+    @State
+    private var showHint = true
 
     // MARK: - Initialization
     init(
@@ -49,6 +51,14 @@ struct EMOMTimerView: View {
             timerModel.pause()
         } else {
             timerModel.start()
+            // Hide hint 5 seconds after the timer actually starts (only once)
+            if showHint {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showHint = false
+                    }
+                }
+            }
         }
     }
 
@@ -102,22 +112,39 @@ struct EMOMTimerView: View {
                                 timerModel.intervalTimeRemaining.formatted
                             )
 
-                        Text(repsAttributedString)
+                        if showHint {
+                            Text(
+                                timerModel.isRunning
+                                    ? "Tap to pause ⸱ Hold to stop"
+                                    : "Tap to start ⸱ Hold to stop"
+                            )
                             .font(.subheadline)
-                            .monospacedDigit()
+                            .foregroundStyle(.gray)
                             .padding(.vertical, 6)
                             .padding(.horizontal, 12)
-                            .background(
-                                Capsule()
-                                    .fill(accentColor.opacity(0.25))
-                                    .stroke(
-                                        accentColor,
-                                        style: StrokeStyle(
-                                            lineWidth: 1,
-                                            lineCap: .round
-                                        )
-                                    )
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.9)
+                            .transition(
+                                .opacity.combined(with: .scale(scale: 0.98))
                             )
+                        } else {
+                            Text(repsAttributedString)
+                                .font(.subheadline)
+                                .monospacedDigit()
+                                .padding(.vertical, 6)
+                                .padding(.horizontal, 12)
+                                .background(
+                                    Capsule()
+                                        .fill(accentColor.opacity(0.25))
+                                        .stroke(
+                                            accentColor,
+                                            style: StrokeStyle(
+                                                lineWidth: 1,
+                                                lineCap: .round
+                                            )
+                                        )
+                                )
+                        }
                     }
                 }
                 .contentShape(Rectangle())
@@ -139,7 +166,9 @@ struct EMOMTimerView: View {
                         .monospacedDigit()
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("Total time")
-                        .accessibilityValue(timerModel.totalTimeRemaining.formatted)
+                        .accessibilityValue(
+                            timerModel.totalTimeRemaining.formatted
+                        )
                 }
             }
             // Konfetti Overlay
@@ -153,7 +182,8 @@ struct EMOMTimerView: View {
         )
         .onDisappear {
             timerModel.pause()
-        }.onChange(of: timerModel.totalTimeRemaining) {
+        }
+        .onChange(of: timerModel.totalTimeRemaining) {
             oldValue,
             newValue in
             if oldValue > 0 && newValue == 0 {
