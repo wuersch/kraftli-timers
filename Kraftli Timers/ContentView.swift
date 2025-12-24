@@ -13,6 +13,12 @@ struct ContentView: View {
             NavigationStack {
                 EMOMTimerView()
             }.tabItem{
+                Label("Emom Demo", systemImage: "timer")
+            }
+            
+            NavigationStack {
+                TimerPresetView()
+            }.tabItem{
                 Label("Timers", systemImage: "timer")
             }
             
@@ -21,13 +27,13 @@ struct ContentView: View {
             }.tabItem{
                 Label("Programs", systemImage: "flowchart")
             }
-            
+            /*
             NavigationStack {
                 ComingSoonView(title: "Goals", description: "Set your own training goals", image: "trophy")
             }.tabItem{
                 Label("Goals", systemImage: "trophy")
             }
-            
+            */
             NavigationStack {
                 ComingSoonView(title: "Stats", description: "See your progress over time", image: "chart.bar")
             }.tabItem{
