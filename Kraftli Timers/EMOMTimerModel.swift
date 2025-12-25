@@ -19,7 +19,7 @@ public class EMOMTimerModel: WorkoutTimer {
     private let totalDuration: TimeInterval
     private let intervalDuration: TimeInterval
     private let timerCoordinator: TimerCoordinator
-    private let feedbackProvider: FeedbackProvider
+    private let audioFeedbackProvider: AudioFeedbackProvider
 
     private var totalStartDate: Date?
     private var intervalStartDate: Date?
@@ -61,7 +61,7 @@ public class EMOMTimerModel: WorkoutTimer {
         intervalDuration: TimeInterval = 60,
         intervalWarningThreshold: TimeInterval = 3,
         timerProvider: TimerProvider = DisplayLinkTimerProvider(),
-        feedbackProvider: FeedbackProvider = AudioFeedbackProvider()
+        feedbackProvider: AudioFeedbackProvider = SystemSoundFeedback()
     ) {
         precondition(totalDuration > 0, "totalDuration must be > 0")
         precondition(intervalDuration > 0, "intervalDuration must be > 0")
@@ -72,7 +72,7 @@ public class EMOMTimerModel: WorkoutTimer {
         self.intervalDuration = intervalDuration
         self.intervalWarningThreshold = intervalWarningThreshold
         self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
-        self.feedbackProvider = feedbackProvider
+        self.audioFeedbackProvider = feedbackProvider
         self.totalTimeRemaining = totalDuration
         self.intervalTimeRemaining = intervalDuration
     }
@@ -82,7 +82,7 @@ public class EMOMTimerModel: WorkoutTimer {
         totalReps: Int,
         totalMinutes: Int,
         timerProvider: TimerProvider = DisplayLinkTimerProvider(),
-        feedbackProvider: FeedbackProvider = AudioFeedbackProvider()
+        feedbackProvider: AudioFeedbackProvider = SystemSoundFeedback()
     ) {
         precondition(totalReps > 0, "totalReps must be > 0")
         precondition(totalMinutes > 0, "totalMinutes must be > 0")
@@ -103,7 +103,7 @@ public class EMOMTimerModel: WorkoutTimer {
         guard !isRunning else { return }
         
         isRunning = true
-        feedbackProvider.playStart()
+        audioFeedbackProvider.playStart()
         startTimer()
     }
     
@@ -168,7 +168,7 @@ public class EMOMTimerModel: WorkoutTimer {
         
         // Warning sound at (intervalWarningThreshold) seconds
         if intervalTimeRemaining <= intervalWarningThreshold && intervalTimeRemaining > 0 && !lastWarningTriggered {
-            feedbackProvider.playWarning()
+            audioFeedbackProvider.playWarning()
             lastWarningTriggered = true
         }
         
@@ -176,7 +176,7 @@ public class EMOMTimerModel: WorkoutTimer {
             intervalStartDate = now
             intervalTimeRemaining = intervalDuration
             lastWarningTriggered = false
-            feedbackProvider.playIntervalComplete()
+            audioFeedbackProvider.playIntervalComplete()
         }
         
         if totalTimeRemaining <= 0 {
@@ -185,7 +185,7 @@ public class EMOMTimerModel: WorkoutTimer {
             totalTimeRemaining = 0
             intervalTimeRemaining = 0
             lastWarningTriggered = false
-            feedbackProvider.playWorkoutComplete()
+            audioFeedbackProvider.playWorkoutComplete()
         }
     }
 }
