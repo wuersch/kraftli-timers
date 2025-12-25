@@ -11,35 +11,29 @@ struct ContentView: View {
     var body: some View {
         TabView {
             NavigationStack {
-                EMOMTimerView()
-            }.tabItem{
-                Label("Emom Demo", systemImage: "timer")
-            }
-            
-            NavigationStack {
                 TimerPresetView()
             }.tabItem{
                 Label("Timers", systemImage: "timer")
             }
-            
+            /*
             NavigationStack {
                 ComingSoonView(title: "Programs", description: "Combine timers and workouts into programs", image: "flowchart")
             }.tabItem{
                 Label("Programs", systemImage: "flowchart")
             }
-            /*
+            
             NavigationStack {
                 ComingSoonView(title: "Goals", description: "Set your own training goals", image: "trophy")
             }.tabItem{
                 Label("Goals", systemImage: "trophy")
             }
-            */
+            
             NavigationStack {
                 ComingSoonView(title: "Stats", description: "See your progress over time", image: "chart.bar")
             }.tabItem{
                 Label("Stats", systemImage: "chart.bar")
             }
-            
+             */
             NavigationStack {
                 ComingSoonView(title: "Settings", description: "Adjust settings and more", image: "gearshape")
             }.tabItem{

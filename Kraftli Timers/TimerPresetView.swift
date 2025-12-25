@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TimerPresetView: View {
     @State private var timerPresets = TimerPreset.defaults
+    @State private var selectedPreset: TimerPreset?
 
     var body: some View {
         NavigationStack {
@@ -28,7 +29,9 @@ struct TimerPresetView: View {
 
                             Spacer(minLength: 12)
 
-                            Button(action: {}) {
+                            Button(action: {
+                                selectedPreset = preset
+                            }) {
                                 Image(systemName: "play.circle.fill")
                                     .font(.system(size: 28))
                                     .foregroundStyle(.tint)
@@ -44,6 +47,29 @@ struct TimerPresetView: View {
             }
             .navigationTitle("Timers")
             .navigationBarTitleDisplayMode(.large)
+        }
+        .fullScreenCover(item: $selectedPreset) { preset in
+            NavigationStack {
+                switch preset.kind {
+                case .emom:
+                    if let intervalDuration = preset.intervalDuration {
+                        let totalSeconds = TimeInterval(preset.duration.components.seconds)
+                        let intervalSeconds = TimeInterval(intervalDuration.components.seconds)
+
+                        EMOMTimerView(timerModel: EMOMTimerModel(
+                            totalDuration: totalSeconds,
+                            intervalDuration: intervalSeconds
+                        ))
+                        .navigationTitle("\(preset.exercise.name) ⸱ \(preset.kind.rawValue)")
+                        .navigationBarTitleDisplayMode(.inline)
+                    }
+                case .amrap:
+                    let totalSeconds = TimeInterval(preset.duration.components.seconds)
+                    AMRAPTimerView(timerModel: AMRAPTimerModel(totalDuration: totalSeconds))
+                        .navigationTitle("\(preset.exercise.name) ⸱ \(preset.kind.rawValue)")
+                        .navigationBarTitleDisplayMode(.inline)
+                }
+            }
         }
     }
 }

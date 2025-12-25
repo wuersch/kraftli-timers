@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		4CA514792EFD4F8900048217 /* CLAUDE.md in Sources */ = {isa = PBXBuildFile; fileRef = 4CA514782EFD4F8200048217 /* CLAUDE.md */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		4C33824E2EF2FA4800135BD7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -255,7 +251,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4CA514792EFD4F8900048217 /* CLAUDE.md in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

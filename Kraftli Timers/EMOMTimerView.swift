@@ -11,12 +11,19 @@ import UIKit
 // MARK: - EMOMTimerView
 struct EMOMTimerView: View {
     // MARK: - Properties
+    @Environment(\.dismiss) var dismiss
+
     @State
     private var timerModel: EMOMTimerModel
     @State
     private var showConfetti = false
     @State
     private var showHint = true
+
+    // MARK: - Computed Properties
+    private var isCompleted: Bool {
+        timerModel.totalTimeRemaining <= 0
+    }
 
     // MARK: - Initialization
     init(
@@ -42,6 +49,14 @@ struct EMOMTimerView: View {
         }
         return attr
     }
+
+    private func makeCompletionText() -> AttributedString {
+        var attr = AttributedString("DONE ⸱ Hold to close")
+        if let doneRange = attr.range(of: "DONE") {
+            attr[doneRange].foregroundColor = .green
+        }
+        return attr
+    }
     
     // MARK: - Haptics
     private func haptic(_ type: UIImpactFeedbackGenerator.FeedbackStyle) {
@@ -51,17 +66,20 @@ struct EMOMTimerView: View {
 
     // MARK: - Actions
     private func handleTap() {
+        guard !isCompleted else { return }
+
         if timerModel.isRunning {
             timerModel.pause()
         } else {
             startIfNeededAndScheduleHintHide()
         }
-        
+
         haptic(.light)
     }
 
     private func handleLongPress() {
         timerModel.reset()
+        dismiss()
         haptic(.heavy)
     }
 
@@ -125,11 +143,13 @@ struct EMOMTimerView: View {
                                 timerModel.intervalTimeRemaining.formatted
                             )
 
-                        if showHint {
+                        if isCompleted {
+                            RepsPill(text: makeCompletionText(), accentColor: .green)
+                        } else if showHint {
                             Text(
                                 timerModel.isRunning
-                                    ? "Tap to pause ⸱ Hold to stop"
-                                    : "Tap to start ⸱ Hold to stop"
+                                    ? "Tap to pause ⸱ Hold to close"
+                                    : "Tap to start ⸱ Hold to close"
                             )
                             .font(.subheadline)
                             .foregroundStyle(.gray)
@@ -175,9 +195,7 @@ struct EMOMTimerView: View {
                     .ignoresSafeArea(.all)
                     .allowsHitTesting(false)
             }
-        }.navigationTitle("Burpees ⸱ EMOM").navigationBarTitleDisplayMode(
-            .inline
-        )
+        }
         .onDisappear {
             timerModel.pause()
         }

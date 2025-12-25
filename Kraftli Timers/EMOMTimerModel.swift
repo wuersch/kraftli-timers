@@ -122,10 +122,10 @@ public class EMOMTimerModel: WorkoutTimer {
     func reset() {
         stopTimer()
         isRunning = false
-        
+
         totalTimeRemaining = totalDuration
         intervalTimeRemaining = intervalDuration
-        
+
         pausedTotalTime = nil
         pausedIntervalTime = nil
     }
