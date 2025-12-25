@@ -199,6 +199,10 @@ struct EMOMTimerView: View {
         }
         .onDisappear {
             timerModel.pause()
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+        .onChange(of: timerModel.isRunning) { oldValue, newValue in
+            UIApplication.shared.isIdleTimerDisabled = newValue
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             if newPhase == .background && timerModel.isRunning {
