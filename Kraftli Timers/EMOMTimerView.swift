@@ -12,6 +12,7 @@ import UIKit
 struct EMOMTimerView: View {
     // MARK: - Properties
     @Environment(\.dismiss) var dismiss
+    @Environment(\.scenePhase) var scenePhase
 
     @State
     private var timerModel: EMOMTimerModel
@@ -199,6 +200,11 @@ struct EMOMTimerView: View {
         .onDisappear {
             timerModel.pause()
         }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if newPhase == .background && timerModel.isRunning {
+                timerModel.pause()
+            }
+        }
         .onChange(of: timerModel.totalTimeRemaining) {
             oldValue,
             newValue in
@@ -209,56 +215,6 @@ struct EMOMTimerView: View {
                 }
             }
         }
-    }
-}
-
-// MARK: - Components
-private struct ProgressRing: View {
-    let size: CGFloat
-    let lineWidth: CGFloat
-    let progress: Double
-    let color: Color
-    let backgroundColor: Color
-    let rotationDegrees: Double
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(backgroundColor, lineWidth: lineWidth)
-
-            Circle()
-                .trim(from: 0, to: min(max(progress, 0), 1))
-                .stroke(
-                    color,
-                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-                )
-                .rotationEffect(.degrees(rotationDegrees))
-        }
-        .frame(width: size, height: size)
-    }
-}
-
-private struct RepsPill: View {
-    let text: AttributedString
-    let accentColor: Color
-
-    var body: some View {
-        Text(text)
-            .font(.subheadline)
-            .monospacedDigit()
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
-            .background(
-                Capsule()
-                    .fill(accentColor.opacity(0.25))
-                    .stroke(
-                        accentColor,
-                        style: StrokeStyle(
-                            lineWidth: 1,
-                            lineCap: .round
-                        )
-                    )
-            )
     }
 }
 

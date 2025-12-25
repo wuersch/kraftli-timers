@@ -8,16 +8,18 @@
 import AVFoundation
 
 final class AudioFeedbackProvider: FeedbackProvider {
-    private var audioPlayers: [AVAudioPlayer] = []
-
     init() {
         // Configure audio session
-        try? AVAudioSession.sharedInstance().setCategory(
-            .playback,
-            mode: .default,
-            options: [.mixWithOthers]
-        )
-        try? AVAudioSession.sharedInstance().setActive(true)
+        do {
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback,
+                mode: .default,
+                options: [.mixWithOthers]
+            )
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            // Audio session configuration failed - continue without audio feedback
+        }
     }
 
     func playIntervalComplete() {

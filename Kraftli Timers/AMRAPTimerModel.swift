@@ -16,9 +16,8 @@ class AMRAPTimerModel: WorkoutTimer {
 
     // MARK: - Private Properties
     private let totalDuration: TimeInterval
-    private let timerProvider: TimerProvider
+    private let timerCoordinator: TimerCoordinator
 
-    private var timer: Any?
     private var startDate: Date?
     private var pausedTime: TimeInterval?
 
@@ -39,7 +38,7 @@ class AMRAPTimerModel: WorkoutTimer {
         timerProvider: TimerProvider = DisplayLinkTimerProvider()
     ) {
         self.totalDuration = totalDuration
-        self.timerProvider = timerProvider
+        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
         self.totalTimeRemaining = totalDuration
     }
 
@@ -58,12 +57,12 @@ class AMRAPTimerModel: WorkoutTimer {
 
         pausedTime = totalTimeRemaining
         isRunning = false
-        stopTimer()
+        timerCoordinator.stop()
     }
 
     @MainActor
     func reset() {
-        stopTimer()
+        timerCoordinator.stop()
         isRunning = false
         totalTimeRemaining = totalDuration
         roundsCompleted = 0
@@ -84,22 +83,14 @@ class AMRAPTimerModel: WorkoutTimer {
     // MARK: - Private Methods
     @MainActor
     private func startTimer() {
-        let now = Date()
-
-        if let pausedTime = pausedTime {
-            startDate = now.addingTimeInterval(-totalDuration + pausedTime)
-        } else {
-            startDate = now
+        startDate = timerCoordinator.start(
+            pausedTime: pausedTime,
+            totalDuration: totalDuration
+        ) { [weak self] in
+            self?.update()
         }
 
         pausedTime = nil
-
-        timer = timerProvider.scheduleTimer(interval: 0.2, repeats: true) {
-            [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.update()
-            }
-        }
     }
 
     @MainActor
@@ -113,21 +104,9 @@ class AMRAPTimerModel: WorkoutTimer {
         totalTimeRemaining = max(0, totalDuration - timeElapsed)
 
         if totalTimeRemaining <= 0 {
-            stopTimer()
+            timerCoordinator.stop()
             isRunning = false
             totalTimeRemaining = 0
         }
-    }
-
-    private func stopTimer() {
-        if let timer = timer {
-            timerProvider.invalidateTimer(timer)
-            self.timer = nil
-        }
-        startDate = nil
-    }
-
-    deinit {
-        stopTimer()
     }
 }

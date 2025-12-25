@@ -18,15 +18,14 @@ public class EMOMTimerModel: WorkoutTimer {
     private let intervalWarningThreshold: TimeInterval
     private let totalDuration: TimeInterval
     private let intervalDuration: TimeInterval
-    private let timerProvider: TimerProvider
+    private let timerCoordinator: TimerCoordinator
     private let feedbackProvider: FeedbackProvider
-    
-    private var timer: Any?
+
     private var totalStartDate: Date?
     private var intervalStartDate: Date?
     private var pausedTotalTime: TimeInterval?
     private var pausedIntervalTime: TimeInterval?
-    
+
     private var lastWarningTriggered = false
     
     // MARK: - Computed Properties
@@ -68,11 +67,11 @@ public class EMOMTimerModel: WorkoutTimer {
         precondition(intervalDuration > 0, "intervalDuration must be > 0")
         precondition(totalDuration >= intervalDuration, "totalDuration must be >= intervalDuration")
         precondition(intervalWarningThreshold >= 0, "intervalWarningThreshold must be >= 0")
-        
+
         self.totalDuration = totalDuration
         self.intervalDuration = intervalDuration
         self.intervalWarningThreshold = intervalWarningThreshold
-        self.timerProvider = timerProvider
+        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
         self.feedbackProvider = feedbackProvider
         self.totalTimeRemaining = totalDuration
         self.intervalTimeRemaining = intervalDuration
@@ -111,16 +110,16 @@ public class EMOMTimerModel: WorkoutTimer {
     @MainActor
     func pause() {
         guard isRunning else { return }
-        
+
         pausedTotalTime = totalTimeRemaining
         pausedIntervalTime = intervalTimeRemaining
         isRunning = false
-        stopTimer()
+        timerCoordinator.stop()
     }
     
     @MainActor
     func reset() {
-        stopTimer()
+        timerCoordinator.stop()
         isRunning = false
 
         totalTimeRemaining = totalDuration
@@ -133,28 +132,24 @@ public class EMOMTimerModel: WorkoutTimer {
     // MARK: - Private Methods
     @MainActor
     private func startTimer() {
-        let now = Date()
-        
-        if let pausedTotal = pausedTotalTime {
-            totalStartDate = now.addingTimeInterval(-totalDuration + pausedTotal)
-        } else {
-            totalStartDate = now
+        // Start total timer
+        totalStartDate = timerCoordinator.start(
+            pausedTime: pausedTotalTime,
+            totalDuration: totalDuration
+        ) { [weak self] in
+            self?.update()
         }
-        
+
+        // Calculate interval start date
+        let now = Date()
         if let pausedInterval = pausedIntervalTime {
             intervalStartDate = now.addingTimeInterval(-intervalDuration + pausedInterval)
         } else {
             intervalStartDate = now
         }
-        
+
         pausedTotalTime = nil
         pausedIntervalTime = nil
-        
-        timer = timerProvider.scheduleTimer(interval: 0.2, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.update()
-            }
-        }
     }
     
     @MainActor
@@ -185,26 +180,13 @@ public class EMOMTimerModel: WorkoutTimer {
         }
         
         if totalTimeRemaining <= 0 {
-            stopTimer()
+            timerCoordinator.stop()
             isRunning = false
             totalTimeRemaining = 0
             intervalTimeRemaining = 0
             lastWarningTriggered = false
             feedbackProvider.playWorkoutComplete()
         }
-    }
-    
-    private func stopTimer() {
-        if let timer = timer {
-            timerProvider.invalidateTimer(timer)
-            self.timer = nil
-        }
-        totalStartDate = nil
-        intervalStartDate = nil
-    }
-    
-    deinit {
-        stopTimer()
     }
 }
 
