@@ -41,24 +41,24 @@ struct PresetEditorView: View {
         return totalSeconds / 3
     }
 
-    private var intervalDuration: Int {
+    private var intervalDuration: Double {
         guard targetReps > 0 else { return 0 }
         let totalSeconds = durationMinutes * 60
-        return totalSeconds / targetReps
+        return Double(totalSeconds) / Double(targetReps)
     }
 
     private var intervalDescription: String {
         let seconds = intervalDuration
         if seconds >= 60 {
-            let minutes = seconds / 60
-            let remainingSeconds = seconds % 60
+            let minutes = Int(seconds / 60)
+            let remainingSeconds = Int(seconds.truncatingRemainder(dividingBy: 60))
             if remainingSeconds == 0 {
                 return "\(minutes) min per interval"
             } else {
                 return "\(minutes) min \(remainingSeconds) sec per interval"
             }
         } else {
-            return "\(seconds) sec per interval"
+            return "\(Int(seconds)) sec per interval"
         }
     }
 
@@ -89,7 +89,7 @@ struct PresetEditorView: View {
                             Text("\(minutes) min").tag(minutes)
                         }
                     }
-                    .pickerStyle(.menu)
+                    .pickerStyle(.wheel)
                     .onChange(of: durationMinutes) { _, _ in
                         // Ensure targetReps doesn't exceed maxReps when duration changes
                         if targetReps > maxReps {
@@ -105,7 +105,7 @@ struct PresetEditorView: View {
                                 Text("\(reps)").tag(reps)
                             }
                         }
-                        .pickerStyle(.menu)
+                        .pickerStyle(.wheel)
                     } footer: {
                         Text(intervalDescription)
                             .foregroundStyle(.secondary)

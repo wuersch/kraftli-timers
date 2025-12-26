@@ -33,7 +33,7 @@ extension TimerPreset {
             kind: .emom,
             duration: .seconds(20 * 60),
             targetReps: 35,
-            exercise: Exercise(name: "Navy Seals")
+            exercise: Exercise(name: "Navy Seal Burpees")
         ),
         TimerPreset(
             id: UUID(),
