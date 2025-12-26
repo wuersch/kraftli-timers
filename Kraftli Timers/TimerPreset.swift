@@ -78,11 +78,18 @@ extension TimerPreset {
     }
 }
 
-enum TimerKind: String {
+enum TimerKind: String, CaseIterable {
     case emom = "EMOM"
     case amrap = "AMRAP"
 }
 
-struct Exercise: Equatable {
+struct Exercise: Equatable, Hashable {
     let name: String
+
+    static let availableExercises: [Exercise] = [
+        Exercise(name: "Pull-ups"),
+        Exercise(name: "6-Count Burpees"),
+        Exercise(name: "Navy Seal Burpees"),
+        Exercise(name: "Push-ups")
+    ]
 }

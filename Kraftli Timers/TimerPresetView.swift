@@ -8,14 +8,17 @@
 import SwiftUI
 
 struct TimerPresetView: View {
-    @State private var timerPresets = TimerPreset.defaults
-    @State private var selectedPreset: TimerPreset?
+    @State private var store = PresetStore()
+    @State private var presetToEdit: TimerPreset?
+    @State private var presetToRun: TimerPreset?
+    @State private var isEditMode = false
+    @State private var showingAddPreset = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(timerPresets) { preset in
+                    ForEach(store.presets) { preset in
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(preset.primaryText)
@@ -29,17 +32,30 @@ struct TimerPresetView: View {
 
                             Spacer(minLength: 12)
 
-                            Button(action: {
-                                selectedPreset = preset
-                            }) {
-                                Image(systemName: "play.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundStyle(.tint)
+                            if !isEditMode {
+                                Button(action: {
+                                    presetToRun = preset
+                                }) {
+                                    Image(systemName: "play.circle.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundStyle(.tint)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                         .padding(.vertical, 8)
                         .contentShape(Rectangle())
+                        .onTapGesture {
+                            if isEditMode {
+                                presetToEdit = preset
+                            }
+                        }
+                    }
+                    .onDelete { indices in
+                        store.deletePreset(at: indices)
+                    }
+                    .onMove { source, destination in
+                        store.movePreset(from: source, to: destination)
                     }
                 } header: {
                     Spacer()
@@ -47,8 +63,34 @@ struct TimerPresetView: View {
             }
             .navigationTitle("Timers")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        withAnimation {
+                            isEditMode.toggle()
+                        }
+                    }) {
+                        Text(isEditMode ? "Done" : "Edit")
+                    }
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingAddPreset = true
+                    }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(isEditMode ? .active : .inactive))
+            .sheet(isPresented: $showingAddPreset) {
+                PresetEditorView(store: store)
+            }
+            .sheet(item: $presetToEdit) { preset in
+                PresetEditorView(store: store, presetToEdit: preset)
+            }
         }
-        .fullScreenCover(item: $selectedPreset) { preset in
+        .fullScreenCover(item: $presetToRun) { preset in
             NavigationStack {
                 switch preset.kind {
                 case .emom:
