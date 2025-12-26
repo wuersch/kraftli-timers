@@ -13,6 +13,10 @@ public class EMOMTimerModel: WorkoutTimer {
     @MainActor private(set) var totalTimeRemaining: TimeInterval
     @MainActor private(set) var intervalTimeRemaining: TimeInterval
     @MainActor private(set) var isRunning: Bool = false
+
+    // Precise values for smooth progress animations
+    @MainActor private var preciseTotalTimeRemaining: TimeInterval
+    @MainActor private var preciseIntervalTimeRemaining: TimeInterval
     
     // MARK: - Private Properties
     private let intervalWarningThreshold: TimeInterval
@@ -22,21 +26,20 @@ public class EMOMTimerModel: WorkoutTimer {
     private let audioFeedbackProvider: AudioFeedbackProvider
 
     private var totalStartDate: Date?
-    private var intervalStartDate: Date?
     private var pausedTotalTime: TimeInterval?
-    private var pausedIntervalTime: TimeInterval?
 
     private var lastWarningTriggered = false
+    private var lastCompletedInterval: Int = -1
     
     // MARK: - Computed Properties
     @MainActor
     var overallProgress: Double {
-        totalTimeRemaining / totalDuration
+        preciseTotalTimeRemaining / totalDuration
     }
-    
+
     @MainActor
     var intervalProgress: Double {
-        intervalTimeRemaining / intervalDuration
+        preciseIntervalTimeRemaining / intervalDuration
     }
     
     @MainActor
@@ -75,6 +78,8 @@ public class EMOMTimerModel: WorkoutTimer {
         self.audioFeedbackProvider = feedbackProvider
         self.totalTimeRemaining = totalDuration
         self.intervalTimeRemaining = intervalDuration
+        self.preciseTotalTimeRemaining = totalDuration
+        self.preciseIntervalTimeRemaining = intervalDuration
     }
     
     // Convenience initializer: Rep-based (Busy Dad Style)
@@ -86,13 +91,13 @@ public class EMOMTimerModel: WorkoutTimer {
     ) {
         precondition(totalReps > 0, "totalReps must be > 0")
         precondition(totalMinutes > 0, "totalMinutes must be > 0")
-        
-        let totalSeconds = totalMinutes * 60
-        let intervalSeconds = totalSeconds / totalReps
-        
+
+        let totalSeconds = TimeInterval(totalMinutes * 60)
+        let intervalSeconds = totalSeconds / Double(totalReps)
+
         self.init(
-            totalDuration: TimeInterval(totalSeconds),
-            intervalDuration: TimeInterval(intervalSeconds),
+            totalDuration: totalSeconds,
+            intervalDuration: intervalSeconds,
             timerProvider: timerProvider
         )
     }
@@ -112,7 +117,6 @@ public class EMOMTimerModel: WorkoutTimer {
         guard isRunning else { return }
 
         pausedTotalTime = totalTimeRemaining
-        pausedIntervalTime = intervalTimeRemaining
         isRunning = false
         timerCoordinator.stop()
     }
@@ -124,9 +128,12 @@ public class EMOMTimerModel: WorkoutTimer {
 
         totalTimeRemaining = totalDuration
         intervalTimeRemaining = intervalDuration
+        preciseTotalTimeRemaining = totalDuration
+        preciseIntervalTimeRemaining = intervalDuration
 
         pausedTotalTime = nil
-        pausedIntervalTime = nil
+        lastCompletedInterval = -1
+        lastWarningTriggered = false
     }
     
     // MARK: - Private Methods
@@ -140,50 +147,54 @@ public class EMOMTimerModel: WorkoutTimer {
             self?.update()
         }
 
-        // Calculate interval start date
-        let now = Date()
-        if let pausedInterval = pausedIntervalTime {
-            intervalStartDate = now.addingTimeInterval(-intervalDuration + pausedInterval)
-        } else {
-            intervalStartDate = now
-        }
-
         pausedTotalTime = nil
-        pausedIntervalTime = nil
     }
     
     @MainActor
     private func update() {
-        guard let totalStart = totalStartDate,
-              let intervalStart = intervalStartDate else {
+        guard let totalStart = totalStartDate else {
             return
         }
-        
+
         let now = Date()
         let totalElapsed = now.timeIntervalSince(totalStart)
-        let intervalElapsed = now.timeIntervalSince(intervalStart)
-        
-        totalTimeRemaining = max(0, totalDuration - totalElapsed)
-        intervalTimeRemaining = max(0, intervalDuration - intervalElapsed)
-        
-        // Warning sound at (intervalWarningThreshold) seconds
-        if intervalTimeRemaining <= intervalWarningThreshold && intervalTimeRemaining > 0 && !lastWarningTriggered {
-            audioFeedbackProvider.playWarning()
-            lastWarningTriggered = true
-        }
-        
-        if(intervalTimeRemaining <= 0 && totalTimeRemaining > 0) {
-            intervalStartDate = now
-            intervalTimeRemaining = intervalDuration
-            lastWarningTriggered = false
-            audioFeedbackProvider.playIntervalComplete()
-        }
-        
-        if totalTimeRemaining <= 0 {
+
+        // Calculate precise values for smooth progress animations
+        preciseTotalTimeRemaining = max(0, totalDuration - totalElapsed)
+        let preciseIntervalElapsed = totalElapsed.truncatingRemainder(dividingBy: intervalDuration)
+        preciseIntervalTimeRemaining = intervalDuration - preciseIntervalElapsed
+
+        // Floor to whole seconds for synchronized display
+        let totalElapsedSeconds = floor(totalElapsed)
+        totalTimeRemaining = max(0, totalDuration - totalElapsedSeconds)
+        let intervalElapsedSeconds = totalElapsedSeconds.truncatingRemainder(dividingBy: intervalDuration)
+        intervalTimeRemaining = intervalDuration - intervalElapsedSeconds
+
+        // Derive interval time from total elapsed (single source of truth)
+        if preciseTotalTimeRemaining > 0 {
+            // Detect interval transitions (use precise timing)
+            let currentInterval = Int(totalElapsed / intervalDuration)
+            if currentInterval > lastCompletedInterval {
+                lastCompletedInterval = currentInterval
+                lastWarningTriggered = false
+                if currentInterval > 0 {
+                    audioFeedbackProvider.playIntervalComplete()
+                }
+            }
+
+            // Warning sound at threshold (use precise timing)
+            if preciseIntervalTimeRemaining <= intervalWarningThreshold && !lastWarningTriggered {
+                audioFeedbackProvider.playWarning()
+                lastWarningTriggered = true
+            }
+        } else {
+            // Workout complete
             timerCoordinator.stop()
             isRunning = false
             totalTimeRemaining = 0
             intervalTimeRemaining = 0
+            preciseTotalTimeRemaining = 0
+            preciseIntervalTimeRemaining = 0
             lastWarningTriggered = false
             audioFeedbackProvider.playWorkoutComplete()
         }

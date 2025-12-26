@@ -54,9 +54,9 @@ struct TimerPresetView: View {
                     .onDelete { indices in
                         store.deletePreset(at: indices)
                     }
-                    .onMove { source, destination in
+                    .onMove(perform: isEditMode ? { source, destination in
                         store.movePreset(from: source, to: destination)
-                    }
+                    } : nil)
                 } header: {
                     Spacer()
                 }
@@ -94,9 +94,9 @@ struct TimerPresetView: View {
             NavigationStack {
                 switch preset.kind {
                 case .emom:
-                    if let intervalDuration = preset.intervalDuration {
+                    if let targetReps = preset.targetReps {
                         let totalSeconds = TimeInterval(preset.duration.components.seconds)
-                        let intervalSeconds = TimeInterval(intervalDuration.components.seconds)
+                        let intervalSeconds = totalSeconds / Double(targetReps)
 
                         EMOMTimerView(timerModel: EMOMTimerModel(
                             totalDuration: totalSeconds,
