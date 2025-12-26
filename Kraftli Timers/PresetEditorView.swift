@@ -51,14 +51,22 @@ struct PresetEditorView: View {
         let seconds = intervalDuration
         if seconds >= 60 {
             let minutes = Int(seconds / 60)
-            let remainingSeconds = Int(seconds.truncatingRemainder(dividingBy: 60))
+            let remainingSeconds = seconds.truncatingRemainder(dividingBy: 60)
             if remainingSeconds == 0 {
                 return "\(minutes) min per interval"
             } else {
-                return "\(minutes) min \(remainingSeconds) sec per interval"
+                // Show decimal only if not a whole number
+                let formatted = remainingSeconds.truncatingRemainder(dividingBy: 1) == 0
+                    ? String(format: "%.0f", remainingSeconds)
+                    : String(format: "%.1f", remainingSeconds)
+                return "\(minutes) min \(formatted) sec per interval"
             }
         } else {
-            return "\(Int(seconds)) sec per interval"
+            // Show decimal only if not a whole number
+            let formatted = seconds.truncatingRemainder(dividingBy: 1) == 0
+                ? String(format: "%.0f", seconds)
+                : String(format: "%.1f", seconds)
+            return "\(formatted) sec per interval"
         }
     }
 
@@ -100,15 +108,20 @@ struct PresetEditorView: View {
 
                 if timerKind == .emom {
                     Section {
-                        Picker("Target Reps", selection: $targetReps) {
-                            ForEach(1...maxReps, id: \.self) { reps in
-                                Text("\(reps)").tag(reps)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Target Reps")
+                                .font(.body)
+                                .foregroundStyle(.primary)
+
+                            Picker("Target Reps", selection: $targetReps) {
+                                ForEach(1...maxReps, id: \.self) { reps in
+                                    Text("\(reps)").tag(reps)
+                                }
                             }
+                            .pickerStyle(.wheel)
+                            .labelsHidden()
                         }
-                        .pickerStyle(.wheel)
-                        .labelsHidden()
-                    } header: {
-                        Text("Target Reps")
+                        .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 0, trailing: 16))
                     } footer: {
                         Text(intervalDescription)
                             .foregroundStyle(.secondary)
