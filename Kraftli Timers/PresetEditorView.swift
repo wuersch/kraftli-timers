@@ -89,7 +89,7 @@ struct PresetEditorView: View {
                             Text("\(minutes) min").tag(minutes)
                         }
                     }
-                    .pickerStyle(.wheel)
+                    .pickerStyle(.menu)
                     .onChange(of: durationMinutes) { _, _ in
                         // Ensure targetReps doesn't exceed maxReps when duration changes
                         if targetReps > maxReps {
@@ -106,6 +106,9 @@ struct PresetEditorView: View {
                             }
                         }
                         .pickerStyle(.wheel)
+                        .labelsHidden()
+                    } header: {
+                        Text("Target Reps")
                     } footer: {
                         Text(intervalDescription)
                             .foregroundStyle(.secondary)
