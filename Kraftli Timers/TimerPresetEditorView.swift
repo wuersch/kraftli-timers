@@ -1,5 +1,5 @@
 //
-//  PresetEditorView.swift
+//  TimerPresetEditorView.swift
 //  Kraftli Timers
 //
 //  Created by Claude on 26.12.2025.
@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-struct PresetEditorView: View {
+struct TimerPresetEditorView: View {
     @Environment(\.dismiss) private var dismiss
-    let store: PresetStore
+    @Environment(TimerPresetStore.self) private var store
     let presetToEdit: TimerPreset?
 
     @State private var timerKind: TimerKind
@@ -17,8 +17,7 @@ struct PresetEditorView: View {
     @State private var durationMinutes: Int
     @State private var targetReps: Int
 
-    init(store: PresetStore, presetToEdit: TimerPreset? = nil) {
-        self.store = store
+    init(presetToEdit: TimerPreset? = nil) {
         self.presetToEdit = presetToEdit
 
         // Initialize state from preset or use defaults
@@ -137,6 +136,7 @@ struct PresetEditorView: View {
                     }) {
                         Image(systemName: "xmark")
                     }
+                    .accessibilityLabel("Cancel")
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
@@ -145,6 +145,7 @@ struct PresetEditorView: View {
                     }) {
                         Image(systemName: "checkmark")
                     }
+                    .accessibilityLabel(presetToEdit == nil ? "Save timer" : "Save changes")
                 }
             }
         }
@@ -160,7 +161,7 @@ struct PresetEditorView: View {
                 targetReps: timerKind == .emom ? targetReps : nil,
                 exercise: exercise
             )
-            store.updatePreset(updatedPreset)
+            store.updateTimerPreset(updatedPreset)
         } else {
             // Create new preset
             let preset = TimerPreset(
@@ -170,12 +171,13 @@ struct PresetEditorView: View {
                 targetReps: timerKind == .emom ? targetReps : nil,
                 exercise: exercise
             )
-            store.addPreset(preset)
+            store.addTimerPreset(preset)
         }
         dismiss()
     }
 }
 
 #Preview {
-    PresetEditorView(store: PresetStore())
+    TimerPresetEditorView()
+        .environment(TimerPresetStore())
 }

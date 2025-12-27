@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct Kraftli_TimersApp: App {
+    @State private var timerPresetStore = TimerPresetStore()
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             
@@ -26,6 +28,7 @@ struct Kraftli_TimersApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(timerPresetStore)
         }
         .modelContainer(sharedModelContainer)
     }

@@ -146,6 +146,8 @@ struct EMOMTimerView: View {
 
                         if isCompleted {
                             RepsPill(text: makeCompletionText(), accentColor: .green)
+                                .accessibilityLabel("Timer completed")
+                                .accessibilityHint("Hold to close")
                         } else if showHint {
                             Text(
                                 timerModel.isRunning
@@ -161,8 +163,10 @@ struct EMOMTimerView: View {
                             .transition(
                                 .opacity.combined(with: .scale(scale: 0.98))
                             )
+                            .accessibilityHidden(true)
                         } else {
                             RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor)
+                                .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
                         }
                     }
                 }
@@ -172,6 +176,10 @@ struct EMOMTimerView: View {
                 }.onLongPressGesture(minimumDuration: 0.8) {
                     handleLongPress()
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(isCompleted ? "Timer completed" : (timerModel.isRunning ? "Timer running" : "Timer paused"))
+                .accessibilityHint(isCompleted ? "Hold to close" : (timerModel.isRunning ? "Tap to pause, hold to close" : "Tap to start, hold to close"))
+                .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
                 VStack(spacing: 8) {
                     Text("TOTAL")

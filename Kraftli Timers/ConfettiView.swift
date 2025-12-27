@@ -27,6 +27,7 @@ struct ConfettiView: View {
                 generateConfetti(in: geometry.size)
             }
         }
+        .accessibilityHidden(true)
     }
 
     private func generateConfetti(in size: CGSize) {

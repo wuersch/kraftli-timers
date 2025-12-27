@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TimerPresetView: View {
-    @State private var store = PresetStore()
+    @Environment(TimerPresetStore.self) private var store
     @State private var presetToEdit: TimerPreset?
     @State private var presetToRun: TimerPreset?
     @State private var isEditMode = false
@@ -41,6 +41,7 @@ struct TimerPresetView: View {
                                         .foregroundStyle(.tint)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Start \(preset.exercise.name) timer")
                             }
                         }
                         .padding(.vertical, 8)
@@ -50,12 +51,14 @@ struct TimerPresetView: View {
                                 presetToEdit = preset
                             }
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(preset.primaryText), \(preset.secondaryText)")
                     }
                     .onDelete { indices in
-                        store.deletePreset(at: indices)
+                        store.deleteTimerPreset(at: indices)
                     }
                     .onMove(perform: isEditMode ? { source, destination in
-                        store.movePreset(from: source, to: destination)
+                        store.moveTimerPreset(from: source, to: destination)
                     } : nil)
                 } header: {
                     Spacer()
@@ -72,6 +75,7 @@ struct TimerPresetView: View {
                     }) {
                         Text(isEditMode ? "Done" : "Edit")
                     }
+                    .accessibilityLabel(isEditMode ? "Done editing" : "Edit timers")
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -80,14 +84,15 @@ struct TimerPresetView: View {
                     }) {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Add new timer")
                 }
             }
             .environment(\.editMode, .constant(isEditMode ? .active : .inactive))
             .sheet(isPresented: $showingAddPreset) {
-                PresetEditorView(store: store)
+                TimerPresetEditorView()
             }
             .sheet(item: $presetToEdit) { preset in
-                PresetEditorView(store: store, presetToEdit: preset)
+                TimerPresetEditorView(presetToEdit: preset)
             }
         }
         .fullScreenCover(item: $presetToRun) { preset in
