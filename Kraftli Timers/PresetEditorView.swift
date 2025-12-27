@@ -29,7 +29,7 @@ struct PresetEditorView: View {
             _targetReps = State(initialValue: preset.targetReps ?? 100)
         } else {
             _timerKind = State(initialValue: .emom)
-            _exercise = State(initialValue: Exercise(name: "Pull-ups"))
+            _exercise = State(initialValue: Exercise(name: "6-Count Burpees"))
             _durationMinutes = State(initialValue: 20)
             _targetReps = State(initialValue: 100)
         }

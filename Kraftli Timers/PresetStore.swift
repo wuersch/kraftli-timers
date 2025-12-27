@@ -28,13 +28,7 @@ class PresetStore {
     }
 
     func deletePreset(at indices: IndexSet) {
-        var presetsToKeep: [TimerPreset] = []
-        for (index, preset) in presets.enumerated() {
-            if !indices.contains(index) {
-                presetsToKeep.append(preset)
-            }
-        }
-        presets = presetsToKeep
+        presets = presets.enumerated().filter { !indices.contains($0.offset) }.map(\.element)
     }
 
     func deletePreset(_ preset: TimerPreset) {
@@ -42,24 +36,16 @@ class PresetStore {
     }
 
     func movePreset(from source: IndexSet, to destination: Int) {
-        var updatedPresets = presets
-
         // Extract items to move
-        let itemsToMove = source.sorted().map { updatedPresets[$0] }
-
-        // Remove items (in reverse order to maintain indices)
-        for index in source.sorted().reversed() {
-            updatedPresets.remove(at: index)
-        }
-
-        // Calculate adjusted destination
+        let itemsToMove = source.sorted().map { presets[$0] }
+        
+        // Calculate adjusted destination before removal
         let adjustedDestination = destination - source.filter { $0 < destination }.count
-
+        
+        // Remove items in reverse order to maintain indices
+        source.sorted().reversed().forEach { presets.remove(at: $0) }
+        
         // Insert items at new position
-        for (offset, item) in itemsToMove.enumerated() {
-            updatedPresets.insert(item, at: adjustedDestination + offset)
-        }
-
-        presets = updatedPresets
+        presets.insert(contentsOf: itemsToMove, at: adjustedDestination)
     }
 }

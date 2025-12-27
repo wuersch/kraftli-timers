@@ -37,17 +37,17 @@ extension TimerPreset {
         ),
         TimerPreset(
             id: UUID(),
-            kind: .emom,
-            duration: .seconds(1 * 60),
-            targetReps: 6,
-            exercise: Exercise(name: "Push-ups")
-        ),
-        TimerPreset(
-            id: UUID(),
             kind: .amrap,
             duration: .seconds(20 * 60),
             targetReps: nil,
             exercise: Exercise(name: "Pull-ups")
+        ),
+        TimerPreset(
+            id: UUID(),
+            kind: .emom,
+            duration: .seconds(1 * 60),
+            targetReps: 6,
+            exercise: Exercise(name: "Push-ups")
         )
     ]
 
