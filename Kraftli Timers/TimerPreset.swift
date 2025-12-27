@@ -65,17 +65,6 @@ extension TimerPreset {
 
         return parts.joined(separator: " · ")
     }
-
-    var intervalDuration: Duration? {
-        guard kind == .emom, let reps = targetReps, reps > 0 else {
-            return nil
-        }
-
-        let totalSeconds = duration.components.seconds
-        let intervalSeconds = totalSeconds / Int64(reps)
-        
-        return .seconds(intervalSeconds)
-    }
 }
 
 enum TimerKind: String, CaseIterable {
