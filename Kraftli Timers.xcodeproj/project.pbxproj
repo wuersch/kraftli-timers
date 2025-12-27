@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4C21C5A92F008244008D0E89 /* SPEC.md in Resources */ = {isa = PBXBuildFile; fileRef = 4C21C5A82F008244008D0E89 /* SPEC.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		4C33824E2EF2FA4800135BD7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4C21C5A82F008244008D0E89 /* SPEC.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SPEC.md; sourceTree = "<group>"; };
 		4C33823C2EF2FA4700135BD7 /* Kraftli Timers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Kraftli Timers.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C33824D2EF2FA4800135BD7 /* Kraftli TimersTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C3382572EF2FA4800135BD7 /* Kraftli TimersUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -89,6 +94,7 @@
 		4C3382332EF2FA4700135BD7 = {
 			isa = PBXGroup;
 			children = (
+				4C21C5A82F008244008D0E89 /* SPEC.md */,
 				4CA514782EFD4F8200048217 /* CLAUDE.md */,
 				4C33823E2EF2FA4700135BD7 /* Kraftli Timers */,
 				4C3382502EF2FA4800135BD7 /* Kraftli TimersTests */,
@@ -227,6 +233,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C21C5A92F008244008D0E89 /* SPEC.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
