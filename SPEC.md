@@ -11,12 +11,13 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 ## Features
 
 ### EMOM Timer (Status: ✅ Implemented)
-**User Story**: As a user, I want to perform interval-based workouts where I complete a set number of exercises within each interval.
+**User Story**: As a user, I want to perform interval-based workouts where I complete exactly one rep per interval, with the interval duration calculated from total duration divided by target reps.
 
 **Functionality**:
 - Set total workout duration (1-60 minutes)
-- Set number of reps/intervals (automatically capped to ensure minimum 3-second intervals)
-- Interval duration calculated automatically: `duration / reps`
+- Set number of target reps (automatically capped to ensure minimum 3-second intervals)
+- Interval duration calculated automatically: `duration / reps` (e.g., 20 min / 100 reps = 12 seconds per rep)
+- Each interval = one rep: complete the exercise, then rest until the next interval begins
 - Smart interval duration display with decimal formatting when needed
 - Choose exercise from preset list
 - Visual progress with dual concentric rings (interval + overall progress)
@@ -27,12 +28,19 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 **UI Flow**:
 1. User opens app to Timer Presets tab
 2. User taps play button on an EMOM preset (or creates new one)
-3. Full-screen timer view appears with exercise name and "INTERVAL" label
+3. Full-screen timer view appears showing:
+   - Navigation title: "Exercise Name · EMOM"
+   - Dual progress rings (interval + overall)
+   - Interval countdown inside the rings
+   - Total workout countdown below the rings
+   - Reps completed counter (e.g., "5/100 REPS")
 4. Tap anywhere to start timer
-5. Timer counts down each interval with visual progress rings
-6. Warning indicator (orange) appears at 3 seconds remaining
+5. Both timers count down simultaneously:
+   - Interval timer resets after each rep
+   - Total timer counts down continuously
+6. Warning indicator (orange) appears at 3 seconds remaining in interval
 7. Audio beep on each interval completion
-8. "DONE" state with confetti animation on workout completion
+8. "DONE" state with confetti animation when total time reaches zero
 9. Long-press (0.8s) to close timer and return to preset list
 
 **Data Model**:
@@ -332,13 +340,137 @@ struct Exercise: Equatable, Hashable {
 
 ## Future Considerations (v2+)
 
-### Potential Features
-- [ ] Create training programs from timer presets
-- [ ] Workout history/statistics
+### Exercise Library Expansion (Status: 🔮 Future)
+**User Story**: As a user, I want detailed information about exercises to understand proper form and expected benefits.
+
+**Functionality**:
+- Expand from 4 to ~20 curated bodyweight exercises
+- Rich metadata per exercise:
+  - Description and form tips
+  - Muscle groups targeted
+  - Calorie burn estimates (range)
+  - Difficulty level (beginner/intermediate/advanced)
+- Exercise browser with filtering by muscle group
+- Display metadata in preset editor (not during workout - no distractions)
+
+**Data Model** (Draft):
+```swift
+struct Exercise: Identifiable {
+    let id: UUID
+    let name: String
+    let description: String
+    let muscleGroups: [MuscleGroup]
+    let caloriesPerMinute: ClosedRange<Double>
+    let difficulty: Difficulty
+}
+```
+
+**Priority**: 1 (foundation for other features)
+
+---
+
+### Programs (Status: 🔮 Future)
+**User Story**: As a user, I want to combine timer presets into structured training programs with scheduling and progression.
+
+**Use Cases**:
+- Simple rotation: 4x/week, alternate between exercises
+- Weekly progression: Month-long program with increasing difficulty
+- Mixed workouts: Combine EMOM and AMRAP in a single session
+
+**Functionality**:
+- Create programs from existing presets
+- Define schedule (times per week, specific days)
+- Organize into phases with progression
+- Track active program and next workout
+- Visual progress: "Step 1/4", "Week 3/8"
+
+**Data Model** (Draft):
+```swift
+struct Program: Identifiable {
+    let id: UUID
+    let name: String
+    let description: String?
+    let schedule: Schedule
+    let phases: [ProgramPhase]
+}
+
+struct ProgramPhase: Identifiable {
+    let id: UUID
+    let name: String              // e.g., "Week 1-2"
+    let workouts: [ProgramWorkout]
+}
+```
+
+**Priority**: 2 (builds on Exercise Library)
+
+---
+
+### Workout History & Stats (Status: 🔮 Future)
+**User Story**: As a user, I want to track my completed workouts and see my progress over time.
+
+**Functionality**:
+- Log completed workouts (date, duration, exercise, rounds/reps)
+- Stats views: daily, weekly, monthly overviews
+- Program progress visualization (timeline, milestones)
+- Celebration moments for achievements
+
+**Data Model** (Draft):
+```swift
+struct WorkoutLog: Identifiable {
+    let id: UUID
+    let date: Date
+    let preset: TimerPreset
+    let programId: UUID?
+    let duration: Duration
+    let roundsCompleted: Int?
+    let caloriesEstimate: Double?
+}
+```
+
+**Priority**: 3 (tracking layer)
+
+---
+
+### AI-Assisted Program Generation (Status: 🔮 Future)
+**User Story**: As a user, I want to generate personalized training programs based on my fitness level and goals.
+
+**Functionality**:
+- Short conversational flow to gather user context:
+  - Current fitness level
+  - Training goals (strength, endurance, etc.)
+  - Available days per week
+  - Session duration preference
+- On-device AI generates personalized program
+- User can review, tweak, and save
+
+**Technical Approach**:
+- Apple Foundation Models (iOS 26+) - free, on-device, private
+- `@Generable` macro for structured output matching app's data model
+- `@Guide` constraints to use only curated exercises
+
+**Dependencies**: Requires Exercise Library and Programs features
+
+**Priority**: 4 (personalization layer)
+
+---
+
+### HealthKit Integration (Status: 🔮 Future)
+**User Story**: As a user, I want my workouts synced with Apple Health so other apps (like H+) can see my activity.
+
+**Functionality**:
+- **Write**: Record completed workouts to HealthKit
+  - Duration, workout type, estimated calories
+  - Enables rewards in apps like H+ (health insurance bonus)
+- **Read**: Import active calorie data to refine per-exercise estimates
+
+**Priority**: Can be implemented alongside Workout History
+
+---
+
+### Other Ideas
 - [ ] Rest periods between intervals
 - [ ] Custom audio cues
 - [ ] Apple Watch companion app
-- [ ] Health app integration
 - [ ] Tabata timer mode
 
 ---
@@ -351,4 +483,4 @@ struct Exercise: Equatable, Hashable {
 
 ---
 
-*Last Updated: 2025-12-27*
+*Last Updated: 2025-12-28*
