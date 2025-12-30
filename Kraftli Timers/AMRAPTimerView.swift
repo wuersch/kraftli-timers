@@ -87,11 +87,11 @@ struct AMRAPTimerView: View {
 
     private func handleLongPress() {
         guard !isCompleted else { return }
+        guard timerModel.isRunning else { return }
 
-        if timerModel.isRunning {
-            timerModel.pause()
-        } else {
-            startIfNeededAndScheduleHintHide()
+        timerModel.pause()
+        withAnimation(.easeIn(duration: 0.3)) {
+            showHint = true
         }
         haptic(.medium)
     }
@@ -109,6 +109,7 @@ struct AMRAPTimerView: View {
 
         if showHint {
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                guard self.timerModel.isRunning else { return }
                 withAnimation(.easeOut(duration: 0.3)) {
                     showHint = false
                 }
@@ -161,8 +162,7 @@ struct AMRAPTimerView: View {
                                 Text(hintText)
                                     .font(.system(size: sizes.labelFont))
                                     .foregroundStyle(.gray)
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(2)
+                                    .lineLimit(1)
                                     .minimumScaleFactor(0.8)
                                     .transition(
                                         .opacity.combined(with: .scale(scale: 0.98))
@@ -172,18 +172,10 @@ struct AMRAPTimerView: View {
                                 // Invisible spacer to prevent layout shift
                                 Text(hintText)
                                     .font(.system(size: sizes.labelFont))
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(2)
+                                    .lineLimit(1)
                                     .hidden()
                             }
                         }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        handleTap()
-                    }
-                    .onLongPressGesture(minimumDuration: 0.8) {
-                        handleLongPress()
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel(accessibilityLabel)
@@ -206,6 +198,13 @@ struct AMRAPTimerView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    handleTap()
+                }
+                .onLongPressGesture(minimumDuration: 0.8) {
+                    handleLongPress()
+                }
                 .offset(y: dragOffset * 0.3)
                 .opacity(1.0 - (dragOffset / 400.0))
                 .gesture(
@@ -230,6 +229,19 @@ struct AMRAPTimerView: View {
                             }
                         }
                 )
+
+                // Bottom hint overlay
+                if showHint {
+                    VStack {
+                        Spacer()
+                        Text("Swipe down to close")
+                            .font(.system(size: sizes.labelFont))
+                            .foregroundStyle(.gray.opacity(0.6))
+                            .padding(.bottom, 20)
+                    }
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
 
                 // Confetti Overlay
                 if showConfetti {
@@ -263,20 +275,18 @@ struct AMRAPTimerView: View {
 
     // MARK: - Helpers
     private func makeCompletionText() -> AttributedString {
-        var attr = AttributedString("DONE ⸱ Swipe to close")
-        if let doneRange = attr.range(of: "DONE") {
-            attr[doneRange].foregroundColor = .green
-        }
+        var attr = AttributedString("DONE")
+        attr.foregroundColor = .green
         return attr
     }
 
     private var hintText: String {
         if !timerModel.isRunning && timerModel.totalTimeRemaining == timerModel.elapsedTime + timerModel.totalTimeRemaining {
-            return "Tap to start\nHold to pause ⸱ Swipe to close"
+            return "Tap to start"
         } else if timerModel.isRunning {
-            return "Tap to count\nHold to pause ⸱ Swipe to close"
+            return "Tap to count · Hold to pause"
         } else {
-            return "Hold to resume\nSwipe to close"
+            return "Tap to resume"
         }
     }
 

@@ -223,9 +223,10 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
   - Inner ring: Current interval progress (blue, orange when < 3s)
 - "INTERVAL" label with large monospaced time display (MM:SS)
 - "TOTAL" label with total time below
-- Hint text: "Tap to start · Swipe to close" / "Tap to pause · Swipe to close"
+- Hint text inside ring: "Tap to start" / "Tap to pause" (fades after 5s, reappears on pause)
+- Bottom hint: "Swipe down to close" (fades with other hints)
 - Confetti animation on completion
-- Gestures: Tap to start/pause, swipe down to close
+- Gestures: Tap anywhere to start/pause, swipe down to close
 - **Responsive layout**: All UI elements scale proportionally based on available screen space
   - Uses GeometryReader with proportional sizing (reference: iPhone 14 Pro @ 393pt)
   - Vertical constraint ensures content fits in landscape (`height * 0.55`)
@@ -237,9 +238,10 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 - Single progress ring (indigo) showing remaining time
 - Large round counter in center with "ROUNDS" label
 - "TOTAL" label with total time below
-- Hint text: "Tap to start" / "Tap to count · Hold to pause · Swipe to close"
+- Hint text inside ring: "Tap to start" / "Tap to count · Hold to pause" / "Tap to resume" (fades after 5s, reappears on pause)
+- Bottom hint: "Swipe down to close" (fades with other hints)
 - Confetti animation on completion
-- Gestures: Tap to start/increment rounds, long-press (0.8s) to pause/resume, swipe down to close
+- Gestures: Tap anywhere to start/increment/resume, long-press (0.8s) to pause, swipe down to close
 - **Responsive layout**: Same proportional sizing system as EMOM
 
 ### UI Components

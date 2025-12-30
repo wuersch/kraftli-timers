@@ -89,10 +89,8 @@ struct EMOMTimerView: View {
     }
 
     private func makeCompletionText() -> AttributedString {
-        var attr = AttributedString("DONE ⸱ Swipe to close")
-        if let doneRange = attr.range(of: "DONE") {
-            attr[doneRange].foregroundColor = .green
-        }
+        var attr = AttributedString("DONE")
+        attr.foregroundColor = .green
         return attr
     }
     
@@ -108,6 +106,9 @@ struct EMOMTimerView: View {
 
         if timerModel.isRunning {
             timerModel.pause()
+            withAnimation(.easeIn(duration: 0.3)) {
+                showHint = true
+            }
         } else {
             startIfNeededAndScheduleHintHide()
         }
@@ -123,11 +124,12 @@ struct EMOMTimerView: View {
 
     private func startIfNeededAndScheduleHintHide() {
         guard !timerModel.isRunning else { return }
-        
+
         timerModel.start()
-        
+
         if showHint {
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                guard self.timerModel.isRunning else { return }
                 withAnimation(.easeOut(duration: 0.3)) {
                     showHint = false
                 }
@@ -191,13 +193,11 @@ struct EMOMTimerView: View {
                             } else if showHint {
                                 Text(
                                     timerModel.isRunning
-                                        ? "Tap to pause ⸱ Swipe to close"
-                                        : "Tap to start ⸱ Swipe to close"
+                                        ? "Tap to pause"
+                                        : "Tap to start"
                                 )
                                 .font(.system(size: sizes.labelFont))
                                 .foregroundStyle(.gray)
-                                .padding(.vertical, sizes.labelFont * 0.4)
-                                .padding(.horizontal, sizes.labelFont * 0.8)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.9)
                                 .transition(
@@ -209,10 +209,6 @@ struct EMOMTimerView: View {
                                     .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
                             }
                         }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        handleTap()
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel(isCompleted ? "Timer completed" : (timerModel.isRunning ? "Timer running" : "Timer paused"))
@@ -237,6 +233,10 @@ struct EMOMTimerView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    handleTap()
+                }
                 .offset(y: dragOffset * 0.3)
                 .opacity(1.0 - (dragOffset / 400.0))
                 .gesture(
@@ -261,6 +261,19 @@ struct EMOMTimerView: View {
                             }
                         }
                 )
+
+                // Bottom hint overlay
+                if showHint {
+                    VStack {
+                        Spacer()
+                        Text("Swipe down to close")
+                            .font(.system(size: sizes.labelFont))
+                            .foregroundStyle(.gray.opacity(0.6))
+                            .padding(.bottom, 20)
+                    }
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
 
                 // Konfetti Overlay
                 if showConfetti {
