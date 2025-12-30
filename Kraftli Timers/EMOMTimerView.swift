@@ -34,6 +34,8 @@ struct EMOMTimerView: View {
     private var showConfetti = false
     @State
     private var showHint = true
+    @State
+    private var dragOffset: CGFloat = 0
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -87,7 +89,7 @@ struct EMOMTimerView: View {
     }
 
     private func makeCompletionText() -> AttributedString {
-        var attr = AttributedString("DONE ⸱ Hold to close")
+        var attr = AttributedString("DONE ⸱ Swipe to close")
         if let doneRange = attr.range(of: "DONE") {
             attr[doneRange].foregroundColor = .green
         }
@@ -113,10 +115,10 @@ struct EMOMTimerView: View {
         haptic(.light)
     }
 
-    private func handleLongPress() {
+    private func handleSwipeDismiss() {
         timerModel.reset()
         dismiss()
-        haptic(.heavy)
+        haptic(.medium)
     }
 
     private func startIfNeededAndScheduleHintHide() {
@@ -185,12 +187,12 @@ struct EMOMTimerView: View {
                             if isCompleted {
                                 RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
                                     .accessibilityLabel("Timer completed")
-                                    .accessibilityHint("Hold to close")
+                                    .accessibilityHint("Swipe down to close")
                             } else if showHint {
                                 Text(
                                     timerModel.isRunning
-                                        ? "Tap to pause ⸱ Hold to close"
-                                        : "Tap to start ⸱ Hold to close"
+                                        ? "Tap to pause ⸱ Swipe to close"
+                                        : "Tap to start ⸱ Swipe to close"
                                 )
                                 .font(.system(size: sizes.labelFont))
                                 .foregroundStyle(.gray)
@@ -211,12 +213,10 @@ struct EMOMTimerView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         handleTap()
-                    }.onLongPressGesture(minimumDuration: 0.8) {
-                        handleLongPress()
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel(isCompleted ? "Timer completed" : (timerModel.isRunning ? "Timer running" : "Timer paused"))
-                    .accessibilityHint(isCompleted ? "Hold to close" : (timerModel.isRunning ? "Tap to pause, hold to close" : "Tap to start, hold to close"))
+                    .accessibilityHint(isCompleted ? "Swipe down to close" : (timerModel.isRunning ? "Tap to pause, swipe down to close" : "Tap to start, swipe down to close"))
                     .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
                     VStack(spacing: 8) {
@@ -237,6 +237,30 @@ struct EMOMTimerView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .offset(y: dragOffset * 0.3)
+                .opacity(1.0 - (dragOffset / 400.0))
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if value.translation.height > 0 {
+                                dragOffset = value.translation.height
+                            }
+                        }
+                        .onEnded { value in
+                            if value.translation.height > 100 {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    dragOffset = 400
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                    handleSwipeDismiss()
+                                }
+                            } else {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    dragOffset = 0
+                                }
+                            }
+                        }
+                )
 
                 // Konfetti Overlay
                 if showConfetti {
