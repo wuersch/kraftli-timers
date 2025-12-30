@@ -10,13 +10,14 @@ import SwiftUI
 struct RepsPill: View {
     let text: AttributedString
     let accentColor: Color
+    var fontSize: CGFloat = 15
 
     var body: some View {
         Text(text)
-            .font(.subheadline)
+            .font(.system(size: fontSize))
             .monospacedDigit()
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
+            .padding(.vertical, fontSize * 0.4)
+            .padding(.horizontal, fontSize * 0.8)
             .background(
                 Capsule()
                     .fill(accentColor.opacity(0.25))

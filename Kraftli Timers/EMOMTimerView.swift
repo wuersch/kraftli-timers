@@ -8,6 +8,20 @@
 import SwiftUI
 import UIKit
 
+// MARK: - TimerSizes
+/// Holds all calculated sizes for responsive layout
+private struct TimerSizes {
+    let outerRing: CGFloat
+    let innerRing: CGFloat
+    let outerLineWidth: CGFloat
+    let innerLineWidth: CGFloat
+    let intervalFont: CGFloat
+    let totalFont: CGFloat
+    let labelFont: CGFloat
+    let pillFont: CGFloat
+    let spacing: CGFloat
+}
+
 // MARK: - EMOMTimerView
 struct EMOMTimerView: View {
     // MARK: - Properties
@@ -39,6 +53,27 @@ struct EMOMTimerView: View {
     // MARK: - Styling
     private var accentColor: Color {
         timerModel.isIntervalWarning ? .orange : .blue
+    }
+
+    // MARK: - Responsive Sizing
+    /// Calculates proportional sizes based on available space.
+    /// Uses the smaller of width or height*0.55 to ensure content fits in landscape.
+    /// Reference: iPhone 14 Pro width ≈ 393pt with outer ring 320pt, inner ring 280pt.
+    private func sizes(for size: CGSize) -> TimerSizes {
+        // Use height * 0.55 as the vertical constraint (rings + total section need ~55% of height)
+        let heightConstrained = size.height * 0.55
+        let effectiveWidth = min(size.width, heightConstrained, 600)
+        return TimerSizes(
+            outerRing: effectiveWidth * 0.81,      // 320/393
+            innerRing: effectiveWidth * 0.71,      // 280/393
+            outerLineWidth: effectiveWidth * 0.025, // 10/393
+            innerLineWidth: effectiveWidth * 0.05,  // 20/393
+            intervalFont: effectiveWidth * 0.14,    // 56/393
+            totalFont: effectiveWidth * 0.15,       // 60/393
+            labelFont: effectiveWidth * 0.038,      // ~15/393 (subheadline equivalent)
+            pillFont: effectiveWidth * 0.038,       // ~15/393 (subheadline equivalent)
+            spacing: effectiveWidth * 0.10          // 40/393
+        )
     }
 
     // MARK: - Helpers
@@ -100,109 +135,115 @@ struct EMOMTimerView: View {
 
     // MARK: - Body
     var body: some View {
-        ZStack {
-            VStack(spacing: 40) {
-                ZStack {
-                    ProgressRing(
-                        size: 280,
-                        lineWidth: 20,
-                        progress: timerModel.intervalProgress,
-                        color: accentColor,
-                        backgroundColor: Color.gray.opacity(0.2),
-                        rotationDegrees: -89.5
-                    )
-                    .accessibilityHidden(true)
+        GeometryReader { geometry in
+            let sizes = sizes(for: geometry.size)
 
-                    ProgressRing(
-                        size: 320,
-                        lineWidth: 10,
-                        progress: timerModel.overallProgress,
-                        color: .primary,
-                        backgroundColor: Color.gray.opacity(0.2),
-                        rotationDegrees: -90.5
-                    )
-                    .accessibilityHidden(true)
+            ZStack {
+                VStack(spacing: sizes.spacing) {
+                    ZStack {
+                        ProgressRing(
+                            size: sizes.innerRing,
+                            lineWidth: sizes.innerLineWidth,
+                            progress: timerModel.intervalProgress,
+                            color: accentColor,
+                            backgroundColor: Color.gray.opacity(0.2),
+                            rotationDegrees: -89.5
+                        )
+                        .accessibilityHidden(true)
 
-                    VStack(spacing: 8) {
-                        Text("INTERVAL")
-                            .font(.subheadline)
-                            .foregroundStyle(.gray)
+                        ProgressRing(
+                            size: sizes.outerRing,
+                            lineWidth: sizes.outerLineWidth,
+                            progress: timerModel.overallProgress,
+                            color: .primary,
+                            backgroundColor: Color.gray.opacity(0.2),
+                            rotationDegrees: -90.5
+                        )
+                        .accessibilityHidden(true)
 
-                        Text(timerModel.intervalTimeRemaining.formatted)
-                            .font(
-                                .system(
-                                    size: 56,
-                                    weight: .semibold,
-                                    design: .rounded
+                        VStack(spacing: 8) {
+                            Text("INTERVAL")
+                                .font(.system(size: sizes.labelFont))
+                                .foregroundStyle(.gray)
+
+                            Text(timerModel.intervalTimeRemaining.formatted)
+                                .font(
+                                    .system(
+                                        size: sizes.intervalFont,
+                                        weight: .semibold,
+                                        design: .rounded
+                                    )
                                 )
-                            )
-                            .foregroundStyle(accentColor)
-                            .monospacedDigit()
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel("Interval time")
-                            .accessibilityValue(
-                                timerModel.intervalTimeRemaining.formatted
-                            )
+                                .foregroundStyle(accentColor)
+                                .monospacedDigit()
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("Interval time")
+                                .accessibilityValue(
+                                    timerModel.intervalTimeRemaining.formatted
+                                )
 
-                        if isCompleted {
-                            RepsPill(text: makeCompletionText(), accentColor: .green)
-                                .accessibilityLabel("Timer completed")
-                                .accessibilityHint("Hold to close")
-                        } else if showHint {
-                            Text(
-                                timerModel.isRunning
-                                    ? "Tap to pause ⸱ Hold to close"
-                                    : "Tap to start ⸱ Hold to close"
-                            )
-                            .font(.subheadline)
-                            .foregroundStyle(.gray)
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 12)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.9)
-                            .transition(
-                                .opacity.combined(with: .scale(scale: 0.98))
-                            )
-                            .accessibilityHidden(true)
-                        } else {
-                            RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor)
-                                .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
+                            if isCompleted {
+                                RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
+                                    .accessibilityLabel("Timer completed")
+                                    .accessibilityHint("Hold to close")
+                            } else if showHint {
+                                Text(
+                                    timerModel.isRunning
+                                        ? "Tap to pause ⸱ Hold to close"
+                                        : "Tap to start ⸱ Hold to close"
+                                )
+                                .font(.system(size: sizes.labelFont))
+                                .foregroundStyle(.gray)
+                                .padding(.vertical, sizes.labelFont * 0.4)
+                                .padding(.horizontal, sizes.labelFont * 0.8)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.9)
+                                .transition(
+                                    .opacity.combined(with: .scale(scale: 0.98))
+                                )
+                                .accessibilityHidden(true)
+                            } else {
+                                RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor, fontSize: sizes.pillFont)
+                                    .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
+                            }
                         }
                     }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    handleTap()
-                }.onLongPressGesture(minimumDuration: 0.8) {
-                    handleLongPress()
-                }
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel(isCompleted ? "Timer completed" : (timerModel.isRunning ? "Timer running" : "Timer paused"))
-                .accessibilityHint(isCompleted ? "Hold to close" : (timerModel.isRunning ? "Tap to pause, hold to close" : "Tap to start, hold to close"))
-                .accessibilityAddTraits(isCompleted ? [] : .isButton)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        handleTap()
+                    }.onLongPressGesture(minimumDuration: 0.8) {
+                        handleLongPress()
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(isCompleted ? "Timer completed" : (timerModel.isRunning ? "Timer running" : "Timer paused"))
+                    .accessibilityHint(isCompleted ? "Hold to close" : (timerModel.isRunning ? "Tap to pause, hold to close" : "Tap to start, hold to close"))
+                    .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
-                VStack(spacing: 8) {
-                    Text("TOTAL")
-                        .font(.subheadline)
-                        .foregroundStyle(.gray)
+                    VStack(spacing: 8) {
+                        Text("TOTAL")
+                            .font(.system(size: sizes.labelFont))
+                            .foregroundStyle(.gray)
 
-                    Text(timerModel.totalTimeRemaining.formatted)
-                        .font(
-                            .system(size: 60, weight: .bold, design: .rounded)
-                        )
-                        .monospacedDigit()
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Total time")
-                        .accessibilityValue(
-                            timerModel.totalTimeRemaining.formatted
-                        )
+                        Text(timerModel.totalTimeRemaining.formatted)
+                            .font(
+                                .system(size: sizes.totalFont, weight: .bold, design: .rounded)
+                            )
+                            .monospacedDigit()
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Total time")
+                            .accessibilityValue(
+                                timerModel.totalTimeRemaining.formatted
+                            )
+                    }
                 }
-            }
-            // Konfetti Overlay
-            if showConfetti {
-                ConfettiView()
-                    .ignoresSafeArea(.all)
-                    .allowsHitTesting(false)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                // Konfetti Overlay
+                if showConfetti {
+                    ConfettiView()
+                        .ignoresSafeArea(.all)
+                        .allowsHitTesting(false)
+                }
             }
         }
         .onDisappear {
