@@ -221,6 +221,10 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 - Hint text: "Tap to start · Hold to close" / "Tap to pause · Hold to close"
 - Confetti animation on completion
 - Gestures: Tap to start/pause, long-press (0.8s) to close
+- **Responsive layout**: All UI elements scale proportionally based on available screen space
+  - Uses GeometryReader with proportional sizing (reference: iPhone 14 Pro @ 393pt)
+  - Vertical constraint ensures content fits in landscape (`height * 0.55`)
+  - Maximum size cap (600pt) prevents oversizing on large screens
 
 ### AMRAP Timer View (Full Screen Cover)
 - Currently shows "Coming soon" placeholder
@@ -228,7 +232,7 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 
 ### UI Components
 - `ProgressRing`: Circular progress indicator with configurable colors/sizes
-- `RepsPill`: Styled capsule badge (used for interval counter)
+- `RepsPill`: Styled capsule badge with configurable font size for responsive layouts
 - `ConfettiView`: Celebratory animation with 120 colored pieces
 - `ComingSoonView`: Reusable placeholder for unimplemented features
 
@@ -483,4 +487,4 @@ struct WorkoutLog: Identifiable {
 
 ---
 
-*Last Updated: 2025-12-28*
+*Last Updated: 2025-12-30*
