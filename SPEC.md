@@ -41,7 +41,7 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 6. Warning indicator (orange) appears at 3 seconds remaining in interval
 7. Audio beep on each interval completion
 8. "DONE" state with confetti animation when total time reaches zero
-9. Long-press (0.8s) to close timer and return to preset list
+9. Swipe down to close timer and return to preset list
 
 **Data Model**:
 - Uses `TimerPreset` with `kind: .emom`
@@ -50,7 +50,7 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 
 ---
 
-### AMRAP Timer (Status: 🚧 In Progress)
+### AMRAP Timer (Status: ✅ Implemented)
 **User Story**: As a user, I want to complete as many rounds as possible within a set time period.
 
 **Functionality**:
@@ -58,19 +58,22 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 - Choose exercise from preset list
 - Manual round counter (tap to increment)
 - Display elapsed time and round count
-- Progress tracking
+- Progress tracking with visual ring
+- Confetti animation on workout completion
 
-**Implementation Status**:
-- ✅ Model complete (`AMRAPTimerModel` with countdown, round tracking, pause/resume)
-- 📋 UI shows "Coming soon" placeholder - needs implementation
-
-**UI Flow** (Planned):
+**UI Flow**:
 1. User taps play button on an AMRAP preset
-2. Full-screen timer view appears
-3. User taps to start timer
-4. Timer counts down to zero
-5. User taps to increment rounds completed
-6. Summary shows total rounds and time
+2. Full-screen timer view appears showing:
+   - Navigation title: "Exercise Name · AMRAP"
+   - Single progress ring (indigo)
+   - Large round counter inside the ring
+   - Total workout countdown below the ring
+3. Tap anywhere to start timer
+4. Timer counts down continuously
+5. Tap to increment rounds completed (with haptic feedback)
+6. Long-press (0.8s) to pause/resume timer
+7. Swipe down to close timer
+8. "DONE" state with confetti animation when total time reaches zero
 
 **Data Model**:
 - Uses `TimerPreset` with `kind: .amrap`
@@ -220,17 +223,24 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
   - Inner ring: Current interval progress (blue, orange when < 3s)
 - "INTERVAL" label with large monospaced time display (MM:SS)
 - "TOTAL" label with total time below
-- Hint text: "Tap to start · Hold to close" / "Tap to pause · Hold to close"
+- Hint text: "Tap to start · Swipe to close" / "Tap to pause · Swipe to close"
 - Confetti animation on completion
-- Gestures: Tap to start/pause, long-press (0.8s) to close
+- Gestures: Tap to start/pause, swipe down to close
 - **Responsive layout**: All UI elements scale proportionally based on available screen space
   - Uses GeometryReader with proportional sizing (reference: iPhone 14 Pro @ 393pt)
   - Vertical constraint ensures content fits in landscape (`height * 0.55`)
   - Maximum size cap (600pt) prevents oversizing on large screens
 
 ### AMRAP Timer View (Full Screen Cover)
-- Currently shows "Coming soon" placeholder
-- Planned: countdown display, round counter, tap-to-increment
+- Dark background for focus
+- Exercise name + "AMRAP" at top
+- Single progress ring (indigo) showing remaining time
+- Large round counter in center with "ROUNDS" label
+- "TOTAL" label with total time below
+- Hint text: "Tap to start" / "Tap to count · Hold to pause · Swipe to close"
+- Confetti animation on completion
+- Gestures: Tap to start/increment rounds, long-press (0.8s) to pause/resume, swipe down to close
+- **Responsive layout**: Same proportional sizing system as EMOM
 
 ### UI Components
 - `ProgressRing`: Circular progress indicator with configurable colors/sizes
@@ -338,7 +348,7 @@ struct Exercise: Equatable, Hashable {
 ## v1 Remaining Work
 
 ### Must Complete
-- [ ] AMRAP Timer UI (model exists, need view implementation)
+- [x] AMRAP Timer UI (implemented with single indigo ring, tap-to-count gestures)
 - [ ] Preset Persistence with SwiftData
 - [ ] Settings screen implementation
 
@@ -489,4 +499,4 @@ struct WorkoutLog: Identifiable {
 
 ---
 
-*Last Updated: 2025-12-30*
+*Last Updated: 2025-12-30 (AMRAP Timer implemented)*

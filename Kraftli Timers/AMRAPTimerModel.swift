@@ -24,7 +24,7 @@ class AMRAPTimerModel: WorkoutTimer {
     // MARK: - Computed Properties
     @MainActor
     var progress: Double {
-        1.0 - (totalTimeRemaining / totalDuration)
+        totalTimeRemaining / totalDuration
     }
 
     @MainActor
