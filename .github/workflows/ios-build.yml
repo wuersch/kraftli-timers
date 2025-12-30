@@ -25,6 +25,6 @@ jobs:
           xcodebuild build \
             -project "Kraftli Timers.xcodeproj" \
             -scheme "Kraftli Timers" \
-            -destination "platform=iOS Simulator,OS=latest,name=iPhone 16 Pro" \
+            -destination "platform=iOS Simulator,OS=latest,name=iPhone 17 Pro" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO
