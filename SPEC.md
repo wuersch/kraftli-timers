@@ -180,7 +180,9 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 **Planned Functionality**:
 - Audio preferences
 - Theme options
-- About/version info
+- About section (at bottom):
+  - App version
+  - Credits: "Icon by Guilherme Silva Soares via The Noun Project"
 
 ---
 
