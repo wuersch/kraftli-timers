@@ -118,7 +118,7 @@ struct AMRAPTimerView: View {
             hintHideTask?.cancel()
             hintHideTask = Task { @MainActor in
                 try? await Task.sleep(for: .seconds(5))
-                guard !Task.isCancelled, timerModel.isRunning else { return }
+                guard !Task.isCancelled, timerModel.isRunning, showHint else { return }
                 withAnimation(.easeOut(duration: 0.3)) {
                     showHint = false
                 }
