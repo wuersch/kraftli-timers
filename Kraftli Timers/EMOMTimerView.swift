@@ -36,6 +36,8 @@ struct EMOMTimerView: View {
     private var showHint = true
     @State
     private var dragOffset: CGFloat = 0
+    @State
+    private var isHandleActive = false
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -244,6 +246,11 @@ struct EMOMTimerView: View {
                         .onChanged { value in
                             if value.translation.height > 0 {
                                 dragOffset = value.translation.height
+                                if !isHandleActive {
+                                    withAnimation(.easeOut(duration: 0.1)) {
+                                        isHandleActive = true
+                                    }
+                                }
                             }
                         }
                         .onEnded { value in
@@ -258,9 +265,26 @@ struct EMOMTimerView: View {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     dragOffset = 0
                                 }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    withAnimation(.easeOut(duration: 0.2)) {
+                                        isHandleActive = false
+                                    }
+                                }
                             }
                         }
                 )
+
+                // Top handle bar
+                VStack {
+                    Capsule()
+                        .fill(isHandleActive ? Color.primary : Color.gray.opacity(0.25))
+                        .frame(width: 32, height: 4)
+                        .padding(.top, 12)
+                    Spacer()
+                }
+                .offset(y: dragOffset * 0.3)
+                .opacity(1.0 - (dragOffset / 400.0))
+                .allowsHitTesting(false)
 
                 // Bottom hint overlay
                 if showHint {
@@ -300,6 +324,7 @@ struct EMOMTimerView: View {
             newValue in
             if oldValue > 0 && newValue == 0 {
                 showConfetti = true
+                showHint = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                     showConfetti = false
                 }

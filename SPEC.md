@@ -218,13 +218,16 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 ### EMOM Timer View (Full Screen Cover)
 - Dark background for focus
 - Exercise name + "EMOM" at top
+- **Top handle bar**: Subtle capsule indicator for swipe-to-dismiss affordance
+  - Turns white (.primary) while dragging, fades back after release
+  - Moves with content during drag gesture
 - Dual concentric progress rings:
   - Outer ring: Overall workout progress (white/gray)
   - Inner ring: Current interval progress (blue, orange when < 3s)
 - "INTERVAL" label with large monospaced time display (MM:SS)
 - "TOTAL" label with total time below
-- Hint text inside ring: "Tap to start" / "Tap to pause" (fades after 5s, reappears on pause)
-- Bottom hint: "Swipe down to close" (fades with other hints)
+- Hint text inside ring: "Tap to start" / "Tap to pause" (fades after 5s, reappears on pause/completion)
+- Bottom hint: "Swipe down to close" (fades after 5s, reappears on pause/completion)
 - Confetti animation on completion
 - Gestures: Tap anywhere to start/pause, swipe down to close
 - **Responsive layout**: All UI elements scale proportionally based on available screen space
@@ -235,11 +238,14 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 ### AMRAP Timer View (Full Screen Cover)
 - Dark background for focus
 - Exercise name + "AMRAP" at top
+- **Top handle bar**: Subtle capsule indicator for swipe-to-dismiss affordance
+  - Turns white (.primary) while dragging, fades back after release
+  - Moves with content during drag gesture
 - Single progress ring (indigo) showing remaining time
 - Large round counter in center with "ROUNDS" label
 - "TOTAL" label with total time below
-- Hint text inside ring: "Tap to start" / "Tap to count · Hold to pause" / "Tap to resume" (fades after 5s, reappears on pause)
-- Bottom hint: "Swipe down to close" (fades with other hints)
+- Hint text inside ring: "Tap to start" / "Tap to count · Hold to pause" / "Tap to resume" (fades after 5s, reappears on pause/completion)
+- Bottom hint: "Swipe down to close" (fades after 5s, reappears on pause/completion)
 - Confetti animation on completion
 - Gestures: Tap anywhere to start/increment/resume, long-press (0.8s) to pause, swipe down to close
 - **Responsive layout**: Same proportional sizing system as EMOM
@@ -501,4 +507,4 @@ struct WorkoutLog: Identifiable {
 
 ---
 
-*Last Updated: 2025-12-30 (AMRAP Timer implemented)*
+*Last Updated: 2025-12-31 (Timer dismiss UX improvements: handle bar, hint on completion)*
