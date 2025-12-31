@@ -42,8 +42,8 @@ struct AMRAPTimerView: View {
     private var confettiHideTask: Task<Void, Never>?
 
     // MARK: - Haptics
-    private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
-    private let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
+    private static let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -80,12 +80,12 @@ struct AMRAPTimerView: View {
         guard !isCompleted else { return }
         guard timerModel.isRunning else {
             startIfNeededAndScheduleHintHide()
-            lightHaptic.impactOccurred()
+            Self.lightHaptic.impactOccurred()
             return
         }
 
         timerModel.incrementRoundsCompleted()
-        lightHaptic.impactOccurred()
+        Self.lightHaptic.impactOccurred()
     }
 
     private func handleLongPress() {
@@ -96,16 +96,16 @@ struct AMRAPTimerView: View {
             withAnimation(.easeIn(duration: 0.3)) {
                 showHint = true
             }
-            mediumHaptic.impactOccurred()
+            Self.mediumHaptic.impactOccurred()
         } else {
             startIfNeededAndScheduleHintHide()
-            lightHaptic.impactOccurred()
+            Self.lightHaptic.impactOccurred()
         }
     }
 
     private func handleSwipeDismiss() {
         timerModel.reset()
-        mediumHaptic.impactOccurred()
+        Self.mediumHaptic.impactOccurred()
         dismiss()
     }
 
@@ -306,8 +306,8 @@ struct AMRAPTimerView: View {
             }
         }
         .onAppear {
-            lightHaptic.prepare()
-            mediumHaptic.prepare()
+            Self.lightHaptic.prepare()
+            Self.mediumHaptic.prepare()
         }
     }
 

@@ -44,8 +44,8 @@ struct EMOMTimerView: View {
     private var confettiHideTask: Task<Void, Never>?
 
     // MARK: - Haptics
-    private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
-    private let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
+    private static let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -116,12 +116,12 @@ struct EMOMTimerView: View {
         } else {
             startIfNeededAndScheduleHintHide()
         }
-        lightHaptic.impactOccurred()
+        Self.lightHaptic.impactOccurred()
     }
 
     private func handleSwipeDismiss() {
         timerModel.reset()
-        mediumHaptic.impactOccurred()
+        Self.mediumHaptic.impactOccurred()
         dismiss()
     }
 
@@ -334,8 +334,8 @@ struct EMOMTimerView: View {
             }
         }
         .onAppear {
-            lightHaptic.prepare()
-            mediumHaptic.prepare()
+            Self.lightHaptic.prepare()
+            Self.mediumHaptic.prepare()
         }
     }
 }
