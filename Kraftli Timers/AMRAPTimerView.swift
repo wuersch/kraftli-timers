@@ -320,7 +320,7 @@ struct AMRAPTimerView: View {
     }
 
     private var hintText: String {
-        if !timerModel.isRunning && timerModel.totalTimeRemaining == timerModel.elapsedTime + timerModel.totalTimeRemaining {
+        if !timerModel.isRunning && timerModel.elapsedTime <= 0 {
             return "Tap to start"
         } else if timerModel.isRunning {
             return "Tap to count · Hold to pause"
