@@ -36,6 +36,10 @@ struct AMRAPTimerView: View {
     private var dragOffset: CGFloat = 0
     @State
     private var isHandleActive = false
+    @State
+    private var hintHideTask: Task<Void, Never>?
+    @State
+    private var confettiHideTask: Task<Void, Never>?
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -110,8 +114,10 @@ struct AMRAPTimerView: View {
         timerModel.start()
 
         if showHint {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                guard self.timerModel.isRunning else { return }
+            hintHideTask?.cancel()
+            hintHideTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled, timerModel.isRunning else { return }
                 withAnimation(.easeOut(duration: 0.3)) {
                     showHint = false
                 }
@@ -226,14 +232,17 @@ struct AMRAPTimerView: View {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                     dragOffset = 400
                                 }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                Task { @MainActor in
+                                    try? await Task.sleep(for: .seconds(0.2))
                                     handleSwipeDismiss()
                                 }
                             } else {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     dragOffset = 0
                                 }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                Task { @MainActor in
+                                    try? await Task.sleep(for: .seconds(0.3))
+                                    guard !Task.isCancelled else { return }
                                     withAnimation(.easeOut(duration: 0.2)) {
                                         isHandleActive = false
                                     }
@@ -276,6 +285,8 @@ struct AMRAPTimerView: View {
             }
         }
         .onDisappear {
+            hintHideTask?.cancel()
+            confettiHideTask?.cancel()
             timerModel.pause()
             UIApplication.shared.isIdleTimerDisabled = false
         }
@@ -291,7 +302,10 @@ struct AMRAPTimerView: View {
             if oldValue > 0 && newValue == 0 {
                 showConfetti = true
                 showHint = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                confettiHideTask?.cancel()
+                confettiHideTask = Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(3))
+                    guard !Task.isCancelled else { return }
                     showConfetti = false
                 }
             }
