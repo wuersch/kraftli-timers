@@ -245,7 +245,7 @@ struct EMOMTimerView: View {
                 .offset(y: dragOffset * 0.5)
                 .opacity(1.0 - (dragOffset / 700.0))
                 .gesture(
-                    DragGesture()
+                    DragGesture(minimumDistance: 10)
                         .onChanged { value in
                             if value.translation.height > 0 {
                                 dragOffset = value.translation.height
