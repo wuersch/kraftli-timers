@@ -90,13 +90,17 @@ struct AMRAPTimerView: View {
 
     private func handleLongPress() {
         guard !isCompleted else { return }
-        guard timerModel.isRunning else { return }
 
-        timerModel.pause()
-        withAnimation(.easeIn(duration: 0.3)) {
-            showHint = true
+        if timerModel.isRunning {
+            timerModel.pause()
+            withAnimation(.easeIn(duration: 0.3)) {
+                showHint = true
+            }
+            mediumHaptic.impactOccurred()
+        } else {
+            startIfNeededAndScheduleHintHide()
+            lightHaptic.impactOccurred()
         }
-        mediumHaptic.impactOccurred()
     }
 
     private func handleSwipeDismiss() {
