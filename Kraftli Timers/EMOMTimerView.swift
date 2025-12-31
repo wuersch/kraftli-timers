@@ -45,7 +45,6 @@ struct EMOMTimerView: View {
 
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
-    private static let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -121,7 +120,6 @@ struct EMOMTimerView: View {
 
     private func handleSwipeDismiss() {
         timerModel.reset()
-        Self.mediumHaptic.impactOccurred()
         dismiss()
     }
 
@@ -335,7 +333,6 @@ struct EMOMTimerView: View {
         }
         .onAppear {
             Self.lightHaptic.prepare()
-            Self.mediumHaptic.prepare()
         }
     }
 }

@@ -105,7 +105,6 @@ struct AMRAPTimerView: View {
 
     private func handleSwipeDismiss() {
         timerModel.reset()
-        Self.mediumHaptic.impactOccurred()
         dismiss()
     }
 
