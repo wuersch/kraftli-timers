@@ -245,8 +245,8 @@ struct EMOMTimerView: View {
                 .onTapGesture {
                     handleTap()
                 }
-                .offset(y: dragOffset * 0.3)
-                .opacity(1.0 - (dragOffset / 400.0))
+                .offset(y: dragOffset * 0.5)
+                .opacity(1.0 - (dragOffset / 700.0))
                 .gesture(
                     DragGesture()
                         .onChanged { value in
@@ -260,24 +260,18 @@ struct EMOMTimerView: View {
                             }
                         }
                         .onEnded { value in
-                            if value.translation.height > 100 {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    dragOffset = 400
+                            let shouldDismiss = value.predictedEndTranslation.height > 200
+                                || value.velocity.height > 500
+
+                            if shouldDismiss {
+                                withAnimation(.easeOut(duration: 0.25)) {
+                                    dragOffset = 800
                                 }
-                                Task { @MainActor in
-                                    try? await Task.sleep(for: .seconds(0.2))
-                                    handleSwipeDismiss()
-                                }
+                                handleSwipeDismiss()
                             } else {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     dragOffset = 0
-                                }
-                                Task { @MainActor in
-                                    try? await Task.sleep(for: .seconds(0.3))
-                                    guard !Task.isCancelled else { return }
-                                    withAnimation(.easeOut(duration: 0.2)) {
-                                        isHandleActive = false
-                                    }
+                                    isHandleActive = false
                                 }
                             }
                         }
@@ -291,8 +285,8 @@ struct EMOMTimerView: View {
                         .padding(.top, 12)
                     Spacer()
                 }
-                .offset(y: dragOffset * 0.3)
-                .opacity(1.0 - (dragOffset / 400.0))
+                .offset(y: dragOffset * 0.5)
+                .opacity(1.0 - (dragOffset / 700.0))
                 .allowsHitTesting(false)
 
                 // Bottom hint overlay
