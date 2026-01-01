@@ -22,4 +22,19 @@ extension TimeInterval {
     var formatted: String {
         self >= 3600 ? hhMMSS : mmSS
     }
+
+    /// Returns duration in readable form: "20 min", "30 sec", or "1 min 30 sec".
+    var durationText: String {
+        let totalSeconds = max(0, Int(self))
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+
+        if minutes == 0 {
+            return "\(seconds) sec"
+        } else if seconds == 0 {
+            return "\(minutes) min"
+        } else {
+            return "\(minutes) min \(seconds) sec"
+        }
+    }
 }
