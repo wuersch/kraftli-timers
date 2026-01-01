@@ -26,10 +26,8 @@ struct Kraftli_TimersApp: App {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             self.modelContainer = container
 
-            // Seed default data on first launch
-            Task { @MainActor in
-                Self.seedDefaultDataIfNeeded(in: container.mainContext)
-            }
+            // Seed default data on first launch (synchronous to avoid race with @Query)
+            Self.seedDefaultDataIfNeeded(in: container.mainContext)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -44,7 +42,6 @@ struct Kraftli_TimersApp: App {
 
     // MARK: - Data Seeding
 
-    @MainActor
     private static func seedDefaultDataIfNeeded(in context: ModelContext) {
         // Check if we already have presets
         let presetDescriptor = FetchDescriptor<TimerPreset>()
