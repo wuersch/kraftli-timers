@@ -12,6 +12,7 @@ struct TimerPresetEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
+    @Query private var presets: [TimerPreset]
 
     let presetToEdit: TimerPreset?
 
@@ -181,13 +182,12 @@ struct TimerPresetEditorView: View {
             existingPreset.targetReps = timerKind == .emom ? targetReps : nil
             existingPreset.exercise = selectedExercise
         } else {
-            // Create new preset
-            let maxSortOrder = (exercises.isEmpty ? -1 : exercises.count)
+            // Create new preset at end of list
             let preset = TimerPreset(
                 kind: timerKind,
                 durationInterval: TimeInterval(durationMinutes * 60),
                 targetReps: timerKind == .emom ? targetReps : nil,
-                sortOrder: maxSortOrder,
+                sortOrder: presets.count,
                 exercise: selectedExercise
             )
             modelContext.insert(preset)
