@@ -91,7 +91,17 @@ struct EMOMTimerView: View {
         attr.foregroundColor = .green
         return attr
     }
-    
+
+    private var hintText: String {
+        if !timerModel.isRunning && timerModel.overallProgress >= 1.0 {
+            return "Tap to start"
+        } else if timerModel.isRunning {
+            return "Tap to pause"
+        } else {
+            return "Tap to resume"
+        }
+    }
+
     // MARK: - Actions
     private func handleTap() {
         guard !isCompleted else { return }
@@ -170,19 +180,15 @@ struct EMOMTimerView: View {
                                     .accessibilityLabel("Timer completed")
                                     .accessibilityHint("Swipe down to close")
                             } else if session.showHint {
-                                Text(
-                                    timerModel.isRunning
-                                        ? "Tap to pause"
-                                        : "Tap to start"
-                                )
-                                .font(.system(size: sizes.labelFont))
-                                .foregroundStyle(.gray)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.9)
-                                .transition(
-                                    .opacity.combined(with: .scale(scale: 0.98))
-                                )
-                                .accessibilityHidden(true)
+                                Text(hintText)
+                                    .font(.system(size: sizes.labelFont))
+                                    .foregroundStyle(.gray)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.9)
+                                    .transition(
+                                        .opacity.combined(with: .scale(scale: 0.98))
+                                    )
+                                    .accessibilityHidden(true)
                             } else {
                                 RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor, fontSize: sizes.pillFont)
                                     .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
@@ -191,7 +197,7 @@ struct EMOMTimerView: View {
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel(isCompleted ? "Timer completed" : (timerModel.isRunning ? "Timer running" : "Timer paused"))
-                    .accessibilityHint(isCompleted ? "Swipe down to close" : (timerModel.isRunning ? "Tap to pause, swipe down to close" : "Tap to start, swipe down to close"))
+                    .accessibilityHint(isCompleted ? "Swipe down to close" : "\(hintText), swipe down to close")
                     .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
                     VStack(spacing: 8) {
