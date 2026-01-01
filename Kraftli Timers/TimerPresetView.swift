@@ -98,16 +98,16 @@ struct TimerPresetView: View {
             NavigationStack {
                 switch preset.kind {
                 case .emom:
-                    if let targetReps = preset.targetReps {
-                        let intervalSeconds = preset.durationInterval / Double(targetReps)
+                    // Fallback to 1 rep if targetReps is missing (shouldn't happen)
+                    let reps = preset.targetReps ?? 1
+                    let intervalSeconds = preset.durationInterval / Double(reps)
 
-                        EMOMTimerView(timerModel: EMOMTimerModel(
-                            totalDuration: preset.durationInterval,
-                            intervalDuration: intervalSeconds
-                        ))
-                        .navigationTitle("\(preset.exercise?.name ?? "Timer") ⸱ \(preset.kind.rawValue)")
-                        .navigationBarTitleDisplayMode(.inline)
-                    }
+                    EMOMTimerView(timerModel: EMOMTimerModel(
+                        totalDuration: preset.durationInterval,
+                        intervalDuration: intervalSeconds
+                    ))
+                    .navigationTitle("\(preset.exercise?.name ?? "Timer") ⸱ \(preset.kind.rawValue)")
+                    .navigationBarTitleDisplayMode(.inline)
                 case .amrap:
                     AMRAPTimerView(timerModel: AMRAPTimerModel(totalDuration: preset.durationInterval))
                         .navigationTitle("\(preset.exercise?.name ?? "Timer") ⸱ \(preset.kind.rawValue)")
