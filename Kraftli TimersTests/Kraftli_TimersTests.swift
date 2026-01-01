@@ -89,7 +89,7 @@ struct TimerPresetTests {
     }
 
     @Test func kind_parsesFromRawValue() {
-        let emomPreset = TimerPreset(kind: .emom, durationInterval: 60)
+        let emomPreset = TimerPreset(kind: .emom, durationInterval: 60, targetReps: 10)
         let amrapPreset = TimerPreset(kind: .amrap, durationInterval: 60)
 
         #expect(emomPreset.kind == .emom)
