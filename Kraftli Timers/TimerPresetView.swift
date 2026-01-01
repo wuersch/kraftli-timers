@@ -6,9 +6,12 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct TimerPresetView: View {
-    @Environment(TimerPresetStore.self) private var store
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \TimerPreset.sortOrder) private var presets: [TimerPreset]
+
     @State private var presetToEdit: TimerPreset?
     @State private var presetToRun: TimerPreset?
     @State private var isEditMode = false
@@ -18,7 +21,7 @@ struct TimerPresetView: View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(store.presets) { preset in
+                    ForEach(presets) { preset in
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(preset.primaryText)
@@ -41,7 +44,7 @@ struct TimerPresetView: View {
                                         .foregroundStyle(.tint)
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("Start \(preset.exercise.name) timer")
+                                .accessibilityLabel("Start \(preset.exercise?.name ?? "timer")")
                             }
                         }
                         .padding(.vertical, 8)
@@ -54,12 +57,8 @@ struct TimerPresetView: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("\(preset.primaryText), \(preset.secondaryText)")
                     }
-                    .onDelete { indices in
-                        store.deleteTimerPreset(at: indices)
-                    }
-                    .onMove(perform: isEditMode ? { source, destination in
-                        store.moveTimerPreset(from: source, to: destination)
-                    } : nil)
+                    .onDelete(perform: deletePresets)
+                    .onMove(perform: movePresets)
                 } header: {
                     Spacer()
                 }
@@ -100,27 +99,43 @@ struct TimerPresetView: View {
                 switch preset.kind {
                 case .emom:
                     if let targetReps = preset.targetReps {
-                        let totalSeconds = TimeInterval(preset.duration.components.seconds)
-                        let intervalSeconds = totalSeconds / Double(targetReps)
+                        let intervalSeconds = preset.durationInterval / Double(targetReps)
 
                         EMOMTimerView(timerModel: EMOMTimerModel(
-                            totalDuration: totalSeconds,
+                            totalDuration: preset.durationInterval,
                             intervalDuration: intervalSeconds
                         ))
-                        .navigationTitle("\(preset.exercise.name) ⸱ \(preset.kind.rawValue)")
+                        .navigationTitle("\(preset.exercise?.name ?? "Timer") ⸱ \(preset.kind.rawValue)")
                         .navigationBarTitleDisplayMode(.inline)
                     }
                 case .amrap:
-                    let totalSeconds = TimeInterval(preset.duration.components.seconds)
-                    AMRAPTimerView(timerModel: AMRAPTimerModel(totalDuration: totalSeconds))
-                        .navigationTitle("\(preset.exercise.name) ⸱ \(preset.kind.rawValue)")
+                    AMRAPTimerView(timerModel: AMRAPTimerModel(totalDuration: preset.durationInterval))
+                        .navigationTitle("\(preset.exercise?.name ?? "Timer") ⸱ \(preset.kind.rawValue)")
                         .navigationBarTitleDisplayMode(.inline)
                 }
             }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func deletePresets(at offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(presets[index])
+        }
+    }
+
+    private func movePresets(from source: IndexSet, to destination: Int) {
+        var reorderedPresets = presets
+        reorderedPresets.move(fromOffsets: source, toOffset: destination)
+
+        for (index, preset) in reorderedPresets.enumerated() {
+            preset.sortOrder = index
         }
     }
 }
 
 #Preview {
     TimerPresetView()
+        .modelContainer(for: [TimerPreset.self, Exercise.self], inMemory: true)
 }
