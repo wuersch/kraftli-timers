@@ -92,6 +92,7 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 - ✅ Reorder presets (Edit mode with drag handles)
 - ✅ Quick-start timer from preset (tap play button)
 - ✅ Default presets provided on first launch
+- ✅ Persistent storage with SwiftData
 
 **UI Flow**:
 1. App opens to Timer Presets list (Timers tab)
@@ -103,9 +104,9 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 7. Tap play button to launch timer
 
 **Data Model**:
-- `TimerPreset` managed by `TimerPresetStore` (Observable)
-- In-memory storage currently (SwiftData persistence planned)
-- List shows all saved presets
+- `TimerPreset` @Model class with SwiftData persistence
+- `@Query` for automatic data fetching in views
+- List shows all saved presets sorted by `sortOrder`
 
 **Default Presets**:
 - 6-Count Burpees (EMOM, 20 min, 100 reps)
@@ -115,17 +116,19 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 
 ---
 
-### Preset Persistence (Status: 📋 Planned)
+### Preset Persistence (Status: ✅ Implemented)
 **User Story**: As a user, I want my presets to be saved when I close the app.
 
 **Functionality**:
-- Persist presets using SwiftData
-- Load saved presets on app launch
-- Sync changes automatically
+- ✅ Persist presets using SwiftData @Model classes
+- ✅ Load saved presets on app launch via @Query
+- ✅ Sync changes automatically (SwiftData auto-save)
+- ✅ Default presets seeded on first launch
 
-**Implementation Status**:
-- ✅ SwiftData schema configured
-- 📋 Persistence not yet active (currently in-memory only)
+**Implementation**:
+- `TimerPreset` and `Exercise` are SwiftData @Model classes
+- Views use `@Query` for reactive data fetching
+- `@Environment(\.modelContext)` for CRUD operations
 
 ---
 
@@ -133,7 +136,7 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 **User Story**: As a user, I want to choose from a predefined list of common exercises.
 
 **Functionality**:
-- Predefined exercise list
+- Predefined exercise list (persisted with SwiftData)
 - Menu picker for exercise selection in preset editor
 - Display exercise name in timer and preset list
 
@@ -144,8 +147,8 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 - Push-ups
 
 **Data Model**:
-- `Exercise` struct with `name` field
-- Static `availableExercises` array
+- `Exercise` @Model class with `name` field (v2+ ready with optional description)
+- Exercises fetched via `@Query` in editor view
 
 ---
 
@@ -268,16 +271,20 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 
 ## Data Models
 
-### TimerPreset
+### TimerPreset (SwiftData @Model)
 ```swift
-struct TimerPreset: Identifiable, Equatable {
-    let id: UUID
-    let kind: TimerKind
-    let duration: Duration        // Total workout duration
-    let targetReps: Int?          // Optional, only for EMOM
-    let exercise: Exercise
+@Model
+final class TimerPreset {
+    var id: UUID
+    var kindRawValue: String      // Stored as string for SwiftData
+    var durationInterval: TimeInterval  // Seconds
+    var targetReps: Int?          // Optional, only for EMOM
+    var sortOrder: Int            // For list ordering
+    var exercise: Exercise?       // Relationship
 
     // Computed properties
+    var kind: TimerKind           // Parsed from kindRawValue
+    var duration: Duration        // Computed from durationInterval
     var primaryText: String       // "EMOM · 20 min"
     var secondaryText: String     // "Exercise · 10 Reps"
 }
@@ -291,12 +298,15 @@ enum TimerKind: String, CaseIterable {
 }
 ```
 
-### Exercise
+### Exercise (SwiftData @Model)
 ```swift
-struct Exercise: Equatable, Hashable {
-    let name: String
+@Model
+final class Exercise {
+    var id: UUID
+    var name: String
+    var exerciseDescription: String?  // v2+ ready
 
-    static let availableExercises: [Exercise]
+    static let defaultExercises: [String]  // For seeding
 }
 ```
 
@@ -305,11 +315,11 @@ struct Exercise: Equatable, Hashable {
 ## Architecture
 
 ### Pattern
-- **Observable** macro for state management (modern SwiftUI)
+- **SwiftData** for persistence (@Model classes, @Query for fetching)
+- **Observable** macro for runtime state management (timer models)
 - **Dependency Injection** for testability (timer providers, audio feedback)
 - **Protocol-based abstractions** for services
 - Views are composable and focused
-- SwiftData schema prepared (not yet persisted)
 
 ### Key Components
 
@@ -327,9 +337,12 @@ struct Exercise: Equatable, Hashable {
 - `ConfettiView`: Celebratory animation with 120 pieces
 
 **Models**:
+- `TimerPreset`: SwiftData @Model for preset persistence
+- `Exercise`: SwiftData @Model for exercise data (v2+ ready)
+- `TimerKind`: Enum for timer types (EMOM/AMRAP)
 - `EMOMTimerModel`: EMOM timer logic with interval tracking (@Observable)
 - `AMRAPTimerModel`: AMRAP timer logic with round counting (@Observable)
-- `TimerPresetStore`: Observable store for preset management
+- `TimerSessionState`: Shared hint/confetti state management (@Observable)
 
 **Services**:
 - `TimerCoordinator`: High-level timer orchestration
@@ -341,9 +354,11 @@ struct Exercise: Equatable, Hashable {
   - `SilentFeedback`: Testing without audio
 
 ### State Management
-- `@Observable` for models and stores
+- `@Model` for persisted data (SwiftData)
+- `@Query` for reactive data fetching from SwiftData
+- `@Observable` for runtime timer state
 - `@State` for view-local state
-- `@Environment` for dependency injection
+- `@Environment(\.modelContext)` for CRUD operations
 - `@MainActor` isolation for thread safety
 
 ### Utilities
@@ -351,13 +366,19 @@ struct Exercise: Equatable, Hashable {
 - `View+ReadSize`: GeometryReader-based size measurement
 - `WorkoutTimer` protocol: Common timer interface
 
+### Shared Components
+- `DragHandleView`: Reusable drag handle for swipe-to-dismiss
+- `SwipeHintOverlay`: "Swipe down to close" hint overlay
+- `SwipeToDismissModifier`: ViewModifier for swipe gesture handling
+- `TimerLifecycleModifier`: ViewModifier for timer lifecycle (background pause, idle timer)
+
 ---
 
 ## v1 Remaining Work
 
 ### Must Complete
 - [x] AMRAP Timer UI (implemented with single indigo ring, tap-to-count gestures)
-- [ ] Preset Persistence with SwiftData
+- [x] Preset Persistence with SwiftData (@Model classes, @Query)
 - [ ] Settings screen implementation
 
 ---
@@ -507,4 +528,4 @@ struct WorkoutLog: Identifiable {
 
 ---
 
-*Last Updated: 2025-12-31 (Timer dismiss UX improvements: handle bar, hint on completion)*
+*Last Updated: 2026-01-01 (SwiftData persistence: @Model classes for TimerPreset and Exercise)*
