@@ -240,36 +240,10 @@ struct EMOMTimerView: View {
                 .onTapGesture {
                     handleTap()
                 }
-                .offset(y: dragOffset * 0.5)
-                .opacity(1.0 - (dragOffset / 700.0))
-                .gesture(
-                    DragGesture(minimumDistance: 10)
-                        .onChanged { value in
-                            if value.translation.height > 0 {
-                                dragOffset = value.translation.height
-                                if !isHandleActive {
-                                    withAnimation(.easeOut(duration: 0.1)) {
-                                        isHandleActive = true
-                                    }
-                                }
-                            }
-                        }
-                        .onEnded { value in
-                            let shouldDismiss = value.predictedEndTranslation.height > 200
-                                || value.velocity.height > 500
-
-                            if shouldDismiss {
-                                withAnimation(.easeOut(duration: 0.25)) {
-                                    dragOffset = 800
-                                }
-                                handleSwipeDismiss()
-                            } else {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    dragOffset = 0
-                                    isHandleActive = false
-                                }
-                            }
-                        }
+                .swipeToDismiss(
+                    dragOffset: $dragOffset,
+                    isHandleActive: $isHandleActive,
+                    onDismiss: handleSwipeDismiss
                 )
 
                 DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
