@@ -2,7 +2,7 @@
 //  Exercise.swift
 //  Kraftli Timers
 //
-//  SwiftData model for exercises. Will be renamed to Exercise after migration.
+//  SwiftData model for exercises.
 //
 
 import Foundation

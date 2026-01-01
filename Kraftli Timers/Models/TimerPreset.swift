@@ -2,7 +2,7 @@
 //  TimerPreset.swift
 //  Kraftli Timers
 //
-//  SwiftData model for timer presets. Will be renamed to TimerPreset after migration.
+//  SwiftData model for timer presets.
 //
 
 import Foundation
