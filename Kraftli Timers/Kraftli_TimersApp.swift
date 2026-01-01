@@ -10,26 +10,75 @@ import SwiftData
 
 @main
 struct Kraftli_TimersApp: App {
-    @State private var timerPresetStore = TimerPresetStore()
+    let modelContainer: ModelContainer
 
-    var sharedModelContainer: ModelContainer = {
+    init() {
         let schema = Schema([
-            
+            Exercise.self,
+            TimerPreset.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false
+        )
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            self.modelContainer = container
+
+            // Seed default data on first launch
+            Task { @MainActor in
+                Self.seedDefaultDataIfNeeded(in: container.mainContext)
+            }
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-    }()
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(timerPresetStore)
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(modelContainer)
+    }
+
+    // MARK: - Data Seeding
+
+    @MainActor
+    private static func seedDefaultDataIfNeeded(in context: ModelContext) {
+        // Check if we already have presets
+        let presetDescriptor = FetchDescriptor<TimerPreset>()
+        let existingPresets = (try? context.fetchCount(presetDescriptor)) ?? 0
+
+        guard existingPresets == 0 else { return }
+
+        // Create default exercises
+        var exercisesByName: [String: Exercise] = [:]
+        for name in Exercise.defaultExercises {
+            let exercise = Exercise(name: name)
+            context.insert(exercise)
+            exercisesByName[name] = exercise
+        }
+
+        // Create default presets
+        let defaults: [(kind: TimerKind, minutes: Int, reps: Int?, exerciseName: String)] = [
+            (.emom, 20, 100, "6-Count Burpees"),
+            (.emom, 20, 35, "Navy Seal Burpees"),
+            (.amrap, 20, nil, "Pull-ups"),
+            (.emom, 1, 6, "Push-ups")
+        ]
+
+        for (index, preset) in defaults.enumerated() {
+            let timerPreset = TimerPreset(
+                kind: preset.kind,
+                durationInterval: TimeInterval(preset.minutes * 60),
+                targetReps: preset.reps,
+                sortOrder: index,
+                exercise: exercisesByName[preset.exerciseName]
+            )
+            context.insert(timerPreset)
+        }
+
+        try? context.save()
     }
 }

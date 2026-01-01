@@ -13,25 +13,31 @@ import Testing
 
 struct TimerPresetTests {
 
-    @Test func durationInterval_convertsToSeconds() {
+    @Test func durationInterval_storesSeconds() {
         let preset = TimerPreset(
-            id: UUID(),
             kind: .emom,
-            duration: .seconds(20 * 60),
-            targetReps: 100,
-            exercise: Exercise(name: "Burpees")
+            durationInterval: 1200, // 20 minutes
+            targetReps: 100
         )
 
-        #expect(preset.durationInterval == 1200) // 20 minutes = 1200 seconds
+        #expect(preset.durationInterval == 1200)
+    }
+
+    @Test func duration_convertsToSwiftDuration() {
+        let preset = TimerPreset(
+            kind: .emom,
+            durationInterval: 1200,
+            targetReps: 100
+        )
+
+        #expect(preset.duration == .seconds(1200))
     }
 
     @Test func primaryText_formatsEMOMCorrectly() {
         let preset = TimerPreset(
-            id: UUID(),
             kind: .emom,
-            duration: .seconds(20 * 60),
-            targetReps: 100,
-            exercise: Exercise(name: "Burpees")
+            durationInterval: 20 * 60,
+            targetReps: 100
         )
 
         #expect(preset.primaryText == "EMOM ⸱ 20 min")
@@ -39,51 +45,55 @@ struct TimerPresetTests {
 
     @Test func primaryText_formatsAMRAPCorrectly() {
         let preset = TimerPreset(
-            id: UUID(),
             kind: .amrap,
-            duration: .seconds(15 * 60),
-            targetReps: nil,
-            exercise: Exercise(name: "Pull-ups")
+            durationInterval: 15 * 60,
+            targetReps: nil
         )
 
         #expect(preset.primaryText == "AMRAP ⸱ 15 min")
     }
 
     @Test func secondaryText_includesExerciseAndRepsForEMOM() {
+        let exercise = Exercise(name: "6-Count Burpees")
         let preset = TimerPreset(
-            id: UUID(),
             kind: .emom,
-            duration: .seconds(20 * 60),
+            durationInterval: 20 * 60,
             targetReps: 100,
-            exercise: Exercise(name: "6-Count Burpees")
+            exercise: exercise
         )
 
         #expect(preset.secondaryText == "6-Count Burpees · 100 Reps")
     }
 
     @Test func secondaryText_includesOnlyExerciseForAMRAP() {
+        let exercise = Exercise(name: "Pull-ups")
         let preset = TimerPreset(
-            id: UUID(),
             kind: .amrap,
-            duration: .seconds(20 * 60),
+            durationInterval: 20 * 60,
             targetReps: nil,
-            exercise: Exercise(name: "Pull-ups")
+            exercise: exercise
         )
 
         #expect(preset.secondaryText == "Pull-ups")
     }
 
-    @Test func exercise_equalityByName() {
-        let exercise1 = Exercise(name: "Burpees")
-        let exercise2 = Exercise(name: "Burpees")
-        let exercise3 = Exercise(name: "Push-ups")
+    @Test func secondaryText_handlesNoExercise() {
+        let preset = TimerPreset(
+            kind: .amrap,
+            durationInterval: 20 * 60,
+            targetReps: nil,
+            exercise: nil
+        )
 
-        #expect(exercise1 == exercise2)
-        #expect(exercise1 != exercise3)
+        #expect(preset.secondaryText == "")
     }
 
-    @Test func defaults_containsFourPresets() {
-        #expect(TimerPreset.defaults.count == 4)
+    @Test func kind_parsesFromRawValue() {
+        let emomPreset = TimerPreset(kind: .emom, durationInterval: 60)
+        let amrapPreset = TimerPreset(kind: .amrap, durationInterval: 60)
+
+        #expect(emomPreset.kind == .emom)
+        #expect(amrapPreset.kind == .amrap)
     }
 }
 
