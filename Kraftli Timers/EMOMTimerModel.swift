@@ -116,7 +116,7 @@ public class EMOMTimerModel: WorkoutTimer {
     func pause() {
         guard isRunning else { return }
 
-        pausedTotalTime = totalTimeRemaining
+        pausedTotalTime = preciseTotalTimeRemaining  // Keep sub-second precision for smooth resume
         isRunning = false
         timerCoordinator.stop()
     }
