@@ -24,22 +24,11 @@ private struct TimerSizes {
 struct AMRAPTimerView: View {
     // MARK: - Properties
     @Environment(\.dismiss) var dismiss
-    @Environment(\.scenePhase) var scenePhase
 
-    @State
-    private var timerModel: AMRAPTimerModel
-    @State
-    private var showConfetti = false
-    @State
-    private var showHint = true
-    @State
-    private var dragOffset: CGFloat = 0
-    @State
-    private var isHandleActive = false
-    @State
-    private var hintHideTask: Task<Void, Never>?
-    @State
-    private var confettiHideTask: Task<Void, Never>?
+    @State private var timerModel: AMRAPTimerModel
+    @State private var session = TimerSessionState()
+    @State private var dragOffset: CGFloat = 0
+    @State private var isHandleActive = false
 
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -79,7 +68,7 @@ struct AMRAPTimerView: View {
     private func handleTap() {
         guard !isCompleted else { return }
         guard timerModel.isRunning else {
-            startIfNeededAndScheduleHintHide()
+            startAndScheduleHintHide()
             Self.lightHaptic.impactOccurred()
             return
         }
@@ -93,12 +82,10 @@ struct AMRAPTimerView: View {
 
         if timerModel.isRunning {
             timerModel.pause()
-            withAnimation(.easeIn(duration: 0.3)) {
-                showHint = true
-            }
+            session.onTimerPaused()
             Self.mediumHaptic.impactOccurred()
         } else {
-            startIfNeededAndScheduleHintHide()
+            startAndScheduleHintHide()
             Self.lightHaptic.impactOccurred()
         }
     }
@@ -108,21 +95,10 @@ struct AMRAPTimerView: View {
         dismiss()
     }
 
-    private func startIfNeededAndScheduleHintHide() {
+    private func startAndScheduleHintHide() {
         guard !timerModel.isRunning else { return }
-
         timerModel.start()
-
-        if showHint {
-            hintHideTask?.cancel()
-            hintHideTask = Task { @MainActor in
-                try? await Task.sleep(for: .seconds(5))
-                guard !Task.isCancelled, timerModel.isRunning, showHint else { return }
-                withAnimation(.easeOut(duration: 0.3)) {
-                    showHint = false
-                }
-            }
-        }
+        session.onTimerStarted { [timerModel] in timerModel.isRunning }
     }
 
     // MARK: - Body
@@ -166,7 +142,7 @@ struct AMRAPTimerView: View {
                                 RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
                                     .accessibilityLabel("Timer completed")
                                     .accessibilityHint("Swipe down to close")
-                            } else if showHint {
+                            } else if session.showHint {
                                 Text(hintText)
                                     .font(.system(size: sizes.labelFont))
                                     .foregroundStyle(.gray)
@@ -221,42 +197,21 @@ struct AMRAPTimerView: View {
 
                 DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
 
-                SwipeHintOverlay(isVisible: showHint, fontSize: sizes.labelFont)
+                SwipeHintOverlay(isVisible: session.showHint, fontSize: sizes.labelFont)
 
-                // Confetti Overlay
-                if showConfetti {
+                if session.showConfetti {
                     ConfettiView()
                         .ignoresSafeArea(.all)
                         .allowsHitTesting(false)
                 }
             }
         }
-        .onDisappear {
-            hintHideTask?.cancel()
-            confettiHideTask?.cancel()
-            timerModel.pause()
-            UIApplication.shared.isIdleTimerDisabled = false
-        }
-        .onChange(of: timerModel.isRunning) { oldValue, newValue in
-            UIApplication.shared.isIdleTimerDisabled = newValue
-        }
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-            if newPhase == .background && timerModel.isRunning {
-                timerModel.pause()
-            }
-        }
-        .onChange(of: timerModel.totalTimeRemaining) { oldValue, newValue in
-            if oldValue > 0 && newValue == 0 {
-                showConfetti = true
-                showHint = true
-                confettiHideTask?.cancel()
-                confettiHideTask = Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(3))
-                    guard !Task.isCancelled else { return }
-                    showConfetti = false
-                }
-            }
-        }
+        .timerLifecycle(
+            timer: timerModel,
+            session: session,
+            onPause: { timerModel.pause() },
+            onDisappear: { timerModel.pause() }
+        )
         .onAppear {
             Self.lightHaptic.prepare()
             Self.mediumHaptic.prepare()
