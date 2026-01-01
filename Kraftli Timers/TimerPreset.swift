@@ -19,6 +19,11 @@ struct TimerPreset: Identifiable, Equatable {
 }
 
 extension TimerPreset {
+    /// Duration as TimeInterval (seconds) - consistent with timer model APIs
+    var durationInterval: TimeInterval {
+        TimeInterval(duration.components.seconds)
+    }
+
     static let defaults: [TimerPreset] = [
         TimerPreset(
             id: UUID(),
