@@ -245,30 +245,9 @@ struct AMRAPTimerView: View {
                         }
                 )
 
-                // Top handle bar
-                VStack {
-                    Capsule()
-                        .fill(isHandleActive ? Color.primary : Color.gray.opacity(0.25))
-                        .frame(width: 32, height: 4)
-                        .padding(.top, 12)
-                    Spacer()
-                }
-                .offset(y: dragOffset * 0.5)
-                .opacity(1.0 - (dragOffset / 700.0))
-                .allowsHitTesting(false)
+                DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
 
-                // Bottom hint overlay
-                if showHint {
-                    VStack {
-                        Spacer()
-                        Text("Swipe down to close")
-                            .font(.system(size: sizes.labelFont))
-                            .foregroundStyle(.gray.opacity(0.6))
-                            .padding(.bottom, 20)
-                    }
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
-                }
+                SwipeHintOverlay(isVisible: showHint, fontSize: sizes.labelFont)
 
                 // Confetti Overlay
                 if showConfetti {
