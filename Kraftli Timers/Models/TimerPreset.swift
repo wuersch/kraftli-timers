@@ -31,8 +31,7 @@ final class TimerPreset {
     }
 
     var primaryText: String {
-        let minutes = Int(durationInterval) / 60
-        return "\(kind.rawValue) ⸱ \(minutes) min"
+        "\(kind.rawValue) ⸱ \(durationInterval.durationText)"
     }
 
     var secondaryText: String {
