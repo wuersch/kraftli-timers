@@ -55,6 +55,12 @@ final class TimerPreset {
         sortOrder: Int = 0,
         exercise: Exercise? = nil
     ) {
+        precondition(kind != .emom || targetReps != nil, "EMOM presets require targetReps")
+        precondition(durationInterval > 0, "durationInterval must be positive")
+        if let reps = targetReps {
+            precondition(reps > 0, "targetReps must be positive")
+        }
+
         self.id = id
         self.kindRawValue = kind.rawValue
         self.durationInterval = durationInterval

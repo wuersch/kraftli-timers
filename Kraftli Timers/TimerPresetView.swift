@@ -98,9 +98,8 @@ struct TimerPresetView: View {
             NavigationStack {
                 switch preset.kind {
                 case .emom:
-                    // Fallback to 1 rep if targetReps is missing (shouldn't happen)
-                    let reps = preset.targetReps ?? 1
-                    let intervalSeconds = preset.durationInterval / Double(reps)
+                    // targetReps guaranteed by TimerPreset.init precondition
+                    let intervalSeconds = preset.durationInterval / Double(preset.targetReps!)
 
                     EMOMTimerView(timerModel: EMOMTimerModel(
                         totalDuration: preset.durationInterval,
