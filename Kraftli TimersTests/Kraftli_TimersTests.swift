@@ -9,6 +9,33 @@ import Foundation
 import Testing
 @testable import Kraftli_Timers
 
+// MARK: - Mock Timer Provider
+
+/// A mock timer provider for unit tests that doesn't create real timers.
+/// This eliminates MainActor contention and avoids resource accumulation.
+final class MockTimerProvider: TimerProvider {
+    var scheduleTimerCalled = false
+    var invalidateTimerCalled = false
+    private var tickHandler: ((Any) -> Void)?
+
+    func scheduleTimer(interval: TimeInterval, repeats: Bool, block: @escaping (Any) -> Void) -> Any {
+        scheduleTimerCalled = true
+        tickHandler = block
+        // Return a dummy timer token
+        return "MockTimer"
+    }
+
+    func invalidateTimer(_ timer: Any) {
+        invalidateTimerCalled = true
+        tickHandler = nil
+    }
+
+    /// Manually trigger a tick for testing timer logic
+    func simulateTick() {
+        tickHandler?("MockTimer")
+    }
+}
+
 // MARK: - TimerPreset Tests
 
 struct TimerPresetTests {
@@ -105,7 +132,7 @@ struct EMOMTimerModelTests {
         let model = EMOMTimerModel(
             totalDuration: 60,
             intervalDuration: 10,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
@@ -118,20 +145,21 @@ struct EMOMTimerModelTests {
         let model = EMOMTimerModel(
             totalDuration: 60,
             intervalDuration: 10,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
         model.start()
 
         #expect(model.isRunning == true)
+        model.reset()
     }
 
     @Test @MainActor func pause_setsIsRunningFalse() {
         let model = EMOMTimerModel(
             totalDuration: 60,
             intervalDuration: 10,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
@@ -139,13 +167,14 @@ struct EMOMTimerModelTests {
         model.pause()
 
         #expect(model.isRunning == false)
+        model.reset()
     }
 
     @Test @MainActor func reset_restoresInitialState() {
         let model = EMOMTimerModel(
             totalDuration: 60,
             intervalDuration: 10,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
@@ -162,7 +191,7 @@ struct EMOMTimerModelTests {
         let model = EMOMTimerModel(
             totalDuration: 60,
             intervalDuration: 10,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
@@ -173,7 +202,7 @@ struct EMOMTimerModelTests {
         let model = EMOMTimerModel(
             totalDuration: 60,
             intervalDuration: 10,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
@@ -184,7 +213,7 @@ struct EMOMTimerModelTests {
         let model = EMOMTimerModel(
             totalDuration: 60,
             intervalDuration: 10,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
@@ -195,7 +224,7 @@ struct EMOMTimerModelTests {
         let model = EMOMTimerModel(
             totalDuration: 60,
             intervalDuration: 10,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
@@ -206,7 +235,7 @@ struct EMOMTimerModelTests {
         let model = EMOMTimerModel(
             totalReps: 10,
             totalMinutes: 1,
-            timerProvider: FoundationTimerProvider(),
+            timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
 
@@ -223,7 +252,7 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func initialState_isNotRunning() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         #expect(model.isRunning == false)
@@ -234,30 +263,32 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func start_setsIsRunningTrue() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         model.start()
 
         #expect(model.isRunning == true)
+        model.reset()
     }
 
     @Test @MainActor func pause_setsIsRunningFalse() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         model.start()
         model.pause()
 
         #expect(model.isRunning == false)
+        model.reset()
     }
 
     @Test @MainActor func reset_restoresInitialState() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         model.start()
@@ -274,7 +305,7 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func incrementRoundsCompleted_incrementsCount() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         model.incrementRoundsCompleted()
@@ -287,7 +318,7 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func decrementRoundsCompleted_decrementsCount() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         model.incrementRoundsCompleted()
@@ -300,7 +331,7 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func decrementRoundsCompleted_doesNotGoBelowZero() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         model.decrementRoundsCompleted()
@@ -311,7 +342,7 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func progress_startsAtOne() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         #expect(model.progress == 1.0)
@@ -320,7 +351,7 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func elapsedTime_startsAtZero() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: FoundationTimerProvider()
+            timerProvider: MockTimerProvider()
         )
 
         #expect(model.elapsedTime == 0)

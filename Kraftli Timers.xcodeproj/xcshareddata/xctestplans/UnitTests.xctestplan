@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "9A1F7B2C-4D3E-5F6A-8B9C-0D1E2F3A4B5C",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Kraftli Timers.xcodeproj",
+        "identifier" : "4C33824C2EF2FA4800135BD7",
+        "name" : "Kraftli TimersTests"
+      }
+    }
+  ],
+  "version" : 1
+}
