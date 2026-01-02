@@ -19,6 +19,16 @@ Learning project: educational value matters as much as working code. Explain Swi
 - `TimerKind`: Enum - EMOM | AMRAP
 - `Exercise`: Name (e.g., 6 Count Burpees, Navy Seals, High Jumps)
 
+## Project Structure
+- `App/` - Entry point and root navigation
+- `Features/` - Feature modules with co-located Model+View (e.g., `Timer/EMOM/`)
+- `Models/` - SwiftData persistence models only (not runtime state)
+- `Services/` - Protocols + implementations (dependency injection pattern)
+- `Components/` - Reusable UI components
+- `Modifiers/` - SwiftUI view modifiers
+- `Extensions/` - Type extensions
+- `Audio/` - Sound files
+
 ## Design Philosophy
 - Use native SwiftUI components (Button, List, NavigationStack)
 - Adopt iOS 26 design elements where they enhance minimalism (pill shapes, rounded corners)
