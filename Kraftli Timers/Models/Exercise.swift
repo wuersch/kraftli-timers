@@ -9,28 +9,42 @@ import Foundation
 import SwiftData
 
 /// A persistable exercise model.
-/// Designed for v2+ expansion with description, muscle groups, calories, and difficulty.
 @Model
 final class Exercise {
     // MARK: - Persisted Properties
     var id: UUID
     var name: String
-
-    // MARK: - v2+ Ready (optional for now)
     var exerciseDescription: String?
-    // Note: muscleGroups, calories, difficulty will be added in v2
+    var formTips: [String]?
+    var muscleGroup: MuscleGroup?
+    var difficulty: Difficulty?
 
     // MARK: - Initialization
-    init(id: UUID = UUID(), name: String) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        exerciseDescription: String? = nil,
+        formTips: [String]? = nil,
+        muscleGroup: MuscleGroup? = nil,
+        difficulty: Difficulty? = nil
+    ) {
         self.id = id
         self.name = name
+        self.exerciseDescription = exerciseDescription
+        self.formTips = formTips
+        self.muscleGroup = muscleGroup
+        self.difficulty = difficulty
     }
 
-    // MARK: - Default Exercises
-    static let defaultExercises: [String] = [
-        "Pull-ups",
-        "6-Count Burpees",
-        "Navy Seal Burpees",
-        "Push-ups"
-    ]
+    /// Create Exercise from ExerciseData (JSON DTO)
+    convenience init(from data: ExerciseData) {
+        self.init(
+            id: data.id,
+            name: data.name,
+            exerciseDescription: data.description,
+            formTips: data.formTips,
+            muscleGroup: data.muscleGroups.first,
+            difficulty: data.difficulty
+        )
+    }
 }

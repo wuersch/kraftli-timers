@@ -390,23 +390,52 @@ final class Exercise {
 
 **Functionality**:
 - Expand from 4 to ~20 curated bodyweight exercises
-- Rich metadata per exercise:
-  - Description and form tips
+- Metadata per exercise:
+  - Name and description
+  - Form tips
   - Muscle groups targeted
-  - Calorie burn estimates (range)
-  - Difficulty level (beginner/intermediate/advanced)
-- Exercise browser with filtering by muscle group
+  - Optional: difficulty level
+- **No calorie estimates** - timer config can't accurately calculate (rep speed varies, no body weight data). HealthKit with Watch heart rate provides accurate calorie data instead.
+- **No dedicated exercise browser view** - discovery happens inline in preset editor
 - Display metadata in preset editor (not during workout - no distractions)
+
+**Simplified Muscle Groups**:
+```swift
+enum MuscleGroup: String, Codable, CaseIterable {
+    case core       // abs, obliques, lower back
+    case upperBody  // chest, back, shoulders, arms
+    case lowerBody  // quads, hamstrings, glutes, calves
+    case fullBody   // multiple major groups (don't repeat sub-groups)
+}
+```
+
+**Data Storage**:
+- Store exercises in bundled `Exercises.json`
+- Same JSON format works for future remote loading (e.g., GitHub)
+- Loader tries remote first, falls back to bundled (app always works offline)
+- Enables updating exercise library without app updates
+
+**UI Options to Explore**:
+- **Option A: Enhanced picker with details**
+  - Keep Menu picker for exercise selection
+  - Show info card below picker with description, form tips, muscle groups
+  - Compact, minimal navigation
+
+- **Option B: Navigation-based selector**
+  - Tap "Exercise" row → pushes to exercise list view
+  - Each exercise displayed as GroupBox card (name, muscle groups, description)
+  - Tap card to select and pop back
+  - Better for browsing 20 exercises, more visual
 
 **Data Model** (Draft):
 ```swift
-struct Exercise: Identifiable {
+struct ExerciseData: Codable, Identifiable {
     let id: UUID
     let name: String
     let description: String
+    let formTips: [String]
     let muscleGroups: [MuscleGroup]
-    let caloriesPerMinute: ClosedRange<Double>
-    let difficulty: Difficulty
+    let difficulty: Difficulty?
 }
 ```
 
@@ -447,6 +476,37 @@ struct ProgramPhase: Identifiable {
 ```
 
 **Priority**: 2 (builds on Exercise Library)
+
+---
+
+### watchOS Companion App (Status: 🔮 Future)
+**User Story**: As a user, I want to run my timers from my Apple Watch without needing my phone nearby.
+
+**Functionality**:
+- List timer presets synced from iPhone
+- Default timer available for standalone mode (App Store compliance - must work without iPhone)
+- Run timers with simplified UI:
+  - Show rings and content only (no total time display)
+  - Haptic feedback instead of audio (Watch speaker limitations)
+- Run-only interactions (no preset creation/editing on Watch)
+
+**Data Sync**:
+- **Watch Connectivity**: Real-time sync when iPhone is nearby
+- **CloudKit/iCloud**: Background sync for standalone operation
+- Presets sync automatically; Watch always has latest data
+
+**Smart Remote Control**:
+- Starting timer on Watch controls iPhone only if:
+  - iPhone app is active/unlocked
+  - Prevents unwanted timer starts when phone is left at home
+- Independent operation when iPhone unavailable
+
+**Technical Notes**:
+- Reuse timer models (EMOMTimerModel, AMRAPTimerModel) - same logic, different UI
+- Use FoundationTimerProvider (CADisplayLink unavailable on watchOS)
+- SwiftData works on watchOS 10.4+ with shared CloudKit container
+
+**Priority**: 2.5 (fits between Programs and Workout History; requires HealthKit for full value)
 
 ---
 
@@ -500,13 +560,36 @@ struct WorkoutLog: Identifiable {
 ---
 
 ### HealthKit Integration (Status: 🔮 Future)
-**User Story**: As a user, I want my workouts synced with Apple Health so other apps (like H+) can see my activity.
+**User Story**: As a user, I want my workouts synced with Apple Health and see real-time heart rate during training.
 
 **Functionality**:
-- **Write**: Record completed workouts to HealthKit
+
+**Write to HealthKit**:
+- Record completed workouts to HealthKit
   - Duration, workout type, estimated calories
   - Enables rewards in apps like H+ (health insurance bonus)
-- **Read**: Import active calorie data to refine per-exercise estimates
+- Read active calorie data to refine per-exercise estimates
+
+**Live Heart Rate Display** (requires Apple Watch):
+- Show real-time heart rate on iPhone/iPad timer screen during workouts
+- UI: Small beating/pulsing heart icon (top right corner) with BPM number below
+- Streams from Watch via HealthKit workout session
+- Graceful degradation: hidden if no Watch or heart rate unavailable
+
+**Post-Workout Summary Screen**:
+- Appears after timer completes (before/alongside confetti)
+- Stats displayed:
+  - Duration
+  - Reps completed (EMOM) / Rounds completed (AMRAP)
+  - Heart rate: min / avg / max (if available)
+  - Calories burned
+- Provides tangible feedback and sense of accomplishment
+
+**Programs Integration**:
+- Single HealthKit workout session spans entire program (all exercises)
+- No summary interruptions between exercises - quick visual transition only
+- Summary screen appears only after final exercise in program
+- Standalone timers (not in program) show summary immediately after completion
 
 **Priority**: Can be implemented alongside Workout History
 
@@ -515,7 +598,6 @@ struct WorkoutLog: Identifiable {
 ### Other Ideas
 - [ ] Rest periods between intervals
 - [ ] Custom audio cues
-- [ ] Apple Watch companion app
 - [ ] Tabata timer mode
 
 ---
@@ -528,4 +610,4 @@ struct WorkoutLog: Identifiable {
 
 ---
 
-*Last Updated: 2026-01-02 (Custom cheer sound for workout completion, editor UI improvements)*
+*Last Updated: 2026-01-02 (Added watchOS Companion App, enhanced HealthKit Integration, refined Exercise Library with simplified muscle groups and JSON storage)*
