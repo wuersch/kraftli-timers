@@ -13,7 +13,7 @@ struct ExerciseData: Codable, Identifiable {
     let name: String
     let description: String
     let formTips: [String]
-    let muscleGroups: [MuscleGroup]
+    let muscleGroup: MuscleGroup
     let difficulty: Difficulty?
 }
 
