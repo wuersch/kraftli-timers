@@ -8,6 +8,8 @@
 import AVFoundation
 
 final class SystemSoundFeedback: AudioFeedbackProvider {
+    private var completionPlayer: AVAudioPlayer?
+
     init() {
         // Configure audio session
         do {
@@ -20,6 +22,15 @@ final class SystemSoundFeedback: AudioFeedbackProvider {
         } catch {
             // Audio session configuration failed - continue without audio feedback
         }
+
+        // Preload completion sound
+        if let url = Bundle.main.url(
+            forResource: "764274__shangusburger__crwdcheer_short-affirmative-cheer_shanevincent_gsc24_spacedomni-mk012",
+            withExtension: "wav"
+        ) {
+            completionPlayer = try? AVAudioPlayer(contentsOf: url)
+            completionPlayer?.prepareToPlay()
+        }
     }
 
     func playIntervalComplete() {
@@ -31,16 +42,8 @@ final class SystemSoundFeedback: AudioFeedbackProvider {
     }
 
     func playWorkoutComplete() {
-        let soundID = SystemSoundID(1057)
-
-        // Triple beep for completion
-        AudioServicesPlaySystemSound(soundID)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            AudioServicesPlaySystemSound(soundID)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            AudioServicesPlaySystemSound(soundID)
-        }
+        completionPlayer?.currentTime = 0
+        completionPlayer?.play()
     }
 
     func playStart() {

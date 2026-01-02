@@ -21,7 +21,7 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 - Smart interval duration display with decimal formatting when needed
 - Choose exercise from preset list
 - Visual progress with dual concentric rings (interval + overall progress)
-- Audio cues: warning beep at 3 seconds, interval completion beep, triple beep on workout completion
+- Audio cues: warning beep at 3 seconds, interval completion beep, cheer sound on workout completion
 - Display current interval, remaining time, and completed intervals
 - Confetti animation on workout completion
 
@@ -59,7 +59,7 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 - Manual round counter (tap to increment)
 - Display elapsed time and round count
 - Progress tracking with visual ring
-- Confetti animation on workout completion
+- Cheer sound and confetti animation on workout completion
 
 **UI Flow**:
 1. User taps play button on an AMRAP preset
@@ -158,12 +158,12 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 **Functionality**:
 - Warning sound at 3 seconds before interval end
 - Interval completion sound
-- Workout completion sound (triple beep sequence)
+- Workout completion sound (custom cheer, preloaded for instant playback)
 - Audio session configured to mix with other audio
 
 **Implementation**:
 - `AudioFeedbackProvider` protocol for testability
-- `SystemSoundFeedback` uses system sound 1057
+- `SystemSoundFeedback` uses system sound 1057 for intervals, custom audio for completion
 - `SilentFeedback` for testing without audio
 
 ---
@@ -528,4 +528,4 @@ struct WorkoutLog: Identifiable {
 
 ---
 
-*Last Updated: 2026-01-01 (SwiftData persistence: @Model classes for TimerPreset and Exercise)*
+*Last Updated: 2026-01-02 (Custom cheer sound for workout completion, editor UI improvements)*

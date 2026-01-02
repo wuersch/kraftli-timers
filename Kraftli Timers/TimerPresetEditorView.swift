@@ -82,6 +82,42 @@ struct TimerPresetEditorView: View {
         }
     }
 
+    // MARK: - Subviews
+
+    @ViewBuilder
+    private var durationPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Duration")
+                .font(.body)
+                .foregroundStyle(.primary)
+
+            Picker("Duration", selection: $durationMinutes) {
+                ForEach(1...60, id: \.self) { minutes in
+                    Text("\(minutes) min").tag(minutes)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+        }
+    }
+
+    @ViewBuilder
+    private var targetRepsPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Target Reps")
+                .font(.body)
+                .foregroundStyle(.primary)
+
+            Picker("Target Reps", selection: $targetReps) {
+                ForEach(1...maxReps, id: \.self) { reps in
+                    Text("\(reps)").tag(reps)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -104,42 +140,29 @@ struct TimerPresetEditorView: View {
                     }
                     .pickerStyle(.menu)
                 }
-
-                Section {
-                    Picker("Duration", selection: $durationMinutes) {
-                        ForEach(1...60, id: \.self) { minutes in
-                            Text("\(minutes) min").tag(minutes)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: durationMinutes) { _, _ in
-                        // Ensure targetReps doesn't exceed maxReps when duration changes
-                        if targetReps > maxReps {
-                            targetReps = maxReps
-                        }
+                
+                if timerKind == .amrap {
+                    Section {
+                        durationPicker
                     }
                 }
 
                 if timerKind == .emom {
                     Section {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Target Reps")
-                                .font(.body)
-                                .foregroundStyle(.primary)
-
-                            Picker("Target Reps", selection: $targetReps) {
-                                ForEach(1...maxReps, id: \.self) { reps in
-                                    Text("\(reps)").tag(reps)
-                                }
-                            }
-                            .pickerStyle(.wheel)
-                            .labelsHidden()
+                        HStack {
+                            durationPicker
+                            targetRepsPicker
                         }
-                        .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 0, trailing: 16))
                     } footer: {
                         Text(intervalDescription)
                             .foregroundStyle(.secondary)
                     }
+                }
+            }
+            .onChange(of: durationMinutes) { _, _ in
+                // Ensure targetReps doesn't exceed maxReps when duration changes
+                if targetReps > maxReps {
+                    targetReps = maxReps
                 }
             }
             .navigationTitle(presetToEdit == nil ? "New Timer" : "Edit Timer")
