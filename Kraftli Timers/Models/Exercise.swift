@@ -43,7 +43,7 @@ final class Exercise {
             name: data.name,
             exerciseDescription: data.description,
             formTips: data.formTips,
-            muscleGroup: data.muscleGroups.first,
+            muscleGroup: data.muscleGroup,
             difficulty: data.difficulty
         )
     }

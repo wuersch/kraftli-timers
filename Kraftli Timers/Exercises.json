@@ -4,7 +4,7 @@
     "name": "Burpees",
     "description": "Explosive movement combining squat, plank, push-up, and vertical jump. One of the most demanding bodyweight exercises for conditioning.",
     "formTips": ["Keep core tight", "Land softly", "Flat back in plank"],
-    "muscleGroups": ["fullBody"],
+    "muscleGroup": "fullBody",
     "difficulty": "intermediate"
   },
   {
@@ -12,7 +12,7 @@
     "name": "6-Count Burpees",
     "description": "Structured burpee with 6 distinct counts: squat down, kick back, push-up down, push-up up, jump feet forward, jump up. Enforces proper form and pacing.",
     "formTips": ["One movement per count", "Full push-up required", "Explosive on count 6"],
-    "muscleGroups": ["fullBody"],
+    "muscleGroup": "fullBody",
     "difficulty": "intermediate"
   },
   {
@@ -20,7 +20,7 @@
     "name": "Navy Seal Burpees",
     "description": "Intense burpee variation with push-up, adding a mountain climber or extra push-up. Used in military training for extreme conditioning.",
     "formTips": ["Maintain strict form under fatigue", "Push through the full push-up", "Control breathing"],
-    "muscleGroups": ["fullBody"],
+    "muscleGroup": "fullBody",
     "difficulty": "advanced"
   },
   {
@@ -28,7 +28,7 @@
     "name": "Push-ups",
     "description": "Classic upper body exercise pushing body up from floor. Builds chest, shoulder, and tricep strength while engaging core for stability.",
     "formTips": ["Hands shoulder-width apart", "Body forms straight line", "Lower until chest nearly touches floor"],
-    "muscleGroups": ["upperBody"],
+    "muscleGroup": "upperBody",
     "difficulty": "beginner"
   },
   {
@@ -36,7 +36,7 @@
     "name": "Pull-ups",
     "description": "Hanging from bar, pull body up until chin clears. Gold standard for back and bicep development.",
     "formTips": ["Grip slightly wider than shoulders", "Pull shoulder blades down", "Control descent"],
-    "muscleGroups": ["upperBody"],
+    "muscleGroup": "upperBody",
     "difficulty": "intermediate"
   },
   {
@@ -44,7 +44,7 @@
     "name": "Squats",
     "description": "Bend knees and hips to lower body, then stand. Fundamental leg movement essential for daily activities.",
     "formTips": ["Chest up, knees over toes", "Thighs parallel to floor", "Drive through heels"],
-    "muscleGroups": ["lowerBody"],
+    "muscleGroup": "lowerBody",
     "difficulty": "beginner"
   },
   {
@@ -52,7 +52,7 @@
     "name": "Lunges",
     "description": "Step forward and lower back knee toward ground. Excellent for single-leg strength and balance.",
     "formTips": ["Front knee over ankle", "Torso upright", "Control descent"],
-    "muscleGroups": ["lowerBody"],
+    "muscleGroup": "lowerBody",
     "difficulty": "beginner"
   },
   {
@@ -60,7 +60,7 @@
     "name": "Plank",
     "description": "Hold push-up position with forearms on ground. Isometric exercise building core endurance and stability.",
     "formTips": ["Straight line head to heels", "Don't sag or pike", "Breathe steadily"],
-    "muscleGroups": ["core"],
+    "muscleGroup": "core",
     "difficulty": "beginner"
   },
   {
@@ -68,7 +68,7 @@
     "name": "Mountain Climbers",
     "description": "From plank, rapidly alternate driving knees toward chest. Combines core work with cardio.",
     "formTips": ["Flat back throughout", "Keep hips level", "Drive knees explosively"],
-    "muscleGroups": ["fullBody"],
+    "muscleGroup": "fullBody",
     "difficulty": "intermediate"
   },
   {
@@ -76,7 +76,7 @@
     "name": "Jumping Jacks",
     "description": "Jump spreading legs and raising arms, then return. Classic cardio that elevates heart rate quickly.",
     "formTips": ["Land softly with knee bend", "Core engaged", "Maintain rhythm"],
-    "muscleGroups": ["fullBody"],
+    "muscleGroup": "fullBody",
     "difficulty": "beginner"
   },
   {
@@ -84,7 +84,7 @@
     "name": "Dips",
     "description": "Lower body between parallel bars by bending elbows, then push up. Excellent tricep and chest builder.",
     "formTips": ["Elbows close to body", "Lower until upper arms parallel", "Don't shrug shoulders"],
-    "muscleGroups": ["upperBody"],
+    "muscleGroup": "upperBody",
     "difficulty": "intermediate"
   },
   {
@@ -92,7 +92,7 @@
     "name": "Sit-ups",
     "description": "Lying on back, curl torso toward knees. Classic core exercise targeting the abdominals.",
     "formTips": ["Don't pull on neck", "Exhale as you rise", "Control descent"],
-    "muscleGroups": ["core"],
+    "muscleGroup": "core",
     "difficulty": "beginner"
   },
   {
@@ -100,7 +100,7 @@
     "name": "Glute Bridges",
     "description": "Lying with knees bent, drive hips upward squeezing glutes. Activates posterior chain.",
     "formTips": ["Squeeze glutes at top", "Don't hyperextend back", "Hold briefly at peak"],
-    "muscleGroups": ["lowerBody"],
+    "muscleGroup": "lowerBody",
     "difficulty": "beginner"
   },
   {
@@ -108,7 +108,7 @@
     "name": "Superman",
     "description": "Lying face down, lift arms and legs off ground simultaneously. Strengthens lower back and glutes.",
     "formTips": ["Lift slowly and controlled", "Neck neutral", "Hold at top"],
-    "muscleGroups": ["core"],
+    "muscleGroup": "core",
     "difficulty": "beginner"
   },
   {
@@ -116,7 +116,7 @@
     "name": "Leg Raises",
     "description": "Lying on back, raise straight legs to vertical, then lower. Targets lower abs.",
     "formTips": ["Lower back pressed to floor", "Don't swing", "Lower slowly"],
-    "muscleGroups": ["core"],
+    "muscleGroup": "core",
     "difficulty": "intermediate"
   },
   {
@@ -124,7 +124,7 @@
     "name": "High Knees",
     "description": "Run in place driving knees as high as possible. Cardio that builds hip flexor strength.",
     "formTips": ["Knees to hip height", "Arms pump opposite", "Stay on balls of feet"],
-    "muscleGroups": ["fullBody"],
+    "muscleGroup": "fullBody",
     "difficulty": "beginner"
   },
   {
@@ -132,7 +132,7 @@
     "name": "Jump Squats",
     "description": "Explosively jump from squat position. Builds power and fast-twitch muscle fibers.",
     "formTips": ["Land softly with bent knees", "Use arms for momentum"],
-    "muscleGroups": ["lowerBody"],
+    "muscleGroup": "lowerBody",
     "difficulty": "intermediate"
   },
   {
@@ -140,7 +140,7 @@
     "name": "Diamond Push-ups",
     "description": "Push-up with hands together forming diamond. Shifts emphasis to triceps.",
     "formTips": ["Elbows close to body", "Hands under chest", "Full range of motion"],
-    "muscleGroups": ["upperBody"],
+    "muscleGroup": "upperBody",
     "difficulty": "intermediate"
   },
   {
@@ -148,7 +148,7 @@
     "name": "Inverted Rows",
     "description": "Hang from low bar, pull chest to bar with body straight. Horizontal pulling for back strength.",
     "formTips": ["Squeeze shoulder blades", "Body rigid", "Control both directions"],
-    "muscleGroups": ["upperBody"],
+    "muscleGroup": "upperBody",
     "difficulty": "intermediate"
   },
   {
@@ -156,7 +156,7 @@
     "name": "Pistol Squats",
     "description": "Single-leg squat with other leg extended forward. Advanced exercise requiring strength and balance.",
     "formTips": ["Heel planted", "Arms for balance", "Use support initially"],
-    "muscleGroups": ["lowerBody"],
+    "muscleGroup": "lowerBody",
     "difficulty": "advanced"
   },
   {
@@ -164,7 +164,7 @@
     "name": "Wall Sit",
     "description": "Hold seated position against wall, thighs parallel to floor. Isometric leg endurance.",
     "formTips": ["Thighs parallel to ground", "Knees at 90°", "Back flat against wall"],
-    "muscleGroups": ["lowerBody"],
+    "muscleGroup": "lowerBody",
     "difficulty": "beginner"
   },
   {
@@ -172,7 +172,7 @@
     "name": "Bear Crawl",
     "description": "Crawl on hands and feet with knees hovering. Full-body coordination and core stability.",
     "formTips": ["Hips low and level", "Opposite hand/foot move together", "Small steps"],
-    "muscleGroups": ["fullBody"],
+    "muscleGroup": "fullBody",
     "difficulty": "intermediate"
   }
 ]
