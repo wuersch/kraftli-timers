@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum TimerKind: String, CaseIterable {
-    case emom = "EMOM"
+enum TimerKind: String, Codable, CaseIterable {
+    case emom  = "EMOM"
     case amrap = "AMRAP"
 }

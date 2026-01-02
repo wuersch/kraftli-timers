@@ -49,12 +49,14 @@ struct Kraftli_TimersApp: App {
 
         guard existingPresets == 0 else { return }
 
-        // Create default exercises
+        // Load and create exercises from JSON
+        let exerciseDataList = ExerciseLoader.loadBundled()
         var exercisesByName: [String: Exercise] = [:]
-        for name in Exercise.defaultExercises {
-            let exercise = Exercise(name: name)
+
+        for data in exerciseDataList {
+            let exercise = Exercise(from: data)
             context.insert(exercise)
-            exercisesByName[name] = exercise
+            exercisesByName[data.name] = exercise
         }
 
         // Create default presets
