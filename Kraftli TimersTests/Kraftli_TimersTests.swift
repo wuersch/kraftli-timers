@@ -357,3 +357,96 @@ struct AMRAPTimerModelTests {
         #expect(model.elapsedTime == 0)
     }
 }
+
+// MARK: - ExerciseLoader Tests
+
+struct ExerciseLoaderTests {
+
+    @Test func loadBundled_returnsExercises() {
+        let exercises = ExerciseLoader.loadBundled()
+
+        #expect(!exercises.isEmpty)
+    }
+
+    @Test func loadBundled_exercisesHaveRequiredFields() {
+        let exercises = ExerciseLoader.loadBundled()
+
+        for exercise in exercises {
+            #expect(!exercise.name.isEmpty)
+            #expect(!exercise.description.isEmpty)
+        }
+    }
+
+    @Test func loadBundled_exercisesHaveMuscleGroup() {
+        let exercises = ExerciseLoader.loadBundled()
+
+        for exercise in exercises {
+            // MuscleGroup is required in our JSON schema
+            #expect(MuscleGroup.allCases.contains(exercise.muscleGroup))
+        }
+    }
+
+    @Test func load_async_returnsExercises() async {
+        let exercises = await ExerciseLoader.load()
+
+        #expect(!exercises.isEmpty)
+    }
+}
+
+// MARK: - Exercise Model Tests
+
+struct ExerciseTests {
+
+    @Test func init_fromExerciseData_mapsAllFields() {
+        let data = ExerciseData(
+            id: UUID(),
+            name: "Test Exercise",
+            description: "A test exercise for unit testing",
+            formTips: ["Keep back straight", "Breathe steadily"],
+            muscleGroup: .fullBody,
+            difficulty: .intermediate
+        )
+
+        let exercise = Exercise(from: data)
+
+        #expect(exercise.id == data.id)
+        #expect(exercise.name == data.name)
+        #expect(exercise.exerciseDescription == data.description)
+        #expect(exercise.formTips == data.formTips)
+        #expect(exercise.muscleGroup == data.muscleGroup)
+        #expect(exercise.difficulty == data.difficulty)
+    }
+
+    @Test func init_fromExerciseData_handlesNilDifficulty() {
+        let data = ExerciseData(
+            id: UUID(),
+            name: "Easy Exercise",
+            description: "No difficulty specified",
+            formTips: [],
+            muscleGroup: .core,
+            difficulty: nil
+        )
+
+        let exercise = Exercise(from: data)
+
+        #expect(exercise.difficulty == nil)
+        #expect(exercise.muscleGroup == .core)
+    }
+
+    @Test func init_fromExerciseData_preservesFormTips() {
+        let tips = ["Tip 1", "Tip 2", "Tip 3"]
+        let data = ExerciseData(
+            id: UUID(),
+            name: "Exercise with Tips",
+            description: "Has multiple form tips",
+            formTips: tips,
+            muscleGroup: .upperBody,
+            difficulty: .beginner
+        )
+
+        let exercise = Exercise(from: data)
+
+        #expect(exercise.formTips?.count == 3)
+        #expect(exercise.formTips == tips)
+    }
+}

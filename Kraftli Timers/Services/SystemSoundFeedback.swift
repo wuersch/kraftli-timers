@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import os
 
 final class SystemSoundFeedback: AudioFeedbackProvider {
     private var completionPlayer: AVAudioPlayer?
@@ -20,7 +21,7 @@ final class SystemSoundFeedback: AudioFeedbackProvider {
             )
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            // Audio session configuration failed - continue without audio feedback
+            Logger.audio.error("Audio session configuration failed: \(error.localizedDescription)")
         }
 
         // Preload completion sound
@@ -28,8 +29,14 @@ final class SystemSoundFeedback: AudioFeedbackProvider {
             forResource: "764274__shangusburger__crwdcheer_short-affirmative-cheer_shanevincent_gsc24_spacedomni-mk012",
             withExtension: "wav"
         ) {
-            completionPlayer = try? AVAudioPlayer(contentsOf: url)
-            completionPlayer?.prepareToPlay()
+            do {
+                completionPlayer = try AVAudioPlayer(contentsOf: url)
+                completionPlayer?.prepareToPlay()
+            } catch {
+                Logger.audio.error("Failed to load completion sound: \(error.localizedDescription)")
+            }
+        } else {
+            Logger.audio.warning("Completion sound file not found in bundle")
         }
     }
 
