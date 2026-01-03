@@ -5,12 +5,13 @@
 //  Created by Michael Würsch on 02.01.2026.
 //
 
+/// Exercise difficulty level.
 enum Difficulty: String, Codable, CaseIterable {
     case beginner
     case intermediate
     case advanced
 
-    /// Human-readable display name for UI
+    /// Human-readable display name for UI.
     var displayName: String {
         switch self {
         case .beginner: return "Beginner"
