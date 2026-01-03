@@ -39,16 +39,8 @@ struct ExerciseSelectionView: View {
     /// ID of the currently expanded exercise card (only one at a time).
     @State private var expandedExerciseId: UUID? = nil
 
-    /// Exercises filtered by current criteria.
-    private var filteredExercises: [Exercise] {
-        allExercises.filter { exercise in
-            let matchesMuscle = muscleGroupFilter == nil
-                || exercise.muscleGroup == muscleGroupFilter
-            let matchesDifficulty = difficultyFilter == nil
-                || exercise.difficulty == difficultyFilter
-            return matchesMuscle && matchesDifficulty
-        }
-    }
+    /// Cached filtered exercises, updated when filters or source data change.
+    @State private var filteredExercises: [Exercise] = []
 
     /// True if any filter is active.
     private var hasActiveFilters: Bool {
@@ -92,6 +84,18 @@ struct ExerciseSelectionView: View {
                     muscleGroup: $muscleGroupFilter,
                     difficulty: $difficultyFilter
                 )
+            }
+            .onAppear {
+                updateFilteredExercises()
+            }
+            .onChange(of: allExercises) {
+                updateFilteredExercises()
+            }
+            .onChange(of: muscleGroupFilter) {
+                updateFilteredExercises()
+            }
+            .onChange(of: difficultyFilter) {
+                updateFilteredExercises()
             }
         }
     }
@@ -149,6 +153,16 @@ struct ExerciseSelectionView: View {
             expandedExerciseId = nil
         } else {
             expandedExerciseId = id
+        }
+    }
+
+    private func updateFilteredExercises() {
+        filteredExercises = allExercises.filter { exercise in
+            let matchesMuscle = muscleGroupFilter == nil
+                || exercise.muscleGroup == muscleGroupFilter
+            let matchesDifficulty = difficultyFilter == nil
+                || exercise.difficulty == difficultyFilter
+            return matchesMuscle && matchesDifficulty
         }
     }
 }

@@ -109,76 +109,73 @@ struct TimerPresetEditorView: View {
         .labelsHidden()
     }
 
+    private var exerciseButtonContent: some View {
+        VStack(alignment: .leading) {
+            HStack {
+                if let exercise = selectedExercise {
+                    Text(exercise.name)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                } else {
+                    Text("Select Exercise")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+
+            if let exercise = selectedExercise {
+                Divider()
+                
+                HStack(spacing: 8) {
+                    if let muscleGroup = exercise.muscleGroup {
+                        MuscleGroupTag(muscleGroup: muscleGroup, size: .compact)
+                    }
+                    if let difficulty = exercise.difficulty {
+                        DifficultyIndicator(difficulty: difficulty, style: .pill)
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Picker("Timer Kind", selection: $timerKind) {
-                            ForEach(TimerKind.allCases, id: \.self) { kind in
-                                Text(kind.rawValue).tag(kind)
-                            }
+                    Picker("Timer Kind", selection: $timerKind) {
+                        ForEach(TimerKind.allCases, id: \.self) { kind in
+                            Text(kind.rawValue).tag(kind)
                         }
-                        .pickerStyle(.segmented)
+                    }
+                    .pickerStyle(.segmented)
 
-                        switch timerKind {
-                        case .amrap:
-                            Text(
-                                "A time-capped workout where you perform as many reps or rounds as possible."
-                            )
-                            .foregroundStyle(.secondary)
-                            .font(.subheadline)
-                        case .emom:
-                            Text(
-                                "A time-based workout where you perform a fixed number of reps at regular intervals across the total duration."
-                            )
-                            .foregroundStyle(.secondary)
-                            .font(.subheadline)
-                        }
+                    switch timerKind {
+                    case .amrap:
+                        Text(
+                            "A time-capped workout where you perform as many reps or rounds as possible."
+                        )
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                    case .emom:
+                        Text(
+                            "A time-based workout where you perform a fixed number of reps at regular intervals across the total duration."
+                        )
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
                     }
                 }
 
                 Section {
                     Button(action: { showingExerciseSelection = true }) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                if let exercise = selectedExercise {
-                                    Text(exercise.name)
-                                        .font(.body)
-                                        .foregroundStyle(.primary)
-                                } else {
-                                    Text("Select Exercise")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-
-                            Spacer()
-
-                            // Exercise metadata tags
-                            if let exercise = selectedExercise {
-                                HStack(spacing: 8) {
-                                    if let muscleGroup = exercise.muscleGroup {
-                                        MuscleGroupTag(
-                                            muscleGroup: muscleGroup,
-                                            size: .compact
-                                        )
-                                    }
-                                    if let difficulty = exercise.difficulty {
-                                        DifficultyIndicator(
-                                            difficulty: difficulty,
-                                            style: .pill
-                                        )
-                                    }
-                                }
-                            }
-
-                            Image(systemName: "chevron.right")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
+                        exerciseButtonContent
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(
@@ -186,22 +183,19 @@ struct TimerPresetEditorView: View {
                             ?? "Select exercise"
                     )
                     .accessibilityHint("Opens exercise selection")
-                } header: {
-                    Text("Exercise")
                 }
 
-                if timerKind == .amrap {
+                switch timerKind {
+                case .amrap:
                     Section {
-                        VStack(alignment: .leading, spacing: 8) {
+                        
                             Text("Duration")
                                 .font(.body)
                                 .foregroundStyle(.primary)
                             durationPicker
-                        }
+                        
                     }
-                }
-
-                if timerKind == .emom {
+                case .emom:
                     Section {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Duration and Total Reps")
@@ -210,11 +204,12 @@ struct TimerPresetEditorView: View {
                             Text(intervalDescription)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                        }
                             HStack {
                                 durationPicker
                                 targetRepsPicker
                             }
-                        }
+                        
                     }
                 }
             }
