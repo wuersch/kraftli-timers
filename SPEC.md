@@ -133,22 +133,31 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 ---
 
 ### Exercise Library (Status: ✅ Implemented)
-**User Story**: As a user, I want to choose from a predefined list of common exercises.
+**User Story**: As a user, I want to choose from a curated list of exercises with detailed information to understand proper form and muscle groups targeted.
 
 **Functionality**:
-- Predefined exercise list (persisted with SwiftData)
-- Menu picker for exercise selection in preset editor
-- Display exercise name in timer and preset list
+- 21 curated bodyweight exercises loaded from bundled JSON
+- Rich metadata per exercise: name, description, form tips, muscle group, difficulty
+- Navigation-based exercise selection with filtering
+- Exercise metadata displayed in preset editor after selection
 
-**Current Exercise List**:
-- Pull-ups
-- 6-Count Burpees
-- Navy Seal Burpees
-- Push-ups
+**Exercise Selection View**:
+- Full-screen selection presented as sheet from preset editor
+- Expandable exercise cards showing name (collapsed) or full details (expanded)
+- Filter sheet for muscle group and difficulty (half-height modal)
+- "All" as default filter option
+- Tap card to select exercise and dismiss
+
+**Exercise Display in Preset Editor**:
+- Shows exercise name with muscle group tag and difficulty pill
+- Tap to open exercise selection view
 
 **Data Model**:
-- `Exercise` @Model class with `name` field (v2+ ready with optional description)
-- Exercises fetched via `@Query` in editor view
+- `Exercise` @Model class with fields: `name`, `exerciseDescription`, `formTips`, `muscleGroup`, `difficulty`
+- `MuscleGroup` enum: fullBody, upperBody, lowerBody, core
+- `Difficulty` enum: beginner, intermediate, advanced
+- Exercises loaded from `Exercises.json` via `ExerciseLoader` service
+- UI colors defined in `+UI.swift` extensions (separated from domain)
 
 ---
 
@@ -212,7 +221,9 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 
 ### Preset Editor (Sheet)
 - Segmented picker: EMOM / AMRAP
-- Menu picker: Exercise selection
+- Exercise selection: Tap row to open ExerciseSelectionView
+  - Shows selected exercise name with muscle group tag and difficulty pill
+  - Chevron indicates navigation
 - Menu picker: Duration (1-60 minutes)
 - Wheel picker: Target reps (EMOM only, dynamic max based on 3-second minimum interval)
 - Interval duration display with smart decimal formatting
@@ -255,7 +266,11 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 
 ### UI Components
 - `ProgressRing`: Circular progress indicator with configurable colors/sizes
-- `RepsPill`: Styled capsule badge with configurable font size for responsive layouts
+- `RepsPill`: Styled capsule badge with attributed string support for responsive layouts
+- `Pill`: Generic colored pill component (base for tags)
+- `MuscleGroupTag`: Type-safe pill for muscle groups with size variants
+- `DifficultyIndicator`: Difficulty display with dot or pill style
+- `ExerciseCardView`: Expandable card for exercise selection
 - `ConfettiView`: Celebratory animation with 120 colored pieces
 - `ComingSoonView`: Reusable placeholder for unimplemented features
 
@@ -304,9 +319,28 @@ enum TimerKind: String, CaseIterable {
 final class Exercise {
     var id: UUID
     var name: String
-    var exerciseDescription: String?  // v2+ ready
+    var exerciseDescription: String?
+    var formTips: [String]?
+    var muscleGroup: MuscleGroup?
+    var difficulty: Difficulty?
+}
+```
 
-    static let defaultExercises: [String]  // For seeding
+### MuscleGroup
+```swift
+enum MuscleGroup: String, Codable, CaseIterable {
+    case fullBody, upperBody, lowerBody, core
+    var displayName: String  // Human-readable
+    var color: Color         // UI extension (teal, indigo, blue, purple)
+}
+```
+
+### Difficulty
+```swift
+enum Difficulty: String, Codable, CaseIterable {
+    case beginner, intermediate, advanced
+    var displayName: String  // Human-readable
+    var color: Color         // UI extension (green, orange, red)
 }
 ```
 
@@ -327,13 +361,19 @@ final class Exercise {
 - `ContentView`: Tab-based navigation container
 - `TimerPresetView`: Preset list with CRUD operations
 - `TimerPresetEditorView`: Create/edit preset sheet
+- `ExerciseSelectionView`: Exercise browser with filtering
+- `ExerciseFilterSheet`: Half-height filter modal
 - `EMOMTimerView`: Full-screen EMOM timer interface
-- `AMRAPTimerView`: Full-screen AMRAP timer (placeholder)
+- `AMRAPTimerView`: Full-screen AMRAP timer
 - `ComingSoonView`: Reusable placeholder view
 
 **UI Components**:
 - `ProgressRing`: Circular progress indicator with configurable colors/sizes
 - `RepsPill`: Styled capsule badge with attributed string support
+- `Pill`: Generic colored pill (base component)
+- `MuscleGroupTag`: Type-safe muscle group pill
+- `DifficultyIndicator`: Difficulty dot or pill
+- `ExerciseCardView`: Expandable exercise card
 - `ConfettiView`: Celebratory animation with 120 pieces
 
 **Models**:
@@ -385,61 +425,15 @@ final class Exercise {
 
 ## Future Considerations (v2+)
 
-### Exercise Library Expansion (Status: 🔮 Future)
-**User Story**: As a user, I want detailed information about exercises to understand proper form and expected benefits.
+### Form Tips During Workout (Status: 🔮 Future)
+**User Story**: As a user, I want to see form tips when I pause the timer to remind me of proper technique.
 
 **Functionality**:
-- Expand from 4 to ~20 curated bodyweight exercises
-- Metadata per exercise:
-  - Name and description
-  - Form tips
-  - Muscle groups targeted
-  - Optional: difficulty level
-- **No calorie estimates** - timer config can't accurately calculate (rep speed varies, no body weight data). HealthKit with Watch heart rate provides accurate calorie data instead.
-- **No dedicated exercise browser view** - discovery happens inline in preset editor
-- Display metadata in preset editor (not during workout - no distractions)
+- Display form tips overlay when timer is paused
+- Minimalist presentation that doesn't distract from workout focus
+- Uses existing `formTips` data from Exercise model
 
-**Simplified Muscle Groups**:
-```swift
-enum MuscleGroup: String, Codable, CaseIterable {
-    case core       // abs, obliques, lower back
-    case upperBody  // chest, back, shoulders, arms
-    case lowerBody  // quads, hamstrings, glutes, calves
-    case fullBody   // multiple major groups (don't repeat sub-groups)
-}
-```
-
-**Data Storage**:
-- Store exercises in bundled `Exercises.json`
-- Same JSON format works for future remote loading (e.g., GitHub)
-- Loader tries remote first, falls back to bundled (app always works offline)
-- Enables updating exercise library without app updates
-
-**UI Options to Explore**:
-- **Option A: Enhanced picker with details**
-  - Keep Menu picker for exercise selection
-  - Show info card below picker with description, form tips, muscle groups
-  - Compact, minimal navigation
-
-- **Option B: Navigation-based selector**
-  - Tap "Exercise" row → pushes to exercise list view
-  - Each exercise displayed as GroupBox card (name, muscle groups, description)
-  - Tap card to select and pop back
-  - Better for browsing 20 exercises, more visual
-
-**Data Model** (Draft):
-```swift
-struct ExerciseData: Codable, Identifiable {
-    let id: UUID
-    let name: String
-    let description: String
-    let formTips: [String]
-    let muscleGroup: MuscleGroup
-    let difficulty: Difficulty?
-}
-```
-
-**Priority**: 1 (foundation for other features)
+**Priority**: Low (nice-to-have enhancement)
 
 ---
 
@@ -610,4 +604,4 @@ struct WorkoutLog: Identifiable {
 
 ---
 
-*Last Updated: 2026-01-02 (Added watchOS Companion App, enhanced HealthKit Integration, refined Exercise Library with simplified muscle groups and JSON storage)*
+*Last Updated: 2026-01-03 (Implemented Exercise Selection with filtering, expandable cards, muscle group/difficulty tags, and Pill component architecture)*

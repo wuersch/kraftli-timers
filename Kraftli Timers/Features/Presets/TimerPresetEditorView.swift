@@ -20,6 +20,7 @@ struct TimerPresetEditorView: View {
     @State private var selectedExerciseId: UUID?
     @State private var durationMinutes: Int
     @State private var targetReps: Int
+    @State private var showingExerciseSelection = false
 
     init(presetToEdit: TimerPreset? = nil) {
         self.presetToEdit = presetToEdit
@@ -140,12 +141,53 @@ struct TimerPresetEditorView: View {
                 }
 
                 Section {
-                    Picker("Exercise", selection: $selectedExerciseId) {
-                        ForEach(exercises) { exercise in
-                            Text(exercise.name).tag(exercise.id as UUID?)
+                    Button(action: { showingExerciseSelection = true }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                if let exercise = selectedExercise {
+                                    Text(exercise.name)
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                } else {
+                                    Text("Select Exercise")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            Spacer()
+
+                            // Exercise metadata tags
+                            if let exercise = selectedExercise {
+                                HStack(spacing: 8) {
+                                    if let muscleGroup = exercise.muscleGroup {
+                                        MuscleGroupTag(
+                                            muscleGroup: muscleGroup,
+                                            size: .compact
+                                        )
+                                    }
+                                    if let difficulty = exercise.difficulty {
+                                        DifficultyIndicator(
+                                            difficulty: difficulty,
+                                            style: .pill
+                                        )
+                                    }
+                                }
+                            }
+
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
                         }
                     }
-                    .pickerStyle(.menu)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        selectedExercise.map { "Exercise: \($0.name)" }
+                            ?? "Select exercise"
+                    )
+                    .accessibilityHint("Opens exercise selection")
+                } header: {
+                    Text("Exercise")
                 }
 
                 if timerKind == .amrap {
@@ -210,6 +252,9 @@ struct TimerPresetEditorView: View {
                 if selectedExerciseId == nil, let first = exercises.first {
                     selectedExerciseId = first.id
                 }
+            }
+            .sheet(isPresented: $showingExerciseSelection) {
+                ExerciseSelectionView(selectedExerciseId: $selectedExerciseId)
             }
         }
     }
