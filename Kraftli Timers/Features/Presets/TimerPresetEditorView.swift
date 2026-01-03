@@ -131,17 +131,21 @@ struct TimerPresetEditorView: View {
 
             if let exercise = selectedExercise {
                 Divider()
-                
+
                 HStack(spacing: 8) {
                     if let muscleGroup = exercise.muscleGroup {
                         MuscleGroupTag(muscleGroup: muscleGroup, size: .compact)
                     }
                     if let difficulty = exercise.difficulty {
-                        DifficultyIndicator(difficulty: difficulty, style: .pill)
+                        DifficultyIndicator(
+                            difficulty: difficulty,
+                            style: .pill
+                        )
                     }
                 }
             }
         }
+        .contentShape(Rectangle())
     }
 
     // MARK: - Body
@@ -188,28 +192,30 @@ struct TimerPresetEditorView: View {
                 switch timerKind {
                 case .amrap:
                     Section {
-                        
-                            Text("Duration")
-                                .font(.body)
-                                .foregroundStyle(.primary)
-                            durationPicker
-                        
+
+                        Text("Duration")
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                        durationPicker
+
                     }
                 case .emom:
                     Section {
-                        VStack(alignment: .leading, spacing: 8) {
+                        // Two-row layout to keep system separators while visually grouping label and controls
+                        VStack(alignment: .leading, spacing: 6) {
                             Text("Duration and Total Reps")
                                 .font(.body)
                                 .foregroundStyle(.primary)
                             Text(intervalDescription)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                            
                         }
-                            HStack {
-                                durationPicker
-                                targetRepsPicker
-                            }
                         
+                        HStack {
+                            durationPicker
+                            targetRepsPicker
+                        }
                     }
                 }
             }
