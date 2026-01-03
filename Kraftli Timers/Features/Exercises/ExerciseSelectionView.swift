@@ -113,7 +113,6 @@ struct ExerciseSelectionView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
         }
-        .animation(.easeInOut(duration: 0.2), value: expandedExerciseId)
     }
 
     // MARK: - Empty State
