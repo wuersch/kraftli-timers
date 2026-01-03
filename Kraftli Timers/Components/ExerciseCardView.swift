@@ -45,6 +45,7 @@ struct ExerciseCardView: View {
                 onSelect()
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(exercise.name)
         .accessibilityHint(isExpanded ? "Tap Select to choose this exercise" : "Tap to select, or tap info to see details")
