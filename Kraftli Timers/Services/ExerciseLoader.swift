@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import os
 
 /// Data transfer object for JSON decoding
 struct ExerciseData: Codable, Identifiable {
@@ -21,26 +22,28 @@ struct ExerciseData: Codable, Identifiable {
 /// Designed for future extension to support remote loading with bundled fallback.
 enum ExerciseLoader {
 
-    /// Load exercises from bundled Exercises.json
-    static func loadBundled() -> [ExerciseData] {
-        guard let url = Bundle.main.url(forResource: "Exercises", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let exercises = try? JSONDecoder().decode([ExerciseData].self, from: data)
-        else {
-            return []
-        }
-        return exercises
+    /// Load exercises asynchronously.
+    /// Currently loads from bundle; will support remote loading with bundled fallback.
+    static func load() async -> [ExerciseData] {
+        // Future: try remote first, fall back to bundled
+        // if let remote = try? await fetchRemote() { return remote }
+        loadBundled()
     }
 
-    // MARK: - Future: Remote Loading
+    /// Load exercises from bundled Exercises.json (synchronous).
+    /// Used for initial seeding during app launch.
+    static func loadBundled() -> [ExerciseData] {
+        guard let url = Bundle.main.url(forResource: "Exercises", withExtension: "json") else {
+            Logger.data.warning("Exercises.json not found in bundle")
+            return []
+        }
 
-    /// Load exercises with remote fallback to bundled (for future implementation)
-    /// ```
-    /// static func load() async -> [ExerciseData] {
-    ///     if let remote = try? await fetchRemote() {
-    ///         return remote
-    ///     }
-    ///     return loadBundled()
-    /// }
-    /// ```
+        do {
+            let data = try Data(contentsOf: url)
+            return try JSONDecoder().decode([ExerciseData].self, from: data)
+        } catch {
+            Logger.data.error("Failed to load exercises: \(error.localizedDescription)")
+            return []
+        }
+    }
 }

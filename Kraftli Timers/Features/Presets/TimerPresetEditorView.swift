@@ -5,8 +5,8 @@
 //  Created by Claude on 26.12.2025.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct TimerPresetEditorView: View {
     @Environment(\.dismiss) private var dismiss
@@ -28,7 +28,9 @@ struct TimerPresetEditorView: View {
         if let preset = presetToEdit {
             _timerKind = State(initialValue: preset.kind)
             _selectedExerciseId = State(initialValue: preset.exercise?.id)
-            _durationMinutes = State(initialValue: Int(preset.durationInterval / 60))
+            _durationMinutes = State(
+                initialValue: Int(preset.durationInterval / 60)
+            )
             _targetReps = State(initialValue: preset.targetReps ?? 100)
         } else {
             _timerKind = State(initialValue: .emom)
@@ -68,14 +70,16 @@ struct TimerPresetEditorView: View {
                 return "\(minutes) min per interval"
             } else {
                 // Show decimal only if not a whole number
-                let formatted = remainingSeconds.truncatingRemainder(dividingBy: 1) == 0
+                let formatted =
+                    remainingSeconds.truncatingRemainder(dividingBy: 1) == 0
                     ? String(format: "%.0f", remainingSeconds)
                     : String(format: "%.1f", remainingSeconds)
                 return "\(minutes) min \(formatted) sec per interval"
             }
         } else {
             // Show decimal only if not a whole number
-            let formatted = seconds.truncatingRemainder(dividingBy: 1) == 0
+            let formatted =
+                seconds.truncatingRemainder(dividingBy: 1) == 0
                 ? String(format: "%.0f", seconds)
                 : String(format: "%.1f", seconds)
             return "\(formatted) sec per interval"
@@ -84,38 +88,24 @@ struct TimerPresetEditorView: View {
 
     // MARK: - Subviews
 
-    @ViewBuilder
     private var durationPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Duration")
-                .font(.body)
-                .foregroundStyle(.primary)
-
-            Picker("Duration", selection: $durationMinutes) {
-                ForEach(1...60, id: \.self) { minutes in
-                    Text("\(minutes) min").tag(minutes)
-                }
+        Picker("Duration", selection: $durationMinutes) {
+            ForEach(1...60, id: \.self) { minutes in
+                Text("\(minutes) min").tag(minutes)
             }
-            .pickerStyle(.wheel)
-            .labelsHidden()
         }
+        .pickerStyle(.wheel)
+        .labelsHidden()
     }
 
-    @ViewBuilder
     private var targetRepsPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Target Reps")
-                .font(.body)
-                .foregroundStyle(.primary)
-
-            Picker("Target Reps", selection: $targetReps) {
-                ForEach(1...maxReps, id: \.self) { reps in
-                    Text("\(reps)").tag(reps)
-                }
+        Picker("Total Reps", selection: $targetReps) {
+            ForEach(1...maxReps, id: \.self) { reps in
+                Text("\(reps)").tag(reps)
             }
-            .pickerStyle(.wheel)
-            .labelsHidden()
         }
+        .pickerStyle(.wheel)
+        .labelsHidden()
     }
 
     // MARK: - Body
@@ -124,12 +114,29 @@ struct TimerPresetEditorView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Timer Kind", selection: $timerKind) {
-                        ForEach(TimerKind.allCases, id: \.self) { kind in
-                            Text(kind.rawValue).tag(kind)
+                    VStack(alignment: .leading, spacing: 16) {
+                        Picker("Timer Kind", selection: $timerKind) {
+                            ForEach(TimerKind.allCases, id: \.self) { kind in
+                                Text(kind.rawValue).tag(kind)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        switch timerKind {
+                        case .amrap:
+                            Text(
+                                "A time-capped workout where you perform as many reps or rounds as possible."
+                            )
+                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
+                        case .emom:
+                            Text(
+                                "A time-based workout where you perform a fixed number of reps at regular intervals across the total duration."
+                            )
+                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
                         }
                     }
-                    .pickerStyle(.segmented)
                 }
 
                 Section {
@@ -140,22 +147,32 @@ struct TimerPresetEditorView: View {
                     }
                     .pickerStyle(.menu)
                 }
-                
+
                 if timerKind == .amrap {
                     Section {
-                        durationPicker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Duration")
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                            durationPicker
+                        }
                     }
                 }
 
                 if timerKind == .emom {
                     Section {
-                        HStack {
-                            durationPicker
-                            targetRepsPicker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Duration and Total Reps")
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                            Text(intervalDescription)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            HStack {
+                                durationPicker
+                                targetRepsPicker
+                            }
                         }
-                    } footer: {
-                        Text(intervalDescription)
-                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -183,7 +200,9 @@ struct TimerPresetEditorView: View {
                     }) {
                         Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(presetToEdit == nil ? "Save timer" : "Save changes")
+                    .accessibilityLabel(
+                        presetToEdit == nil ? "Save timer" : "Save changes"
+                    )
                 }
             }
             .onAppear {
