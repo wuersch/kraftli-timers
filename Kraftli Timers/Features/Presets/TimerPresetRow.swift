@@ -22,6 +22,11 @@ struct TimerPresetRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            Image(preset.kindRawValue == "AMRAP" ? "timer.amrap" : "timer.interval")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 28, height: 28)
+                .foregroundStyle(.primary)
             VStack(alignment: .leading, spacing: 6) {
                 Text(preset.primaryText).font(.headline).fontWeight(.semibold)
                 Text(preset.secondaryText).font(.subheadline).foregroundStyle(.secondary)
