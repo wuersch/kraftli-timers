@@ -1,5 +1,5 @@
 //
-//  TimerPresetsView.swift
+//  TimerPresetView.swift
 //  Kraftli Timers
 //
 //  Created by Michael Würsch on 24.12.2025.
@@ -8,111 +8,99 @@
 import SwiftUI
 import SwiftData
 
+enum ActiveSheet: Identifiable {
+    case add
+    case edit(TimerPreset)
+
+    var id: String {
+        switch self {
+        case .add: "add"
+        case .edit(let preset): preset.id.uuidString
+        }
+    }
+}
+
 struct TimerPresetView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TimerPreset.sortOrder) private var presets: [TimerPreset]
 
-    @State private var presetToEdit: TimerPreset?
+    @State private var activeSheet: ActiveSheet?
     @State private var presetToRun: TimerPreset?
-    @State private var isEditMode = false
-    @State private var showingAddPreset = false
+    @State private var editMode: EditMode = .inactive
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    ForEach(presets) { preset in
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(preset.primaryText)
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-
-                                Text(preset.secondaryText)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer(minLength: 12)
-
-                            if !isEditMode {
-                                Button(action: {
-                                    presetToRun = preset
-                                }) {
-                                    Image(systemName: "play.circle.fill")
-                                        .font(.system(size: 28))
-                                        .foregroundStyle(.tint)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("Start \(preset.exercise?.name ?? "timer")")
-                            }
+            Group {
+                if presets.isEmpty {
+                    ContentUnavailableView(
+                        "No Timers",
+                        systemImage: "timer",
+                        description: Text("Tap + to create your first timer")
+                    )
+                } else {
+                    List {
+                        ForEach(presets) { preset in
+                            TimerPresetRow(
+                                preset: preset,
+                                onRun: { presetToRun = $0 },
+                                onEdit: { activeSheet = .edit($0) }
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(
+                                EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+                            )
                         }
-                        .padding(.vertical, 8)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if isEditMode {
-                                presetToEdit = preset
-                            }
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("\(preset.primaryText), \(preset.secondaryText)")
+                        .onDelete(perform: deletePresets)
+                        .onMove(perform: movePresets)
                     }
-                    .onDelete(perform: deletePresets)
-                    .onMove(perform: movePresets)
-                } header: {
-                    Spacer()
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemBackground))
                 }
             }
             .navigationTitle("Timers")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        withAnimation {
-                            isEditMode.toggle()
+                ToolbarItem(placement: .topBarLeading) {
+                    if !presets.isEmpty {
+                        Button {
+                            withAnimation {
+                                editMode = (editMode == .active) ? .inactive : .active
+                            }
+                        } label: {
+                            Text(editMode == .active ? "Done" : "Edit")
                         }
-                    }) {
-                        Text(isEditMode ? "Done" : "Edit")
+                        .accessibilityLabel(editMode == .active ? "Done editing" : "Edit timers")
                     }
-                    .accessibilityLabel(isEditMode ? "Done editing" : "Edit timers")
                 }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingAddPreset = true
-                    }) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        activeSheet = .add
+                    } label: {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Add new timer")
                 }
             }
-            .environment(\.editMode, .constant(isEditMode ? .active : .inactive))
-            .sheet(isPresented: $showingAddPreset) {
-                TimerPresetEditorView()
+            .environment(\.editMode, $editMode)
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .add:
+                    TimerPresetEditorView()
+                case .edit(let preset):
+                    TimerPresetEditorView(presetToEdit: preset)
+                }
             }
-            .sheet(item: $presetToEdit) { preset in
-                TimerPresetEditorView(presetToEdit: preset)
+            .onChange(of: presets.isEmpty) { _, isEmpty in
+                if isEmpty {
+                    editMode = .inactive
+                }
             }
         }
         .fullScreenCover(item: $presetToRun) { preset in
-            NavigationStack {
-                switch preset.kind {
-                case .emom:
-                    // targetReps guaranteed by TimerPreset.init precondition
-                    let intervalSeconds = preset.durationInterval / Double(preset.targetReps!)
-
-                    EMOMTimerView(timerModel: EMOMTimerModel(
-                        totalDuration: preset.durationInterval,
-                        intervalDuration: intervalSeconds
-                    ))
-                    .navigationTitle("\(preset.exercise?.name ?? "Timer") ⸱ \(preset.kind.rawValue)")
-                    .navigationBarTitleDisplayMode(.inline)
-                case .amrap:
-                    AMRAPTimerView(timerModel: AMRAPTimerModel(totalDuration: preset.durationInterval))
-                        .navigationTitle("\(preset.exercise?.name ?? "Timer") ⸱ \(preset.kind.rawValue)")
-                        .navigationBarTitleDisplayMode(.inline)
-                }
-            }
+            TimerRunnerView(preset: preset)
         }
     }
 
@@ -134,7 +122,54 @@ struct TimerPresetView: View {
     }
 }
 
+struct TimerPresetRow: View {
+    @Environment(\.editMode) private var editMode
+    
+    let preset: TimerPreset
+    let onRun: (TimerPreset) -> Void
+    let onEdit: (TimerPreset) -> Void
+
+    private var isEditing: Bool {
+        editMode?.wrappedValue == .active
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(preset.primaryText).font(.headline).fontWeight(.semibold)
+                Text(preset.secondaryText).font(.subheadline).foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 12)
+
+            if !isEditing {
+                Button {
+                    onRun(preset)
+                } label: {
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Start \(preset.exercise?.name ?? "Timer")")
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isEditing { onEdit(preset) }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(preset.primaryText), \(preset.secondaryText)")
+    }
+}
+
 #Preview {
     TimerPresetView()
         .modelContainer(for: [TimerPreset.self, Exercise.self], inMemory: true)
 }
+
