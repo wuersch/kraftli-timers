@@ -31,7 +31,7 @@ final class TimerPreset {
     }
 
     var primaryText: String {
-        "\(kind.rawValue) ⸱ \(durationInterval.durationText)"
+        "\(kind.rawValue)\(UISeparator.dot)\(durationInterval.durationText)"
     }
 
     var secondaryText: String {
@@ -42,7 +42,7 @@ final class TimerPreset {
         if let reps = targetReps {
             parts.append("\(reps) Reps")
         }
-        return parts.joined(separator: " · ")
+        return parts.joined(separator: UISeparator.dot)
     }
 
     // MARK: - Initialization
@@ -68,3 +68,4 @@ final class TimerPreset {
         self.exercise = exercise
     }
 }
+

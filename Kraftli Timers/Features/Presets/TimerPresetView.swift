@@ -34,8 +34,8 @@ struct TimerPresetView: View {
                 ForEach(presets) { preset in
                     TimerPresetRow(
                         preset: preset,
-                        onRun: { presetToRun = $0 },
-                        onEdit: { activeSheet = .edit($0) }
+                        didTapRun: { presetToRun = $0 },
+                        didTapEdit: { activeSheet = .edit($0) }
                     )
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -122,51 +122,7 @@ struct TimerPresetView: View {
     }
 }
 
-struct TimerPresetRow: View {
-    @Environment(\.editMode) private var editMode
-    
-    let preset: TimerPreset
-    let onRun: (TimerPreset) -> Void
-    let onEdit: (TimerPreset) -> Void
 
-    private var isEditing: Bool {
-        editMode?.wrappedValue == .active
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(preset.primaryText).font(.headline).fontWeight(.semibold)
-                Text(preset.secondaryText).font(.subheadline).foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 12)
-
-            if !isEditing {
-                Button {
-                    onRun(preset)
-                } label: {
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.tint)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Start \(preset.exercise?.name ?? "Timer")")
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if isEditing { onEdit(preset) }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(preset.primaryText), \(preset.secondaryText)")
-    }
-}
 
 #Preview {
     TimerPresetView()
