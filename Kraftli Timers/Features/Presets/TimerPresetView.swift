@@ -30,33 +30,33 @@ struct TimerPresetView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            List {
+                ForEach(presets) { preset in
+                    TimerPresetRow(
+                        preset: preset,
+                        onRun: { presetToRun = $0 },
+                        onEdit: { activeSheet = .edit($0) }
+                    )
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(
+                        EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+                    )
+                }
+                .onDelete(perform: deletePresets)
+                .onMove(perform: movePresets)
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(presets.isEmpty)
+            .background(Color(.systemBackground))
+            .overlay {
                 if presets.isEmpty {
                     ContentUnavailableView(
                         "No Timers",
                         systemImage: "timer",
                         description: Text("Tap + to create your first timer")
                     )
-                } else {
-                    List {
-                        ForEach(presets) { preset in
-                            TimerPresetRow(
-                                preset: preset,
-                                onRun: { presetToRun = $0 },
-                                onEdit: { activeSheet = .edit($0) }
-                            )
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .listRowInsets(
-                                EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
-                            )
-                        }
-                        .onDelete(perform: deletePresets)
-                        .onMove(perform: movePresets)
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .background(Color(.systemBackground))
                 }
             }
             .navigationTitle("Timers")
