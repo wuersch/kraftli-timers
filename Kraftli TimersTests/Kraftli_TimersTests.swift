@@ -67,7 +67,7 @@ struct TimerPresetTests {
             targetReps: 100
         )
 
-        #expect(preset.primaryText == "EMOM ⸱ 20 min")
+        #expect(preset.primaryText == "EMOM\(UISeparator.dot)20 min")
     }
 
     @Test func primaryText_formatsAMRAPCorrectly() {
@@ -77,7 +77,7 @@ struct TimerPresetTests {
             targetReps: nil
         )
 
-        #expect(preset.primaryText == "AMRAP ⸱ 15 min")
+        #expect(preset.primaryText == "AMRAP\(UISeparator.dot)15 min")
     }
 
     @Test func secondaryText_includesExerciseAndRepsForEMOM() {

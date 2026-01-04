@@ -40,7 +40,7 @@ struct RepsPill: View {
         )
 
         RepsPill(
-            text: AttributedString("DONE ⸱ Hold to close"),
+            text: AttributedString("DONE\(UISeparator.dot)Hold to close"),
             accentColor: .green
         )
     }

@@ -2,6 +2,8 @@
 //  TimerRunnerView.swift
 //  Kraftli Timers
 //
+//  Created by Michael Würsch on 04.01.2026.
+//
 
 import SwiftUI
 
@@ -11,7 +13,7 @@ struct TimerRunnerView: View {
     var body: some View {
         NavigationStack {
             timerContent
-                .navigationTitle("\(preset.exercise?.name ?? "Timer") · \(preset.kind.rawValue)")
+                .navigationTitle("\(preset.exercise?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)")
                 .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -37,4 +39,25 @@ struct TimerRunnerView: View {
         }
         return preset.durationInterval / Double(targetReps)
     }
+}
+
+#Preview("EMOM") {
+    TimerRunnerView(
+        preset: TimerPreset(
+            kind: .emom,
+            durationInterval: 20 * 60,
+            targetReps: 100,
+            exercise: Exercise(name: "6-Count Burpees")
+        )
+    )
+}
+
+#Preview("AMRAP") {
+    TimerRunnerView(
+        preset: TimerPreset(
+            kind: .amrap,
+            durationInterval: 15 * 60,
+            exercise: Exercise(name: "Pull-ups")
+        )
+    )
 }

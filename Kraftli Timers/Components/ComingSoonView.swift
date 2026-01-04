@@ -14,7 +14,7 @@ struct ComingSoonView: View {
 
     init(title: String, description: String, image: String) {
         self.title = title
-        self.description = "Coming soon ⸱ \(description)"
+        self.description = "Coming soon\(UISeparator.dot)\(description)"
         self.image = image
     }
 
