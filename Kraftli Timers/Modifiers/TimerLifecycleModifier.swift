@@ -7,10 +7,18 @@
 
 import SwiftUI
 
+/// Workout completion data passed to the logging callback.
+struct WorkoutCompletionData {
+    let durationSeconds: TimeInterval
+    let repsCompleted: Int?
+    let roundsCompleted: Int?
+}
+
 /// A view modifier that handles common timer lifecycle events:
 /// - Pauses timer when app enters background
 /// - Manages screen idle timer
 /// - Triggers completion events
+/// - Logs completed workouts
 /// - Cleans up on disappear
 struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     /// The timer model being observed
@@ -21,6 +29,8 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     let onPause: () -> Void
     /// Called when the view disappears
     let onDisappear: () -> Void
+    /// Called when the workout completes (timer reaches zero). Used for logging.
+    let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -42,6 +52,12 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
             .onChange(of: timer.totalTimeRemaining) { oldValue, newValue in
                 if oldValue > 0 && newValue == 0 {
                     session.onTimerCompleted()
+                    let completionData = WorkoutCompletionData(
+                        durationSeconds: timer.totalDuration,
+                        repsCompleted: timer.completedReps,
+                        roundsCompleted: timer.completedRounds
+                    )
+                    onWorkoutCompleted?(completionData)
                 }
             }
     }
@@ -55,17 +71,20 @@ extension View {
     ///   - session: The session state for hint/confetti
     ///   - onPause: Called when timer should pause (e.g., app backgrounded)
     ///   - onDisappear: Called when view disappears
+    ///   - onWorkoutCompleted: Called when workout completes (timer reaches zero)
     func timerLifecycle<T: WorkoutTimer>(
         timer: T,
         session: TimerSessionState,
         onPause: @escaping () -> Void,
-        onDisappear: @escaping () -> Void
+        onDisappear: @escaping () -> Void,
+        onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil
     ) -> some View {
         modifier(TimerLifecycleModifier(
             timer: timer,
             session: session,
             onPause: onPause,
-            onDisappear: onDisappear
+            onDisappear: onDisappear,
+            onWorkoutCompleted: onWorkoutCompleted
         ))
     }
 }

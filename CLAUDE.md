@@ -45,7 +45,8 @@ Learning project: educational value matters as much as working code. Explain Swi
 7. Present options with tradeoffs when multiple approaches exist
 
 ## Commands
-- Build & run tests: `swift test`
+- Build: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 17 Pro" build`
+- Run tests: `swift test`
 - Run in simulator: Xcode
 
 ## Documentation

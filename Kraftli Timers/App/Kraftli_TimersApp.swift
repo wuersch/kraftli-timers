@@ -15,7 +15,8 @@ struct Kraftli_TimersApp: App {
     init() {
         let schema = Schema([
             Exercise.self,
-            TimerPreset.self
+            TimerPreset.self,
+            WorkoutLog.self
         ])
         let modelConfiguration = ModelConfiguration(
             schema: schema,
