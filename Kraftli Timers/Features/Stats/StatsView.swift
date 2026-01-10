@@ -125,7 +125,7 @@ struct StatsView: View {
                     .cornerRadius(4)
                 }
                 .chartXAxis {
-                    AxisMarks(values: .automatic) { value in
+                    AxisMarks(values: chartData.map(\.date)) { value in
                         if let date = value.as(Date.self) {
                             AxisValueLabel {
                                 Text(xAxisLabel(for: date))
