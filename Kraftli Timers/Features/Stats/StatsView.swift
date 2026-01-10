@@ -71,6 +71,7 @@ struct StatsView: View {
                 periodPicker
                 summarySection
                 chartSection
+                allWorkoutsLink
                 exercisesSection
             }
             .padding()
@@ -153,22 +154,30 @@ struct StatsView: View {
         }
     }
 
+    // MARK: - All Workouts Link
+    private var allWorkoutsLink: some View {
+        NavigationLink {
+            AllWorkoutsView()
+        } label: {
+            HStack {
+                Label("All Workouts", systemImage: "list.bullet")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Exercises Section
     private var exercisesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("By Exercise")
-                    .font(.headline)
-
-                Spacer()
-
-                NavigationLink {
-                    AllWorkoutsView()
-                } label: {
-                    Text("Show All")
-                        .font(.subheadline)
-                }
-            }
+            Text("By Exercise")
+                .font(.headline)
 
             if exerciseStats.isEmpty {
                 Text("No exercises in this period")
