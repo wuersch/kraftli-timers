@@ -28,7 +28,7 @@ struct StatsView: View {
     }
 
     private var chartData: [ChartDataPoint] {
-        statsService.totalMinutesPerDay(workouts: filteredWorkouts, period: selectedPeriod)
+        statsService.totalMinutesPerDay(workouts: filteredWorkouts, period: selectedPeriod, referenceDate: Date())
     }
 
     private var exerciseStats: [ExerciseStats] {
@@ -125,8 +125,13 @@ struct StatsView: View {
                     .cornerRadius(4)
                 }
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: selectedPeriod.chartUnit)) { value in
-                        AxisValueLabel(format: selectedPeriod.dateFormatStyle)
+                    AxisMarks(values: .automatic) { value in
+                        if let date = value.as(Date.self) {
+                            AxisValueLabel {
+                                Text(xAxisLabel(for: date))
+                                    .font(.caption2)
+                            }
+                        }
                     }
                 }
                 .chartYAxis {
@@ -185,6 +190,35 @@ struct StatsView: View {
             }
         }
     }
+
+    // MARK: - Chart Helpers
+
+    /// Formats date for x-axis labels based on the selected period.
+    /// - Week: Mon, Tue, Wed, etc.
+    /// - Month: Day numbers (1, 8, 15, 22, 29)
+    /// - Year: Single letter month (J, F, M, A, M, J, J, A, S, O, N, D)
+    private func xAxisLabel(for date: Date) -> String {
+        let calendar = Calendar.current
+
+        switch selectedPeriod {
+        case .week:
+            // Short weekday: Mon, Tue, Wed, etc.
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE"
+            return formatter.string(from: date)
+
+        case .month:
+            // Day of month: 1, 8, 15, etc.
+            let day = calendar.component(.day, from: date)
+            return "\(day)"
+
+        case .year:
+            // Single letter month: J, F, M, etc.
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMMMM" // Single letter month
+            return formatter.string(from: date)
+        }
+    }
 }
 
 // MARK: - Summary Card
@@ -228,14 +262,6 @@ extension TimePeriod {
         case .week: return .day
         case .month: return .day
         case .year: return .month
-        }
-    }
-
-    var dateFormatStyle: Date.FormatStyle {
-        switch self {
-        case .week: return .dateTime.weekday(.abbreviated)
-        case .month: return .dateTime.day()
-        case .year: return .dateTime.month(.abbreviated)
         }
     }
 }
