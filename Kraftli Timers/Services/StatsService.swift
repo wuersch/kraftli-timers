@@ -53,13 +53,18 @@ protocol StatsService {
 
     /// Computes total minutes per day/month for chart display.
     ///
+    /// Generates data points for ALL time slots in the period (including zeros),
+    /// matching Apple Health's approach of showing the complete time range.
+    ///
     /// - Parameters:
     ///   - workouts: Workout logs to aggregate (should be pre-filtered by period).
     ///   - period: The time period (determines grouping granularity).
+    ///   - referenceDate: The reference date for generating the full range.
     /// - Returns: Array of data points with date and total minutes.
     func totalMinutesPerDay(
         workouts: [WorkoutLog],
-        period: TimePeriod
+        period: TimePeriod,
+        referenceDate: Date
     ) -> [ChartDataPoint]
 
     /// Groups workouts by exercise and computes aggregate statistics.
@@ -90,10 +95,12 @@ final class DefaultStatsService: StatsService {
 
     func totalMinutesPerDay(
         workouts: [WorkoutLog],
-        period: TimePeriod
+        period: TimePeriod,
+        referenceDate: Date = Date()
     ) -> [ChartDataPoint] {
         let calendar = Calendar.current
         let grouping = period.chartGrouping
+        let range = period.dateRange(from: referenceDate)
 
         // Group workouts by date component
         var grouped: [Date: Int] = [:]
@@ -110,10 +117,29 @@ final class DefaultStatsService: StatsService {
             grouped[groupDate, default: 0] += minutes
         }
 
-        // Convert to sorted array of data points
-        return grouped
-            .map { ChartDataPoint(date: $0.key, minutes: $0.value) }
-            .sorted { $0.date < $1.date }
+        // Generate ALL time slots for the period (including zeros)
+        var allDataPoints: [ChartDataPoint] = []
+        var currentDate = range.start
+
+        while currentDate <= range.end {
+            let components: Set<Calendar.Component> = grouping == .month
+                ? [.year, .month]
+                : [.year, .month, .day]
+
+            let dateComponents = calendar.dateComponents(components, from: currentDate)
+            guard let normalizedDate = calendar.date(from: dateComponents) else {
+                currentDate = calendar.date(byAdding: grouping, value: 1, to: currentDate) ?? currentDate.addingTimeInterval(86400)
+                continue
+            }
+
+            let minutes = grouped[normalizedDate] ?? 0
+            allDataPoints.append(ChartDataPoint(date: normalizedDate, minutes: minutes))
+
+            // Advance to next time slot
+            currentDate = calendar.date(byAdding: grouping, value: 1, to: currentDate) ?? currentDate.addingTimeInterval(86400)
+        }
+
+        return allDataPoints
     }
 
     func groupedByExercise(

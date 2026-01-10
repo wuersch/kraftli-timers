@@ -24,28 +24,35 @@ enum TimePeriod: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Calculates the date range for this period ending at the reference date.
+    /// Calculates the date range for this period based on calendar boundaries.
     ///
-    /// - Parameter referenceDate: The end date of the range (typically today).
+    /// - Parameter referenceDate: The reference date (typically today).
     /// - Returns: A tuple containing the start and end dates of the period.
     func dateRange(from referenceDate: Date = Date()) -> (start: Date, end: Date) {
         let calendar = Calendar.current
-        let endOfDay = calendar.startOfDay(for: referenceDate).addingTimeInterval(86400 - 1)
 
-        let startDate: Date
         switch self {
         case .week:
-            // Last 7 days including today
-            startDate = calendar.startOfDay(for: referenceDate.addingTimeInterval(-6 * 86400))
-        case .month:
-            // Last 30 days including today
-            startDate = calendar.startOfDay(for: referenceDate.addingTimeInterval(-29 * 86400))
-        case .year:
-            // Last 365 days including today
-            startDate = calendar.startOfDay(for: referenceDate.addingTimeInterval(-364 * 86400))
-        }
+            // Current calendar week (Monday to Sunday)
+            guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: referenceDate) else {
+                return (referenceDate, referenceDate)
+            }
+            return (start: weekInterval.start, end: weekInterval.end.addingTimeInterval(-1))
 
-        return (start: startDate, end: endOfDay)
+        case .month:
+            // Current calendar month
+            guard let monthInterval = calendar.dateInterval(of: .month, for: referenceDate) else {
+                return (referenceDate, referenceDate)
+            }
+            return (start: monthInterval.start, end: monthInterval.end.addingTimeInterval(-1))
+
+        case .year:
+            // Current calendar year
+            guard let yearInterval = calendar.dateInterval(of: .year, for: referenceDate) else {
+                return (referenceDate, referenceDate)
+            }
+            return (start: yearInterval.start, end: yearInterval.end.addingTimeInterval(-1))
+        }
     }
 
     /// Number of data points to show in charts for this period.
