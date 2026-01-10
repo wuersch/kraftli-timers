@@ -12,13 +12,19 @@ struct ContentView: View {
         TabView {
             NavigationStack {
                 TimerPresetView()
-            }.tabItem{
-                Label("Timers", systemImage: "timer")
+            }.tabItem {
+                Label("Timers", systemImage: "timer.circle.fill")
+            }
+
+            NavigationStack {
+                StatsView()
+            }.tabItem {
+                Label("Stats", systemImage: "chart.bar.fill")
             }
 
             NavigationStack {
                 ComingSoonView(title: "Settings", description: "Adjust settings and more", image: "gearshape")
-            }.tabItem{
+            }.tabItem {
                 Label("Settings", systemImage: "gearshape")
             }
         }

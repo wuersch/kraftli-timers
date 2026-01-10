@@ -15,7 +15,7 @@ class AMRAPTimerModel: WorkoutTimer {
     @MainActor private(set) var roundsCompleted = 0
 
     // MARK: - Private Properties
-    private let totalDuration: TimeInterval
+    let totalDuration: TimeInterval
     private let timerCoordinator: TimerCoordinator
     private let audioFeedbackProvider: AudioFeedbackProvider
 
@@ -31,6 +31,16 @@ class AMRAPTimerModel: WorkoutTimer {
     @MainActor
     var elapsedTime: TimeInterval {
         totalDuration - totalTimeRemaining
+    }
+
+    // MARK: - WorkoutTimer Protocol
+    var completedReps: Int? {
+        nil
+    }
+
+    @MainActor
+    var completedRounds: Int? {
+        roundsCompleted
     }
 
     // MARK: - Initialization

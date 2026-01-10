@@ -201,11 +201,97 @@ Kraftli Timers is a native iOS app designed for high-intensity interval training
 
 ---
 
+### Workout Stats (Status: 🚧 In Progress)
+**User Story**: As a user, I want to track my completed workouts and see my progress over time.
+
+**Architecture**: See [ARCHITECTURE-workout-stats.md](./ARCHITECTURE-workout-stats.md) for implementation details.
+
+**Design Principles**:
+- Minimalist - show only meaningful, accurate data
+- No estimated calories (too many variables, inaccurate)
+- No HealthKit integration yet (requires Watch companion for accurate data)
+- Data complements future HealthKit sessions (not wasted effort)
+
+**Core Functionality**:
+- ✅ Log completed workouts automatically (when timer reaches zero)
+- ✅ Only log complete workouts (swipe-away = no log, no confirmation dialog)
+- ✅ Snapshot workout parameters (no preset relationship - historical accuracy)
+- Stats dashboard with time period filtering
+- Per-exercise stats cards
+- Bar chart visualization (Swift Charts)
+- Global workout list for viewing/editing
+
+**Data Logged per Workout**:
+- Date/time of completion
+- Exercise name (snapshot, not reference)
+- Timer kind (EMOM/AMRAP)
+- Duration (minutes)
+- Reps completed (EMOM) or Rounds completed (AMRAP)
+
+**Derived Data** (computed at display time):
+- Muscle group (looked up from exercise library by name)
+- Total minutes per period
+- Workout count per period
+
+**Explicitly Excluded (for now)**:
+- ❌ Estimated calories
+- ❌ Personal bests (complex edge cases, deferred)
+- ❌ Heatmap calendars
+- ❌ Multi-exercise comparison charts
+- ❌ AI-driven recommendations
+- ❌ Post-workout summary screen
+
+**UI Structure**:
+```
+Stats Tab (new)
+├── Summary section
+│   ├── Time period picker (Week/Month/Year, default: Week)
+│   └── Total minutes chart (bar chart, Swift Charts)
+├── Per-exercise stats cards
+│   └── Tap card → Filtered workout list (view only)
+└── "Show All Workouts" → Global workout list (edit/delete)
+```
+
+**Empty State**: "Complete a workout to see your stats"
+
+**Visual Design**:
+- Apple Health-inspired: rounded cards, colorful accents
+- Works on dark/light backgrounds (future gradient-ready)
+- Native SwiftUI components, Swift Charts
+- No third-party frameworks
+
+**Data Model**:
+```swift
+@Model
+final class WorkoutLog {
+    var id: UUID
+    var date: Date
+    var exerciseName: String
+    var timerKindRawValue: String  // "EMOM" or "AMRAP"
+    var durationSeconds: TimeInterval
+    var repsCompleted: Int?        // EMOM only
+    var roundsCompleted: Int?      // AMRAP only
+
+    // Computed
+    var timerKind: TimerKind
+    var durationMinutes: Int
+}
+```
+
+**Deferred to Later Iterations**:
+- 🔮 Personal bests (needs more data/pattern understanding)
+- 🔮 Trend arrows (needs 6+ months of data)
+- 🔮 Editing individual workout logs
+- 🔮 Post-workout summary screen (valuable with HealthKit)
+
+---
+
 ## User Interface
 
 ### Tab Structure
 - **Tab 1: Timers** - Main timer preset management and launching (✅ Implemented)
-- **Tab 2: Settings** - App configuration (📋 Placeholder)
+- **Tab 2: Stats** - Workout statistics and history (🚧 In Progress)
+- **Tab 3: Settings** - App configuration (📋 Placeholder)
 
 ### Timer Preset List (Timers Tab)
 - NavigationStack with "Timers" title
@@ -344,6 +430,24 @@ enum Difficulty: String, Codable, CaseIterable {
 }
 ```
 
+### WorkoutLog (SwiftData @Model)
+```swift
+@Model
+final class WorkoutLog {
+    var id: UUID
+    var date: Date
+    var exerciseName: String           // Snapshot (not reference)
+    var timerKindRawValue: String      // "EMOM" or "AMRAP"
+    var durationSeconds: TimeInterval
+    var repsCompleted: Int?            // EMOM only
+    var roundsCompleted: Int?          // AMRAP only
+
+    // Computed properties
+    var timerKind: TimerKind
+    var durationMinutes: Int
+}
+```
+
 ---
 
 ## Architecture
@@ -365,6 +469,8 @@ enum Difficulty: String, Codable, CaseIterable {
 - `ExerciseFilterSheet`: Half-height filter modal
 - `EMOMTimerView`: Full-screen EMOM timer interface
 - `AMRAPTimerView`: Full-screen AMRAP timer
+- `StatsView`: Workout statistics dashboard (🚧 In Progress)
+- `WorkoutListView`: Global workout log list (🚧 In Progress)
 - `ComingSoonView`: Reusable placeholder view
 
 **UI Components**:
@@ -379,6 +485,7 @@ enum Difficulty: String, Codable, CaseIterable {
 **Models**:
 - `TimerPreset`: SwiftData @Model for preset persistence
 - `Exercise`: SwiftData @Model for exercise data (v2+ ready)
+- `WorkoutLog`: SwiftData @Model for completed workout history (🚧 In Progress)
 - `TimerKind`: Enum for timer types (EMOM/AMRAP)
 - `EMOMTimerModel`: EMOM timer logic with interval tracking (@Observable)
 - `AMRAPTimerModel`: AMRAP timer logic with round counting (@Observable)
@@ -419,6 +526,7 @@ enum Difficulty: String, Codable, CaseIterable {
 ### Must Complete
 - [x] AMRAP Timer UI (implemented with single indigo ring, tap-to-count gestures)
 - [x] Preset Persistence with SwiftData (@Model classes, @Query)
+- [ ] Workout Stats feature (🚧 In Progress)
 - [ ] Settings screen implementation
 
 ---
@@ -504,29 +612,25 @@ struct ProgramPhase: Identifiable {
 
 ---
 
-### Workout History & Stats (Status: 🔮 Future)
-**User Story**: As a user, I want to track my completed workouts and see my progress over time.
+### Workout Stats Enhancements (Status: 🔮 Future)
+**Note**: Core Workout Stats moved to v1. This section covers future enhancements.
 
-**Functionality**:
-- Log completed workouts (date, duration, exercise, rounds/reps)
-- Stats views: daily, weekly, monthly overviews
-- Program progress visualization (timeline, milestones)
-- Celebration moments for achievements
+**Personal Bests**:
+- Track best performance per exercise
+- Handle complexity: same reps in different durations (100 burpees in 10 min vs 60 min)
+- Requires more data and pattern understanding
 
-**Data Model** (Draft):
-```swift
-struct WorkoutLog: Identifiable {
-    let id: UUID
-    let date: Date
-    let preset: TimerPreset
-    let programId: UUID?
-    let duration: Duration
-    let roundsCompleted: Int?
-    let caloriesEstimate: Double?
-}
-```
+**Trend Analysis**:
+- Trend arrows (up/down) like Apple Health
+- Requires 6+ months of historical data
+- 90-day vs 365-day comparison
 
-**Priority**: 3 (tracking layer)
+**Program Integration**:
+- Link workouts to program phases
+- Progress visualization (timeline, milestones)
+- `programId` field in WorkoutLog (reserved for future)
+
+**Priority**: After v1 Stats + Programs features
 
 ---
 
@@ -604,4 +708,4 @@ struct WorkoutLog: Identifiable {
 
 ---
 
-*Last Updated: 2026-01-03 (Implemented Exercise Selection with filtering, expandable cards, muscle group/difficulty tags, and Pill component architecture)*
+*Last Updated: 2026-01-10 (Added Workout Stats feature spec - logging, stats dashboard, Swift Charts)*

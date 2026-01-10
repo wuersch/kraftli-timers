@@ -20,7 +20,7 @@ public class EMOMTimerModel: WorkoutTimer {
     
     // MARK: - Private Properties
     private let intervalWarningThreshold: TimeInterval
-    private let totalDuration: TimeInterval
+    private let _totalDuration: TimeInterval
     private let intervalDuration: TimeInterval
     private let timerCoordinator: TimerCoordinator
     private let audioFeedbackProvider: AudioFeedbackProvider
@@ -57,6 +57,20 @@ public class EMOMTimerModel: WorkoutTimer {
     var totalIntervals: Int {
         Int(totalDuration / intervalDuration)
     }
+
+    // MARK: - WorkoutTimer Protocol
+    var totalDuration: TimeInterval {
+        _totalDuration
+    }
+
+    @MainActor
+    var completedReps: Int? {
+        completedIntervals
+    }
+
+    var completedRounds: Int? {
+        nil
+    }
     
     // MARK: - Initialization
     init(
@@ -71,7 +85,7 @@ public class EMOMTimerModel: WorkoutTimer {
         precondition(totalDuration >= intervalDuration, "totalDuration must be >= intervalDuration")
         precondition(intervalWarningThreshold >= 0, "intervalWarningThreshold must be >= 0")
 
-        self.totalDuration = totalDuration
+        self._totalDuration = totalDuration
         self.intervalDuration = intervalDuration
         self.intervalWarningThreshold = intervalWarningThreshold
         self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)

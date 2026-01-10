@@ -30,6 +30,9 @@ struct AMRAPTimerView: View {
     @State private var dragOffset: CGFloat = 0
     @State private var isHandleActive = false
 
+    /// Called when the workout completes (timer reaches zero). Used for logging.
+    private let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
+
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private static let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
@@ -40,8 +43,12 @@ struct AMRAPTimerView: View {
     }
 
     // MARK: - Initialization
-    init(timerModel: AMRAPTimerModel = AMRAPTimerModel()) {
+    init(
+        timerModel: AMRAPTimerModel = AMRAPTimerModel(),
+        onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil
+    ) {
         self.timerModel = timerModel
+        self.onWorkoutCompleted = onWorkoutCompleted
     }
 
     // MARK: - Styling
@@ -210,7 +217,8 @@ struct AMRAPTimerView: View {
             timer: timerModel,
             session: session,
             onPause: { timerModel.pause() },
-            onDisappear: { timerModel.pause() }
+            onDisappear: { timerModel.pause() },
+            onWorkoutCompleted: onWorkoutCompleted
         )
         .onAppear {
             Self.lightHaptic.prepare()
