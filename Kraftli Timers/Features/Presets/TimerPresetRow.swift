@@ -59,3 +59,24 @@ struct TimerPresetRow: View {
         .accessibilityLabel("\(preset.primaryText), \(preset.secondaryText)")
     }
 }
+
+#Preview("AMRAP") {
+    let preset = TimerPreset(
+        id: UUID(),
+        kind: .amrap,
+        durationInterval: 300,
+        exercise: Exercise(id: UUID(), name: "Squats")
+    )
+    TimerPresetRow(preset: preset, didTapRun: { _ in }, didTapEdit: { _ in })
+}
+
+#Preview("EMOM") {
+    let preset = TimerPreset(
+        id: UUID(),
+        kind: .emom,
+        durationInterval: 300,
+        targetReps: 10,
+        exercise: Exercise(id: UUID(), name: "6-Count Burpees")
+    )
+    TimerPresetRow(preset: preset, didTapRun: { _ in }, didTapEdit: { _ in })
+}

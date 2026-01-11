@@ -5,8 +5,8 @@
 //  Displays a list of workout logs with optional editing.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct WorkoutListView: View {
     // MARK: - Properties
@@ -39,8 +39,18 @@ struct WorkoutListView: View {
         List {
             ForEach(workouts) { workout in
                 WorkoutRow(workout: workout)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(
+                        EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+                    )
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollDisabled(workouts.isEmpty)
+        .background(Color(.systemBackground))
+
     }
 }
 
@@ -49,7 +59,8 @@ struct WorkoutListView: View {
 /// Uses the same edit mode pattern as TimerPresetView.
 struct AllWorkoutsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \WorkoutLog.date, order: .reverse) private var workouts: [WorkoutLog]
+    @Query(sort: \WorkoutLog.date, order: .reverse) private var workouts:
+        [WorkoutLog]
 
     @State private var editMode: EditMode = .inactive
 
@@ -57,9 +68,18 @@ struct AllWorkoutsView: View {
         List {
             ForEach(workouts) { workout in
                 WorkoutRow(workout: workout)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(
+                        EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+                    )
             }
             .onDelete(perform: deleteWorkouts)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollDisabled(workouts.isEmpty)
+        .background(Color(.systemBackground))
         .overlay {
             if workouts.isEmpty {
                 ContentUnavailableView(
@@ -75,12 +95,15 @@ struct AllWorkoutsView: View {
                 if !workouts.isEmpty {
                     Button {
                         withAnimation {
-                            editMode = (editMode == .active) ? .inactive : .active
+                            editMode =
+                                (editMode == .active) ? .inactive : .active
                         }
                     } label: {
                         Text(editMode == .active ? "Done" : "Edit")
                     }
-                    .accessibilityLabel(editMode == .active ? "Done editing" : "Edit workouts")
+                    .accessibilityLabel(
+                        editMode == .active ? "Done editing" : "Edit workouts"
+                    )
                 }
             }
         }
@@ -112,29 +135,19 @@ private struct WorkoutRow: View {
 
                 Spacer()
 
-                Text(workout.timerKind.rawValue)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(workout.timerKind.color.opacity(0.2))
-                    .foregroundStyle(workout.timerKind.color)
-                    .clipShape(Capsule())
+                Pill(text: workout.timerKind.rawValue, color: workout.timerKind.color, fontSize: 11)
             }
 
-            HStack {
-                Text(workout.formattedDate)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Text(UISeparator.dot)
-                    .foregroundStyle(.secondary)
-
-                Text(workout.summaryText)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text("\(workout.formattedDate)\(UISeparator.dot)\(workout.summaryText)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 4)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .contentShape(Rectangle())
     }
 }
 
@@ -143,9 +156,27 @@ private struct WorkoutRow: View {
     NavigationStack {
         WorkoutListView(
             workouts: [
-                WorkoutLog(exerciseName: "6-Count Burpees", timerKind: .emom, durationSeconds: 1200, repsCompleted: 100, roundsCompleted: nil),
-                WorkoutLog(exerciseName: "Pull-ups", timerKind: .amrap, durationSeconds: 900, repsCompleted: nil, roundsCompleted: 15),
-                WorkoutLog(exerciseName: "Squats", timerKind: .amrap, durationSeconds: 600, repsCompleted: nil, roundsCompleted: 30)
+                WorkoutLog(
+                    exerciseName: "6-Count Burpees",
+                    timerKind: .emom,
+                    durationSeconds: 1200,
+                    repsCompleted: 100,
+                    roundsCompleted: nil
+                ),
+                WorkoutLog(
+                    exerciseName: "Pull-ups",
+                    timerKind: .amrap,
+                    durationSeconds: 900,
+                    repsCompleted: nil,
+                    roundsCompleted: 15
+                ),
+                WorkoutLog(
+                    exerciseName: "Squats",
+                    timerKind: .amrap,
+                    durationSeconds: 600,
+                    repsCompleted: nil,
+                    roundsCompleted: 30
+                ),
             ],
             title: "Recent Workouts"
         )

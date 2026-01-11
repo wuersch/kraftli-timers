@@ -28,23 +28,9 @@ struct ExerciseStatsCard: View {
                         .foregroundStyle(.primary)
                 }
 
-                HStack(spacing: 4) {
-                    Text(stats.summaryText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    if let reps = stats.totalReps {
-                        Text("\(UISeparator.dot)\(reps) reps")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if let rounds = stats.totalRounds {
-                        Text("\(UISeparator.dot)\(rounds) rounds")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -59,6 +45,20 @@ struct ExerciseStatsCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Tap to view workouts")
+    }
+    
+    private var description: String {
+        var description: String = stats.summaryText
+        
+        if let reps = stats.totalReps {
+            description += "\(UISeparator.dot)\(reps) reps"
+        }
+        
+        if let rounds = stats.totalRounds {
+            description += "\(UISeparator.dot)\(rounds) rounds"
+        }
+        
+        return description
     }
 
     private var accessibilityLabel: String {
