@@ -8,10 +8,27 @@
 import SwiftData
 import SwiftUI
 
+// MARK: - Sheet State
+
+/// Sheet state for workout editing.
+enum WorkoutActiveSheet: Identifiable {
+    case edit(WorkoutLog)
+
+    var id: String {
+        switch self {
+        case .edit(let workout): return workout.id.uuidString
+        }
+    }
+}
+
+// MARK: - Workout List View
+
 struct WorkoutListView: View {
     // MARK: - Properties
     let workouts: [WorkoutLog]
     let title: String
+
+    @State private var activeSheet: WorkoutActiveSheet?
 
     // MARK: - Body
     var body: some View {
@@ -23,6 +40,12 @@ struct WorkoutListView: View {
             }
         }
         .navigationTitle(title)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .edit(let workout):
+                WorkoutLogEditorView(workout: workout)
+            }
+        }
     }
 
     // MARK: - Empty State
@@ -38,19 +61,20 @@ struct WorkoutListView: View {
     private var workoutList: some View {
         List {
             ForEach(workouts) { workout in
-                WorkoutRow(workout: workout)
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(
-                        EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
-                    )
+                WorkoutRow(workout: workout) { tappedWorkout in
+                    activeSheet = .edit(tappedWorkout)
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .listRowInsets(
+                    EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+                )
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDisabled(workouts.isEmpty)
         .background(Color(.systemBackground))
-
     }
 }
 
@@ -59,20 +83,22 @@ struct WorkoutListView: View {
 /// Uses the same edit mode pattern as TimerPresetView.
 struct AllWorkoutsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \WorkoutLog.date, order: .reverse) private var workouts:
-        [WorkoutLog]
+    @Query(sort: \WorkoutLog.date, order: .reverse) private var workouts: [WorkoutLog]
 
     @State private var editMode: EditMode = .inactive
+    @State private var activeSheet: WorkoutActiveSheet?
 
     var body: some View {
         List {
             ForEach(workouts) { workout in
-                WorkoutRow(workout: workout)
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(
-                        EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
-                    )
+                WorkoutRow(workout: workout) { tappedWorkout in
+                    activeSheet = .edit(tappedWorkout)
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .listRowInsets(
+                    EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+                )
             }
             .onDelete(perform: deleteWorkouts)
         }
@@ -95,8 +121,7 @@ struct AllWorkoutsView: View {
                 if !workouts.isEmpty {
                     Button {
                         withAnimation {
-                            editMode =
-                                (editMode == .active) ? .inactive : .active
+                            editMode = (editMode == .active) ? .inactive : .active
                         }
                     } label: {
                         Text(editMode == .active ? "Done" : "Edit")
@@ -108,6 +133,12 @@ struct AllWorkoutsView: View {
             }
         }
         .environment(\.editMode, $editMode)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .edit(let workout):
+                WorkoutLogEditorView(workout: workout)
+            }
+        }
         .onChange(of: workouts.isEmpty) { _, isEmpty in
             if isEmpty {
                 editMode = .inactive
@@ -123,8 +154,10 @@ struct AllWorkoutsView: View {
 }
 
 // MARK: - Workout Row
-private struct WorkoutRow: View {
+
+struct WorkoutRow: View {
     let workout: WorkoutLog
+    var didTapEdit: ((WorkoutLog) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -148,6 +181,9 @@ private struct WorkoutRow: View {
                 .fill(Color(.secondarySystemBackground))
         )
         .contentShape(Rectangle())
+        .onTapGesture {
+            didTapEdit?(workout)
+        }
     }
 }
 
