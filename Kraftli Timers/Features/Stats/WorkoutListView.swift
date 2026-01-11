@@ -25,10 +25,13 @@ enum WorkoutActiveSheet: Identifiable {
 
 struct WorkoutListView: View {
     // MARK: - Properties
+    @Environment(\.modelContext) private var modelContext
+
     let workouts: [WorkoutLog]
     let title: String
 
     @State private var activeSheet: WorkoutActiveSheet?
+    @State private var editMode: EditMode = .inactive
 
     // MARK: - Body
     var body: some View {
@@ -40,6 +43,23 @@ struct WorkoutListView: View {
             }
         }
         .navigationTitle(title)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if !workouts.isEmpty {
+                    Button {
+                        withAnimation {
+                            editMode = (editMode == .active) ? .inactive : .active
+                        }
+                    } label: {
+                        Text(editMode == .active ? "Done" : "Edit")
+                    }
+                    .accessibilityLabel(
+                        editMode == .active ? "Done editing" : "Edit workouts"
+                    )
+                }
+            }
+        }
+        .environment(\.editMode, $editMode)
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .edit(let workout):
@@ -70,11 +90,20 @@ struct WorkoutListView: View {
                     EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
                 )
             }
+            .onDelete(perform: deleteWorkouts)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDisabled(workouts.isEmpty)
         .background(Color(.systemBackground))
+    }
+
+    // MARK: - Actions
+
+    private func deleteWorkouts(at offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(workouts[index])
+        }
     }
 }
 
