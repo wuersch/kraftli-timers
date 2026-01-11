@@ -153,6 +153,8 @@ Requires Exercise Library and Programs features.
 - Rest periods between intervals
 - Custom audio cues
 - Tabata timer mode
+- Simple timer mode
+- Adaptive presets (automatic progression based on feedback)
 
 ---
 
