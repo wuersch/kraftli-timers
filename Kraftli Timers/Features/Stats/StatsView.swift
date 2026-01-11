@@ -126,11 +126,24 @@ struct StatsView: View {
                     .cornerRadius(4)
                 }
                 .chartXAxis {
-                    AxisMarks(values: chartData.map(\.date)) { value in
-                        if let date = value.as(Date.self) {
-                            AxisValueLabel {
-                                Text(xAxisLabel(for: date))
-                                    .font(.caption2)
+                    if selectedPeriod == .month {
+                        // Use automatic spacing for month (too many days to show all)
+                        AxisMarks(values: .automatic) { value in
+                            if let date = value.as(Date.self) {
+                                AxisValueLabel {
+                                    Text(xAxisLabel(for: date))
+                                        .font(.caption2)
+                                }
+                            }
+                        }
+                    } else {
+                        // Show all labels for week (7 days) and year (12 months)
+                        AxisMarks(values: chartData.map(\.date)) { value in
+                            if let date = value.as(Date.self) {
+                                AxisValueLabel {
+                                    Text(xAxisLabel(for: date))
+                                        .font(.caption2)
+                                }
                             }
                         }
                     }
