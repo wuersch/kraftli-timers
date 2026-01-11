@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import Charts
 
 struct StatsView: View {
     // MARK: - Properties
@@ -113,57 +112,11 @@ struct StatsView: View {
     @ViewBuilder
     private var chartSection: some View {
         if !chartData.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Activity")
-                    .font(.headline)
-
-                Chart(chartData) { dataPoint in
-                    BarMark(
-                        x: .value("Date", dataPoint.date, unit: selectedPeriod.chartUnit),
-                        y: .value("Minutes", dataPoint.minutes)
-                    )
-                    .foregroundStyle(Color.blue.gradient)
-                    .cornerRadius(4)
-                }
-                .chartXAxis {
-                    if selectedPeriod == .month {
-                        // Use automatic spacing for month (too many days to show all)
-                        AxisMarks(values: .automatic) { value in
-                            if let date = value.as(Date.self) {
-                                AxisValueLabel {
-                                    Text(xAxisLabel(for: date))
-                                        .font(.caption2)
-                                }
-                            }
-                        }
-                    } else {
-                        // Show all labels for week (7 days) and year (12 months)
-                        AxisMarks(values: chartData.map(\.date)) { value in
-                            if let date = value.as(Date.self) {
-                                AxisValueLabel {
-                                    Text(xAxisLabel(for: date))
-                                        .font(.caption2)
-                                }
-                            }
-                        }
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks { value in
-                        AxisGridLine()
-                        AxisValueLabel {
-                            if let minutes = value.as(Int.self) {
-                                Text("\(minutes)m")
-                            }
-                        }
-                    }
-                }
-                .frame(height: 200)
-                .accessibilityLabel("Activity chart showing \(totalMinutes) total minutes across \(chartData.count) \(selectedPeriod == .year ? "months" : "days")")
-            }
-            .padding()
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            ActivityChart(
+                chartData: chartData,
+                selectedPeriod: selectedPeriod,
+                totalMinutes: totalMinutes
+            )
         }
     }
 
@@ -213,79 +166,6 @@ struct StatsView: View {
         }
     }
 
-    // MARK: - Chart Helpers
-
-    /// Formats date for x-axis labels based on the selected period.
-    /// - Week: Mon, Tue, Wed, etc.
-    /// - Month: Day numbers (1, 8, 15, 22, 29)
-    /// - Year: Single letter month (J, F, M, A, M, J, J, A, S, O, N, D)
-    private func xAxisLabel(for date: Date) -> String {
-        let calendar = Calendar.current
-
-        switch selectedPeriod {
-        case .week:
-            // Short weekday: Mon, Tue, Wed, etc.
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEE"
-            return formatter.string(from: date)
-
-        case .month:
-            // Day of month: 1, 8, 15, etc.
-            let day = calendar.component(.day, from: date)
-            return "\(day)"
-
-        case .year:
-            // Single letter month: J, F, M, etc.
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMMMM" // Single letter month
-            return formatter.string(from: date)
-        }
-    }
-}
-
-// MARK: - Summary Card
-private struct SummaryCard: View {
-    let title: String
-    let value: String
-    let unit: String
-    let systemImage: String
-    let iconColor: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: systemImage)
-                    .foregroundStyle(iconColor)
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                Text(unit)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-// MARK: - TimePeriod Chart Extensions
-extension TimePeriod {
-    var chartUnit: Calendar.Component {
-        switch self {
-        case .week: return .day
-        case .month: return .day
-        case .year: return .month
-        }
-    }
 }
 
 // MARK: - Preview

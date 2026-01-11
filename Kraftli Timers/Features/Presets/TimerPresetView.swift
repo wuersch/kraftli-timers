@@ -37,19 +37,12 @@ struct TimerPresetView: View {
                         didTapRun: { presetToRun = $0 },
                         didTapEdit: { activeSheet = .edit($0) }
                     )
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(
-                        EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
-                    )
+                    .cardListRow()
                 }
                 .onDelete(perform: deletePresets)
                 .onMove(perform: movePresets)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .scrollDisabled(presets.isEmpty)
-            .background(Color(.systemBackground))
+            .cardListStyle(isEmpty: presets.isEmpty)
             .overlay {
                 if presets.isEmpty {
                     ContentUnavailableView(
