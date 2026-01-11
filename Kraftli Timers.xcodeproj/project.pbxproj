@@ -33,6 +33,10 @@
 		4C33824D2EF2FA4800135BD7 /* Kraftli TimersTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C3382572EF2FA4800135BD7 /* Kraftli TimersUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4CA514782EFD4F8200048217 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
+		4CFB612C2F13DC2600E5C2D9 /* architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = architecture.md; sourceTree = "<group>"; };
+		4CFB612D2F13DC2600E5C2D9 /* features.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = features.md; sourceTree = "<group>"; };
+		4CFB612E2F13DC2600E5C2D9 /* future.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = future.md; sourceTree = "<group>"; };
+		4CFB612F2F13DC2600E5C2D9 /* ui.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ui.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -95,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				4C21C5A82F008244008D0E89 /* SPEC.md */,
+				4CFB61302F13DC2600E5C2D9 /* docs */,
 				4CA514782EFD4F8200048217 /* CLAUDE.md */,
 				4C33823E2EF2FA4700135BD7 /* Kraftli Timers */,
 				4C3382502EF2FA4800135BD7 /* Kraftli TimersTests */,
@@ -111,6 +116,17 @@
 				4C3382572EF2FA4800135BD7 /* Kraftli TimersUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		4CFB61302F13DC2600E5C2D9 /* docs */ = {
+			isa = PBXGroup;
+			children = (
+				4CFB612C2F13DC2600E5C2D9 /* architecture.md */,
+				4CFB612D2F13DC2600E5C2D9 /* features.md */,
+				4CFB612E2F13DC2600E5C2D9 /* future.md */,
+				4CFB612F2F13DC2600E5C2D9 /* ui.md */,
+			);
+			path = docs;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

@@ -197,6 +197,9 @@ Audio cues for workout timing without watching the screen.
 Currently shows "Coming soon" placeholder.
 
 ### Planned
-- Audio preferences
+- Audio preferences (turn on/off cheer)
+- Confetti preferences (turn on/off)
 - Theme options
 - About section with app version and credits
+- Minimum interval duration for EMOM
+- Choose if number of reps or interval countdown is displayed more prominently in the EMOM timer
