@@ -34,6 +34,14 @@ struct ChartDataPoint: Identifiable {
     var id: Date { date }
 }
 
+/// Aggregated statistics for a muscle group.
+struct MuscleGroupStats: Identifiable {
+    let muscleGroup: MuscleGroup
+    let totalMinutes: Int
+
+    var id: MuscleGroup { muscleGroup }
+}
+
 /// Protocol for computing workout statistics.
 ///
 /// Abstracted as a protocol to enable testing with mock data.
@@ -77,10 +85,32 @@ protocol StatsService {
         workouts: [WorkoutLog],
         exercises: [Exercise]
     ) -> [ExerciseStats]
+
+    /// Groups workouts by muscle group and computes aggregate statistics.
+    ///
+    /// Ignores exercises without muscle groups.
+    ///
+    /// - Parameters:
+    ///   - workouts: Workout logs to aggregate.
+    ///   - exercises: Available exercises (for muscle group lookup).
+    /// - Returns: Array of muscle group statistics, sorted by enum order (fullBody, upperBody, lowerBody, core).
+    func groupedByMuscleGroup(
+        workouts: [WorkoutLog],
+        exercises: [Exercise]
+    ) -> [MuscleGroupStats]
 }
 
 /// Default implementation of StatsService.
 final class DefaultStatsService: StatsService {
+
+    // MARK: - Private Helpers
+
+    /// Builds a lookup dictionary mapping exercise names to Exercise objects.
+    private func buildExerciseLookup(_ exercises: [Exercise]) -> [String: Exercise] {
+        Dictionary(uniqueKeysWithValues: exercises.map { ($0.name, $0) })
+    }
+
+    // MARK: - Public Methods
 
     func filterByPeriod(
         workouts: [WorkoutLog],
@@ -147,9 +177,7 @@ final class DefaultStatsService: StatsService {
         exercises: [Exercise]
     ) -> [ExerciseStats] {
         // Build exercise lookup by name
-        let exercisesByName = Dictionary(
-            uniqueKeysWithValues: exercises.map { ($0.name, $0) }
-        )
+        let exercisesByName = buildExerciseLookup(exercises)
 
         // Group workouts by exercise name
         var grouped: [String: [WorkoutLog]] = [:]
@@ -182,5 +210,35 @@ final class DefaultStatsService: StatsService {
 
         // Sort by total minutes descending
         return stats.sorted { $0.totalMinutes > $1.totalMinutes }
+    }
+
+    func groupedByMuscleGroup(
+        workouts: [WorkoutLog],
+        exercises: [Exercise]
+    ) -> [MuscleGroupStats] {
+        // Build exercise lookup by name
+        let exercisesByName = buildExerciseLookup(exercises)
+
+        // Group workouts by muscle group
+        var grouped: [MuscleGroup: Int] = [:]
+
+        for workout in workouts {
+            // Skip workouts for exercises without muscle groups
+            guard let exercise = exercisesByName[workout.exerciseName],
+                  let muscleGroup = exercise.muscleGroup else {
+                continue
+            }
+
+            let minutes = Int(workout.durationSeconds / 60)
+            grouped[muscleGroup, default: 0] += minutes
+        }
+
+        // Convert to stats array, sorted by enum order
+        return MuscleGroup.allCases.compactMap { muscleGroup in
+            guard let totalMinutes = grouped[muscleGroup] else {
+                return nil
+            }
+            return MuscleGroupStats(muscleGroup: muscleGroup, totalMinutes: totalMinutes)
+        }
     }
 }

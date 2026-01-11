@@ -308,4 +308,109 @@ struct StatsServiceTests {
         #expect(stats.summaryText.contains("3 workouts"))
         #expect(stats.summaryText.contains("45 min"))
     }
+
+    // MARK: - groupedByMuscleGroup Tests
+
+    @Test func groupedByMuscleGroup_aggregatesByMuscleGroup() {
+        let exercises = [
+            Exercise(name: "Burpees", muscleGroup: .fullBody),
+            Exercise(name: "Pull-ups", muscleGroup: .upperBody),
+            Exercise(name: "Squats", muscleGroup: .lowerBody)
+        ]
+
+        let workouts = [
+            makeWorkout(date: Date(), exerciseName: "Burpees", durationMinutes: 20),
+            makeWorkout(date: Date(), exerciseName: "Burpees", durationMinutes: 15),
+            makeWorkout(date: Date(), exerciseName: "Pull-ups", timerKind: .amrap, durationMinutes: 10, reps: nil, rounds: 5)
+        ]
+
+        let stats = service.groupedByMuscleGroup(workouts: workouts, exercises: exercises)
+
+        let fullBodyStats = stats.first { $0.muscleGroup == .fullBody }
+        #expect(fullBodyStats?.totalMinutes == 35) // 20 + 15
+
+        let upperBodyStats = stats.first { $0.muscleGroup == .upperBody }
+        #expect(upperBodyStats?.totalMinutes == 10)
+
+        let lowerBodyStats = stats.first { $0.muscleGroup == .lowerBody }
+        #expect(lowerBodyStats == nil) // No workouts for lower body
+    }
+
+    @Test func groupedByMuscleGroup_ignoresExercisesWithoutMuscleGroup() {
+        let exercises = [
+            Exercise(name: "Burpees", muscleGroup: .fullBody),
+            Exercise(name: "Unknown", muscleGroup: nil)
+        ]
+
+        let workouts = [
+            makeWorkout(date: Date(), exerciseName: "Burpees", durationMinutes: 20),
+            makeWorkout(date: Date(), exerciseName: "Unknown", durationMinutes: 10)
+        ]
+
+        let stats = service.groupedByMuscleGroup(workouts: workouts, exercises: exercises)
+
+        #expect(stats.count == 1)
+        let fullBodyStats = stats.first { $0.muscleGroup == .fullBody }
+        #expect(fullBodyStats?.totalMinutes == 20) // Only Burpees counted
+    }
+
+    @Test func groupedByMuscleGroup_ignoresUnknownExercises() {
+        let exercises = [
+            Exercise(name: "Burpees", muscleGroup: .fullBody)
+        ]
+
+        let workouts = [
+            makeWorkout(date: Date(), exerciseName: "Burpees", durationMinutes: 20),
+            makeWorkout(date: Date(), exerciseName: "NotInDatabase", durationMinutes: 10)
+        ]
+
+        let stats = service.groupedByMuscleGroup(workouts: workouts, exercises: exercises)
+
+        #expect(stats.count == 1)
+        let fullBodyStats = stats.first { $0.muscleGroup == .fullBody }
+        #expect(fullBodyStats?.totalMinutes == 20) // Only known exercise counted
+    }
+
+    @Test func groupedByMuscleGroup_emptyWorkouts_returnsEmpty() {
+        let stats = service.groupedByMuscleGroup(workouts: [], exercises: [])
+
+        #expect(stats.isEmpty)
+    }
+
+    @Test func groupedByMuscleGroup_noExercisesWithMuscleGroups_returnsEmpty() {
+        let exercises = [
+            Exercise(name: "Exercise Without Group", muscleGroup: nil)
+        ]
+
+        let workouts = [
+            makeWorkout(date: Date(), exerciseName: "Exercise Without Group", durationMinutes: 20)
+        ]
+
+        let stats = service.groupedByMuscleGroup(workouts: workouts, exercises: exercises)
+
+        #expect(stats.isEmpty)
+    }
+
+    @Test func groupedByMuscleGroup_floorsMinutes() {
+        let exercises = [
+            Exercise(name: "Burpees", muscleGroup: .fullBody)
+        ]
+
+        // 90 seconds = 1.5 minutes, should floor to 1 minute
+        let workouts = [
+            WorkoutLog(
+                date: Date(),
+                exerciseName: "Burpees",
+                timerKind: .emom,
+                durationSeconds: 90,
+                repsCompleted: 10,
+                roundsCompleted: nil
+            )
+        ]
+
+        let stats = service.groupedByMuscleGroup(workouts: workouts, exercises: exercises)
+
+        let fullBodyStats = stats.first { $0.muscleGroup == .fullBody }
+        #expect(fullBodyStats?.totalMinutes == 1) // Floored
+    }
 }

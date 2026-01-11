@@ -42,6 +42,10 @@ struct StatsView: View {
         filteredWorkouts.count
     }
 
+    private var muscleGroupStats: [MuscleGroupStats] {
+        statsService.groupedByMuscleGroup(workouts: filteredWorkouts, exercises: exercises)
+    }
+
     // MARK: - Body
     var body: some View {
         Group {
@@ -69,6 +73,7 @@ struct StatsView: View {
             VStack(spacing: 20) {
                 periodPicker
                 summarySection
+                muscleGroupSection
                 chartSection
                 allWorkoutsLink
                 exercisesSection
@@ -106,6 +111,11 @@ struct StatsView: View {
                 iconColor: .orange
             )
         }
+    }
+
+    // MARK: - Muscle Group Section
+    private var muscleGroupSection: some View {
+        MuscleGroupCard(stats: muscleGroupStats)
     }
 
     // MARK: - Chart Section
