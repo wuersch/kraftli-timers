@@ -150,10 +150,14 @@ enum TimePeriod: String, CaseIterable {
 | `ConfettiView` | Celebratory animation |
 | `SummaryCard` | Stats summary card |
 | `ExerciseStatsCard` | Per-exercise stats display |
+| `ActivityChart` | Bar chart for workout minutes |
+| `WorkoutRow` | Card-style workout list row |
 
 ### Shared Modifiers
 | Modifier | Purpose |
 |----------|---------|
+| `CardListRowModifier` | Card-style list row: no separator, clear background, standard insets |
+| `CardListStyleModifier` | Card-style list container: plain style, hidden scroll background |
 | `DragHandleView` | Swipe-to-dismiss handle |
 | `SwipeHintOverlay` | "Swipe down to close" hint |
 | `SwipeToDismissModifier` | Swipe gesture handling |
@@ -164,3 +168,7 @@ enum TimePeriod: String, CaseIterable {
 - `TimeInterval+Format` - MM:SS and HH:MM:SS formatting
 - `View+ReadSize` - GeometryReader-based size measurement
 - `UISeparator` - Consistent separator characters (e.g., middle dot)
+- `TimePeriod+Chart` - Chart x-axis unit for time periods
+- `Difficulty+UI` - Difficulty display colors
+- `MuscleGroup+UI` - Muscle group display colors
+- `TimerKind+UI` - Timer kind display colors
