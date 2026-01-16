@@ -124,7 +124,7 @@ struct StatsView: View {
         ActivityChart(
             chartData: chartData,
             selectedPeriod: selectedPeriod,
-            totalMinutes: totalMinutes // TODO: Needed?
+            totalMinutes: totalMinutes // Used in accessibility description
         )
     }
 

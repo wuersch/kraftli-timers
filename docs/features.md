@@ -119,10 +119,15 @@ Track completed workouts and view progress over time.
 
 ### Stats Dashboard
 - **Summary cards**: Total time, workout count for selected period
-- **Activity chart**: Bar chart showing minutes per day/month
-  - Week: Shows all 7 weekdays (Mon-Sun)
-  - Month: Shows days with automatic label spacing
-  - Year: Shows all 12 months (J, F, M, A, M, J, J, A, S, O, N, D)
+- **Muscle Group Card**: Statistics broken down by muscle group category
+  - Groups: Full Body, Upper Body, Lower Body, Core, Cardio
+  - Shows workout count and total time per muscle group
+  - Color-coded indicators for visual scanning
+- **Activity chart**: Bar chart showing minutes per day/week/month
+  - Week: Shows all 7 days (last 7 days sliding window)
+  - Month: Shows all 28 days (last 4 weeks sliding window)
+  - 6 Months: Shows ~26 weekly buckets (last 6 months sliding window)
+  - Year: Shows all 12 months (last 12 months sliding window)
 - **All Workouts link**: Navigate to full workout history
 - **By Exercise section**: Stats grouped by exercise, tap to view filtered list
 

@@ -121,16 +121,16 @@ struct StatsServiceTests {
         #expect(filtered.count == 1)
     }
 
-    // MARK: - totalMinutesPerDay Tests
+    // MARK: - totalMinutesPerBucket Tests
 
-    @Test func totalMinutesPerDay_aggregatesMultipleWorkoutsSameDay() {
+    @Test func totalMinutesPerBucket_aggregatesMultipleWorkoutsSameDay() {
         let today = Date()
         let workouts = [
             makeWorkout(date: today, durationMinutes: 20),
             makeWorkout(date: today, durationMinutes: 15)
         ]
 
-        let dataPoints = service.totalMinutesPerDay(workouts: workouts, period: .week, referenceDate: today)
+        let dataPoints = service.totalMinutesPerBucket(workouts: workouts, period: .week, referenceDate: today)
 
         // Find today's data point
         let calendar = Calendar.current
@@ -139,38 +139,38 @@ struct StatsServiceTests {
         #expect(todayPoint?.minutes == 35)
     }
 
-    @Test func totalMinutesPerDay_emptyWorkouts_returnsZeroMinutes() {
-        let dataPoints = service.totalMinutesPerDay(workouts: [], period: .week, referenceDate: Date())
+    @Test func totalMinutesPerBucket_emptyWorkouts_returnsZeroMinutes() {
+        let dataPoints = service.totalMinutesPerBucket(workouts: [], period: .week, referenceDate: Date())
 
         // Should still have data points for the week (7 days)
         #expect(dataPoints.count == 7)
         #expect(dataPoints.allSatisfy { $0.minutes == 0 })
     }
 
-    @Test func totalMinutesPerDay_weekPeriod_returns7DataPoints() {
-        let dataPoints = service.totalMinutesPerDay(workouts: [], period: .week, referenceDate: Date())
+    @Test func totalMinutesPerBucket_weekPeriod_returns7DataPoints() {
+        let dataPoints = service.totalMinutesPerBucket(workouts: [], period: .week, referenceDate: Date())
 
         #expect(dataPoints.count == 7)
     }
 
-    @Test func totalMinutesPerDay_yearPeriod_returns12DataPoints() {
-        let dataPoints = service.totalMinutesPerDay(workouts: [], period: .year, referenceDate: Date())
+    @Test func totalMinutesPerBucket_yearPeriod_returns12DataPoints() {
+        let dataPoints = service.totalMinutesPerBucket(workouts: [], period: .year, referenceDate: Date())
 
         #expect(dataPoints.count == 12)
     }
 
-    @Test func totalMinutesPerDay_singleWorkout_appearsInCorrectSlot() {
+    @Test func totalMinutesPerBucket_singleWorkout_appearsInCorrectSlot() {
         let calendar = Calendar.current
         let today = Date()
         let workouts = [makeWorkout(date: today, durationMinutes: 30)]
 
-        let dataPoints = service.totalMinutesPerDay(workouts: workouts, period: .week, referenceDate: today)
+        let dataPoints = service.totalMinutesPerBucket(workouts: workouts, period: .week, referenceDate: today)
 
         let todayPoint = dataPoints.first { calendar.isDateInToday($0.date) }
         #expect(todayPoint?.minutes == 30)
     }
 
-    @Test func totalMinutesPerDay_yearPeriod_groupsByMonth() {
+    @Test func totalMinutesPerBucket_yearPeriod_groupsByMonth() {
         let calendar = Calendar.current
         let today = Date()
 
@@ -182,7 +182,7 @@ struct StatsServiceTests {
             makeWorkout(date: calendar.date(byAdding: .day, value: 5, to: startOfMonth)!, durationMinutes: 15)
         ]
 
-        let dataPoints = service.totalMinutesPerDay(workouts: workouts, period: .year, referenceDate: today)
+        let dataPoints = service.totalMinutesPerBucket(workouts: workouts, period: .year, referenceDate: today)
 
         // Should be 12 months
         #expect(dataPoints.count == 12)
@@ -191,6 +191,35 @@ struct StatsServiceTests {
         let currentMonth = calendar.component(.month, from: today)
         let currentMonthPoint = dataPoints.first { calendar.component(.month, from: $0.date) == currentMonth }
         #expect(currentMonthPoint?.minutes == 35)
+    }
+
+    @Test func totalMinutesPerBucket_sixMonthsPeriod_groupsByWeek() {
+        let calendar = Calendar.current
+        let today = Date()
+
+        // Create workouts in the same week
+        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
+
+        let workouts = [
+            makeWorkout(date: startOfWeek, durationMinutes: 20),
+            makeWorkout(date: calendar.date(byAdding: .day, value: 3, to: startOfWeek)!, durationMinutes: 15)
+        ]
+
+        let dataPoints = service.totalMinutesPerBucket(workouts: workouts, period: .sixMonths, referenceDate: today)
+
+        // Should have approximately 26-27 weekly buckets (6 months ≈ 26 weeks)
+        #expect(dataPoints.count >= 25)
+        #expect(dataPoints.count <= 28)
+
+        // Current week should have combined minutes from both workouts
+        let currentWeek = calendar.component(.weekOfYear, from: today)
+        let currentWeekPoint = dataPoints.first { calendar.component(.weekOfYear, from: $0.date) == currentWeek }
+
+        // Note: This assertion may not always pass if today is in a different week than startOfWeek
+        // Adjust test logic if needed based on actual workout dates
+        if calendar.component(.weekOfYear, from: startOfWeek) == currentWeek {
+            #expect(currentWeekPoint?.minutes == 35)
+        }
     }
 
     // MARK: - groupedByExercise Tests

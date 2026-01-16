@@ -73,7 +73,7 @@ struct ActivityChart: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
     
-    /// Computes a padded x-domain so the last bucket isnt't flush with the plot edges.
+    /// Computes a padded x-domain so the last bucket isn't flush with the plot edges.
     private func paddedDomain() -> ClosedRange<Date>? {
         guard let minDate = chartData.map(\.date).min(),
               let maxDate = chartData.map(\.date).max() else {
@@ -82,11 +82,11 @@ struct ActivityChart: View {
         let calendar = Calendar.current
         switch selectedPeriod {
         case .sixMonths:
-            // kleines, einheitliches Padding passend zur Einheit (Woche)
+            // Small, consistent padding matching the unit (week)
             let upper = calendar.date(byAdding: .weekOfYear, value: 3, to: maxDate) ?? maxDate
             return minDate...upper
         default:
-            // Alle anderen Perioden: keine manuelle Domain
+            // All other periods: no manual domain scaling
             return nil
         }
     }
@@ -124,7 +124,8 @@ struct ActivityChart: View {
             formatter.dateFormat = "MMM"
             return formatter.string(from: date)
         case .year:
-            // Single letter month: J, F, M, etc.
+            // Narrow month abbreviation (single letter): J, F, M, etc.
+            // Note: "MMMMM" (5 M's) produces narrow month symbol per DateFormatter
             let formatter = DateFormatter()
             formatter.dateFormat = "MMMMM"
             return formatter.string(from: date)

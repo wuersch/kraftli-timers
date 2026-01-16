@@ -61,10 +61,14 @@ Interface design and component specifications.
 
 ## Stats View
 
-- **Period picker**: Segmented control (Week/Month/Year)
+- **Period picker**: Segmented control (Week/Month/6 Months/Year)
 - **Summary section**: Two cards side-by-side
   - Total Time (minutes, clock icon, teal)
   - Workouts (count, flame icon, orange)
+- **Muscle Group Card**: Statistics by muscle group
+  - Rounded card background
+  - Shows workout count and total time per muscle group
+  - Color-coded indicators (Full Body, Upper Body, Lower Body, Core, Cardio)
 - **Activity chart**: Bar chart with custom x-axis labels
   - Rounded card background
   - Blue gradient bars
