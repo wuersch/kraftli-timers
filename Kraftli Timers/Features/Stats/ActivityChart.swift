@@ -83,7 +83,7 @@ struct ActivityChart: View {
         switch selectedPeriod {
         case .sixMonths:
             // Small, consistent padding matching the unit (week)
-            let upper = calendar.date(byAdding: .weekOfYear, value: 3, to: maxDate) ?? maxDate
+            let upper = calendar.date(byAdding: .weekOfYear, value: 4, to: maxDate) ?? maxDate
             return minDate...upper
         default:
             // All other periods: no manual domain scaling
