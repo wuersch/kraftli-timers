@@ -64,7 +64,7 @@ struct Kraftli_TimersApp: App {
         let defaults: [(kind: TimerKind, minutes: Int, reps: Int?, exerciseName: String)] = [
             (.emom, 20, 100, "6-Count Burpees"),
             (.emom, 20, 35, "Navy Seal Burpees"),
-            (.amrap, 20, nil, "Pull-ups"),
+            (.amrap, 5, nil, "Pull-ups"),
             (.emom, 1, 6, "Push-ups")
         ]
 

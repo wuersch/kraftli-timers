@@ -126,7 +126,7 @@ Track completed workouts and view progress over time.
 - **Activity chart**: Bar chart showing minutes per day/week/month
   - Week: Shows all 7 days (last 7 days sliding window)
   - Month: Shows all 28 days (last 4 weeks sliding window)
-  - 6 Months: Shows ~26 weekly buckets (last 6 months sliding window)
+  - 6 Months: Shows 6 monthly bars (last 6 months sliding window)
   - Year: Shows all 12 months (last 12 months sliding window)
 - **All Workouts link**: Navigate to full workout history
 - **By Exercise section**: Stats grouped by exercise, tap to view filtered list
