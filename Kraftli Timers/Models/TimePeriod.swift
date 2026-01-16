@@ -9,67 +9,82 @@ import Foundation
 
 /// Time periods for filtering and grouping workout statistics.
 enum TimePeriod: String, CaseIterable, Identifiable {
-    case week
-    case month
-    case year
+    // MARK: - Cases
+    case week          // bucket: day
+    case month         // bucket: day or week
+    case sixMonths     // bucket: week
+    case year          // bucket: month
 
+    // MARK: - Static (UI / selection)
+    /// UI-scoped case list, in case internal time periods are added later
+    static var selectableCases: [TimePeriod] {
+        [.week, .month, .sixMonths, .year]
+    }
+
+    // MARK: - Identity
     var id: String { rawValue }
 
-    /// Human-readable display name.
+    // MARK: - UI-facing labels
     var displayName: String {
         switch self {
         case .week: return "Week"
         case .month: return "Month"
+        case .sixMonths: return "6 Months"
         case .year: return "Year"
         }
     }
+    
+    var summaryUnit: String {
+        switch self {
+        case .week: return "last 7 days"
+        case .month: return "last 4 weeks"
+        case .sixMonths: return "last 6 months"
+        case .year: return "last 12 months"
+        }
+    }
 
-    /// Calculates the date range for this period based on calendar boundaries.
+    // MARK: - Core semantics
+    /// Calculates a sliding date range ending at referenceDate.
     ///
-    /// - Parameter referenceDate: The reference date (typically today).
-    /// - Returns: A tuple containing the start and end dates of the period.
-    func dateRange(from referenceDate: Date = Date()) -> (start: Date, end: Date) {
-        let calendar = Calendar.current
+    /// - Parameter referenceDate: Typically today.
+    /// - Returns: Start and end of the period.
+    func dateRange(from referenceDate: Date, calendar: Calendar = .current) -> (start: Date, end: Date) {
+        let end = referenceDate
+        let start: Date
 
         switch self {
         case .week:
-            // Current calendar week (Monday to Sunday)
-            guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: referenceDate) else {
-                return (referenceDate, referenceDate)
-            }
-            return (start: weekInterval.start, end: weekInterval.end.addingTimeInterval(-1))
-
+            start = calendar.date(byAdding: .day, value: -6, to: end)! // last 7 days
         case .month:
-            // Current calendar month
-            guard let monthInterval = calendar.dateInterval(of: .month, for: referenceDate) else {
-                return (referenceDate, referenceDate)
-            }
-            return (start: monthInterval.start, end: monthInterval.end.addingTimeInterval(-1))
-
+            start = calendar.date(byAdding: .day, value: -27, to: end)! // last 28 days (~4 weeks)
+        case .sixMonths:
+            start = calendar.date(byAdding: .month, value: -6, to: end)!
         case .year:
-            // Current calendar year
-            guard let yearInterval = calendar.dateInterval(of: .year, for: referenceDate) else {
-                return (referenceDate, referenceDate)
-            }
-            return (start: yearInterval.start, end: yearInterval.end.addingTimeInterval(-1))
+            start = calendar.date(byAdding: .month, value: -11, to: end)!
         }
+
+        return (start, end)
     }
 
-    /// Number of data points to show in charts for this period.
-    var chartDataPoints: Int {
-        switch self {
-        case .week: return 7      // Daily bars
-        case .month: return 30    // Daily bars
-        case .year: return 12     // Monthly bars
-        }
-    }
-
-    /// The grouping granularity for chart data.
-    var chartGrouping: Calendar.Component {
+    // MARK: - Bucketing semantics
+    var bucketUnit: BucketUnit {
         switch self {
         case .week: return .day
         case .month: return .day
+        case .sixMonths: return .month
         case .year: return .month
         }
+    }
+    
+    func allBuckets(referenceDate: Date = .now) -> [Date] {
+        let range = dateRange(from: referenceDate)
+        let unit = bucketUnit
+        var buckets: [Date] = []
+        var current = unit.normalizedStart(range.start)
+        while current <= range.end {
+            buckets.append(current)
+            current = unit.advance(current)
+        }
+        return buckets
     }
 }

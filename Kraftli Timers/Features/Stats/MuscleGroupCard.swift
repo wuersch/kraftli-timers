@@ -7,9 +7,10 @@
 
 import SwiftUI
 
-/// Card displaying total time per muscle group in a 2x2 grid layout.
 struct MuscleGroupCard: View {
     let stats: [MuscleGroupStats]
+    
+    @ScaledMetric(relativeTo: .headline) private var dividerHeight: CGFloat = 34
 
     /// Lookup dictionary for O(1) access to stats by muscle group.
     private var statsByGroup: [MuscleGroup: Int] {
@@ -17,58 +18,76 @@ struct MuscleGroupCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Muscle Groups")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 24) {
+            HStack {
+                Label("Muscle Groups", systemImage: "figure.cross.training.circle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.yellow)
+            }
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(MuscleGroup.allCases, id: \.self) { group in
-                    MuscleGroupCell(
+            HStack(spacing: 0) {
+                ForEach(Array(MuscleGroup.allCases.enumerated()), id: \.element) { index, group in
+                    MuscleGroupColumn(
                         muscleGroup: group,
                         totalMinutes: statsByGroup[group] ?? 0
                     )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    if index < MuscleGroup.allCases.count - 1 {
+                        Divider()
+                            .frame(height: dividerHeight)
+                            .padding(.horizontal, 12)
+                    }
                 }
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(
+            Color(.secondarySystemBackground),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
     }
 }
 
-// MARK: - Muscle Group Cell
+// MARK: - Muscle Group Column and Cell
 
 /// Individual cell displaying a single muscle group's statistics.
-private struct MuscleGroupCell: View {
+private struct MuscleGroupColumn: View {
     let muscleGroup: MuscleGroup
     let totalMinutes: Int
 
-    /// Formatted time string (floored): "X hr" or "X min".
-    private var formattedTime: String {
-        if totalMinutes >= 60 {
-            let hours = totalMinutes / 60
-            return "\(hours) hr"
-        } else {
-            return "\(totalMinutes) min"
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(muscleGroup.shortDisplayName)
+                .font(.caption)
+                .foregroundStyle(muscleGroup.color)
+
+            TimeCell(totalMinutes: totalMinutes)
         }
     }
+}
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(muscleGroup.displayName)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Text(formattedTime)
-                .font(.title3)
-                .fontWeight(.semibold)
-                .monospacedDigit()
-                .foregroundStyle(muscleGroup.color)
+private struct TimeCell: View {
+    let totalMinutes: Int
+    
+    var body : some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            if totalMinutes >= 60 {
+                Text("\(totalMinutes / 60)")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("hr")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("\(totalMinutes)")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("min")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.tertiarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 

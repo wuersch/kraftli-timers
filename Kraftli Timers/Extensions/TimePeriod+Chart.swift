@@ -13,6 +13,7 @@ extension TimePeriod {
         switch self {
         case .week: return .day
         case .month: return .day
+        case .sixMonths: return .weekOfYear
         case .year: return .month
         }
     }
