@@ -193,33 +193,28 @@ struct StatsServiceTests {
         #expect(currentMonthPoint?.minutes == 35)
     }
 
-    @Test func totalMinutesPerBucket_sixMonthsPeriod_groupsByWeek() {
+    @Test func totalMinutesPerBucket_sixMonthsPeriod_groupsByMonth() {
         let calendar = Calendar.current
         let today = Date()
 
-        // Create workouts in the same week
-        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
+        // Create workouts in the same month
+        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
 
         let workouts = [
-            makeWorkout(date: startOfWeek, durationMinutes: 20),
-            makeWorkout(date: calendar.date(byAdding: .day, value: 3, to: startOfWeek)!, durationMinutes: 15)
+            makeWorkout(date: startOfMonth, durationMinutes: 20),
+            makeWorkout(date: calendar.date(byAdding: .day, value: 10, to: startOfMonth)!, durationMinutes: 15)
         ]
 
         let dataPoints = service.totalMinutesPerBucket(workouts: workouts, period: .sixMonths, referenceDate: today)
 
-        // Should have approximately 26-27 weekly buckets (6 months ≈ 26 weeks)
-        #expect(dataPoints.count >= 25)
-        #expect(dataPoints.count <= 28)
+        // Should have approximately 6-7 monthly buckets
+        #expect(dataPoints.count >= 6)
+        #expect(dataPoints.count <= 7)
 
-        // Current week should have combined minutes from both workouts
-        let currentWeek = calendar.component(.weekOfYear, from: today)
-        let currentWeekPoint = dataPoints.first { calendar.component(.weekOfYear, from: $0.date) == currentWeek }
-
-        // Note: This assertion may not always pass if today is in a different week than startOfWeek
-        // Adjust test logic if needed based on actual workout dates
-        if calendar.component(.weekOfYear, from: startOfWeek) == currentWeek {
-            #expect(currentWeekPoint?.minutes == 35)
-        }
+        // Current month should have combined minutes from both workouts
+        let currentMonth = calendar.component(.month, from: today)
+        let currentMonthPoint = dataPoints.first { calendar.component(.month, from: $0.date) == currentMonth }
+        #expect(currentMonthPoint?.minutes == 35)
     }
 
     // MARK: - groupedByExercise Tests

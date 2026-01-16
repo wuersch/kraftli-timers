@@ -137,8 +137,8 @@ struct TimePeriodTests {
         #expect(TimePeriod.month.bucketUnit == .day)
     }
 
-    @Test func bucketUnit_sixMonths_isWeek() {
-        #expect(TimePeriod.sixMonths.bucketUnit == .week)
+    @Test func bucketUnit_sixMonths_isMonth() {
+        #expect(TimePeriod.sixMonths.bucketUnit == .month)
     }
 
     @Test func bucketUnit_year_isMonth() {
@@ -174,14 +174,14 @@ struct TimePeriodTests {
         #expect(buckets.count <= 29)
     }
 
-    @Test func allBuckets_sixMonths_generatesWeeklyBuckets() {
+    @Test func allBuckets_sixMonths_generatesMonthlyBuckets() {
         let today = Date()
 
         let buckets = TimePeriod.sixMonths.allBuckets(referenceDate: today)
 
-        // Should have approximately 26-27 weekly buckets (6 months ≈ 26 weeks)
-        #expect(buckets.count >= 25)
-        #expect(buckets.count <= 28)
+        // Should have approximately 6-7 monthly buckets
+        #expect(buckets.count >= 6)
+        #expect(buckets.count <= 7)
     }
 
     @Test func allBuckets_year_generatesMonthlyBuckets() {
