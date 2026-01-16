@@ -11,8 +11,8 @@ import Foundation
 enum TimePeriod: String, CaseIterable, Identifiable {
     // MARK: - Cases
     case week          // bucket: day
-    case month         // bucket: day or week
-    case sixMonths     // bucket: week
+    case month         // bucket: day
+    case sixMonths     // bucket: month, chartUnit: week
     case year          // bucket: month
 
     // MARK: - Static (UI / selection)
@@ -71,7 +71,7 @@ enum TimePeriod: String, CaseIterable, Identifiable {
         switch self {
         case .week: return .day
         case .month: return .day
-        case .sixMonths: return .week
+        case .sixMonths: return .month
         case .year: return .month
         }
     }
