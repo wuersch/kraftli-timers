@@ -21,4 +21,13 @@ enum MuscleGroup: String, Codable, CaseIterable {
         case .core: return "Core"
         }
     }
+    
+    var shortDisplayName: String {
+        switch self {
+        case .fullBody: return "Full"
+        case .upperBody: return "Upper"
+        case .lowerBody: return "Lower"
+        case .core: return "Core"
+        }
+    }
 }

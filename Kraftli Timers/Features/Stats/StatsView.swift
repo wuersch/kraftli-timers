@@ -27,7 +27,7 @@ struct StatsView: View {
     }
 
     private var chartData: [ChartDataPoint] {
-        statsService.totalMinutesPerDay(workouts: filteredWorkouts, period: selectedPeriod, referenceDate: Date())
+        statsService.totalMinutesPerBucket(workouts: filteredWorkouts, period: selectedPeriod, referenceDate: Date())
     }
 
     private var exerciseStats: [ExerciseStats] {
@@ -85,7 +85,7 @@ struct StatsView: View {
     // MARK: - Period Picker
     private var periodPicker: some View {
         Picker("Time Period", selection: $selectedPeriod) {
-            ForEach(TimePeriod.allCases) { period in
+            ForEach(TimePeriod.selectableCases) { period in
                 Text(period.displayName).tag(period)
             }
         }
@@ -106,7 +106,7 @@ struct StatsView: View {
             SummaryCard(
                 title: "Workouts",
                 value: "\(workoutCount)",
-                unit: selectedPeriod == .week ? "this week" : (selectedPeriod == .month ? "this month" : "this year"),
+                unit: selectedPeriod.summaryUnit,
                 systemImage: "flame.fill",
                 iconColor: .orange
             )
@@ -121,13 +121,11 @@ struct StatsView: View {
     // MARK: - Chart Section
     @ViewBuilder
     private var chartSection: some View {
-        if !chartData.isEmpty {
-            ActivityChart(
-                chartData: chartData,
-                selectedPeriod: selectedPeriod,
-                totalMinutes: totalMinutes
-            )
-        }
+        ActivityChart(
+            chartData: chartData,
+            selectedPeriod: selectedPeriod,
+            totalMinutes: totalMinutes // TODO: Needed?
+        )
     }
 
     // MARK: - All Workouts Link

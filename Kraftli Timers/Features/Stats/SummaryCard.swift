@@ -22,7 +22,7 @@ struct SummaryCard: View {
                     .foregroundStyle(iconColor)
                 Text(title)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(iconColor)
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {

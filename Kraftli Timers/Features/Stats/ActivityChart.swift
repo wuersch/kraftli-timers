@@ -22,7 +22,7 @@ struct ActivityChart: View {
             Chart(chartData) { dataPoint in
                 BarMark(
                     x: .value("Date", dataPoint.date, unit: selectedPeriod.chartUnit),
-                    y: .value("Minutes", dataPoint.minutes)
+                    y: .value("Minutes", dataPoint.minutes),
                 )
                 .foregroundStyle(Color.blue.gradient)
                 .cornerRadius(4)
@@ -32,6 +32,7 @@ struct ActivityChart: View {
                     // Use automatic spacing for month (too many days to show all)
                     AxisMarks(values: .automatic) { value in
                         if let date = value.as(Date.self) {
+                            AxisGridLine()
                             AxisValueLabel {
                                 Text(xAxisLabel(for: date))
                                     .font(.caption2)
@@ -40,8 +41,9 @@ struct ActivityChart: View {
                     }
                 } else {
                     // Show all labels for week (7 days) and year (12 months)
-                    AxisMarks(values: chartData.map(\.date)) { value in
+                    AxisMarks(values: chartData.map { $0.date }) { value in
                         if let date = value.as(Date.self) {
+                            AxisGridLine()
                             AxisValueLabel {
                                 Text(xAxisLabel(for: date))
                                     .font(.caption2)
@@ -60,39 +62,71 @@ struct ActivityChart: View {
                     }
                 }
             }
+            .ifLet(paddedDomain()) { view, domain in
+                view.chartXScale(domain: domain)
+            }
             .frame(height: 200)
-            .accessibilityLabel("Activity chart showing \(totalMinutes) total minutes across \(chartData.count) \(selectedPeriod == .year ? "months" : "days")")
+            .accessibilityLabel(accessibilityDescription)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
-
+    
+    /// Computes a padded x-domain so the last bucket isnt't flush with the plot edges.
+    private func paddedDomain() -> ClosedRange<Date>? {
+        guard let minDate = chartData.map(\.date).min(),
+              let maxDate = chartData.map(\.date).max() else {
+            return nil
+        }
+        let calendar = Calendar.current
+        switch selectedPeriod {
+        case .sixMonths:
+            // kleines, einheitliches Padding passend zur Einheit (Woche)
+            let upper = calendar.date(byAdding: .weekOfYear, value: 3, to: maxDate) ?? maxDate
+            return minDate...upper
+        default:
+            // Alle anderen Perioden: keine manuelle Domain
+            return nil
+        }
+    }
+    
+    /// MARK: - Accessibility
+    private var accessibilityDescription: String {
+        "Activity chart: \(totalMinutes) total minutes in the \(periodName)."
+    }
+    
     // MARK: - Helpers
 
+    /// Human-readable name for the selected period.
+    private var periodName: String {
+        switch selectedPeriod {
+        case .week: return "last week"
+        case .month: return "last month"
+        case .sixMonths: return "last six months"
+        case .year: return "last year"
+        }
+    }
+    
     /// Formats date for x-axis labels based on the selected period.
-    /// - Week: Mon, Tue, Wed, etc.
-    /// - Month: Day numbers (1, 8, 15, 22, 29)
-    /// - Year: Single letter month (J, F, M, A, M, J, J, A, S, O, N, D)
     private func xAxisLabel(for date: Date) -> String {
-        let calendar = Calendar.current
-
         switch selectedPeriod {
         case .week:
             // Short weekday: Mon, Tue, Wed, etc.
             let formatter = DateFormatter()
             formatter.dateFormat = "EEE"
             return formatter.string(from: date)
-
         case .month:
-            // Day of month: 1, 8, 15, etc.
-            let day = calendar.component(.day, from: date)
-            return "\(day)"
-
+            return "\(Calendar.current.component(.day, from: date))" // numeric day
+        case .sixMonths:
+            // Three letter month: Jan, Feb, Mar, etc.
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM"
+            return formatter.string(from: date)
         case .year:
             // Single letter month: J, F, M, etc.
             let formatter = DateFormatter()
-            formatter.dateFormat = "MMMMM" // Single letter month
+            formatter.dateFormat = "MMMMM"
             return formatter.string(from: date)
         }
     }

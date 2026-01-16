@@ -59,7 +59,7 @@ protocol StatsService {
         referenceDate: Date
     ) -> [WorkoutLog]
 
-    /// Computes total minutes per day/month for chart display.
+    /// Computes total minutes per day/month/year for chart display.
     ///
     /// Generates data points for ALL time slots in the period (including zeros),
     /// matching Apple Health's approach of showing the complete time range.
@@ -69,7 +69,7 @@ protocol StatsService {
     ///   - period: The time period (determines grouping granularity).
     ///   - referenceDate: The reference date for generating the full range.
     /// - Returns: Array of data points with date and total minutes.
-    func totalMinutesPerDay(
+    func totalMinutesPerBucket(
         workouts: [WorkoutLog],
         period: TimePeriod,
         referenceDate: Date
@@ -122,56 +122,35 @@ final class DefaultStatsService: StatsService {
             workout.date >= range.start && workout.date <= range.end
         }
     }
-
-    func totalMinutesPerDay(
+    
+    /// The returned data always spans the full TimePeriod range and includes zero-valued buckets.
+    func totalMinutesPerBucket(
         workouts: [WorkoutLog],
         period: TimePeriod,
         referenceDate: Date = Date()
     ) -> [ChartDataPoint] {
-        let calendar = Calendar.current
-        let grouping = period.chartGrouping
-        let range = period.dateRange(from: referenceDate)
-
-        // Group workouts by date component
-        var grouped: [Date: Int] = [:]
-
+        let periodRange = period.dateRange(from: referenceDate)
+        guard periodRange.start <= periodRange.end else {
+            return []
+        }
+        
+        let unit = period.bucketUnit
+        let buckets = period.allBuckets(referenceDate: referenceDate)
+        
+        var totals: [Date: Int] = [:]
         for workout in workouts {
-            let components: Set<Calendar.Component> = grouping == .month
-                ? [.year, .month]
-                : [.year, .month, .day]
-
-            let dateComponents = calendar.dateComponents(components, from: workout.date)
-            guard let groupDate = calendar.date(from: dateComponents) else { continue }
-
-            let minutes = Int(workout.durationSeconds / 60)
-            grouped[groupDate, default: 0] += minutes
+            let bucketDate = unit.normalizedStart(workout.date)
+            totals[bucketDate, default: 0] += workout.durationMinutes
         }
-
-        // Generate ALL time slots for the period (including zeros)
-        var allDataPoints: [ChartDataPoint] = []
-        var currentDate = range.start
-
-        while currentDate <= range.end {
-            let components: Set<Calendar.Component> = grouping == .month
-                ? [.year, .month]
-                : [.year, .month, .day]
-
-            let dateComponents = calendar.dateComponents(components, from: currentDate)
-            guard let normalizedDate = calendar.date(from: dateComponents) else {
-                currentDate = calendar.date(byAdding: grouping, value: 1, to: currentDate) ?? currentDate.addingTimeInterval(86400)
-                continue
-            }
-
-            let minutes = grouped[normalizedDate] ?? 0
-            allDataPoints.append(ChartDataPoint(date: normalizedDate, minutes: minutes))
-
-            // Advance to next time slot
-            currentDate = calendar.date(byAdding: grouping, value: 1, to: currentDate) ?? currentDate.addingTimeInterval(86400)
+        
+        return buckets.map { bucketDate in
+            ChartDataPoint(
+                date: bucketDate,
+                minutes: totals[bucketDate] ?? 0
+            )
         }
-
-        return allDataPoints
     }
-
+    
     func groupedByExercise(
         workouts: [WorkoutLog],
         exercises: [Exercise]
@@ -192,7 +171,7 @@ final class DefaultStatsService: StatsService {
             let exercise = exercisesByName[exerciseName]
 
             let totalMinutes = exerciseWorkouts.reduce(0) { sum, workout in
-                sum + Int(workout.durationSeconds / 60)
+                sum + Int(workout.durationMinutes)
             }
 
             let totalReps = exerciseWorkouts.compactMap(\.repsCompleted).reduce(0, +)
@@ -229,7 +208,7 @@ final class DefaultStatsService: StatsService {
                 continue
             }
 
-            let minutes = Int(workout.durationSeconds / 60)
+            let minutes = Int(workout.durationMinutes)
             grouped[muscleGroup, default: 0] += minutes
         }
 
