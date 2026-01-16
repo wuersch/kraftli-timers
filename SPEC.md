@@ -17,7 +17,7 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 | Exercise Library | ✅ | 21 curated exercises with form tips and filtering |
 | Audio Feedback | ✅ | Warning beeps, interval sounds, completion cheer |
 | Screen Handling | ✅ | Screen stays on, background pause/resume |
-| Workout Stats | ✅ | Dashboard, charts, per-exercise breakdown |
+| Workout Stats | ✅ | Dashboard, charts, muscle group breakdown, per-exercise breakdown |
 | Workout Logging | ✅ | Automatic logging on timer completion |
 | Workout Editing | ✅ | Edit reps/rounds, delete via Edit mode |
 | Settings | 📋 | Audio prefs, theme, about section |
