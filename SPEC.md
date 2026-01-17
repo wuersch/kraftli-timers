@@ -21,6 +21,7 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 | Workout Logging | ✅ | Automatic logging on timer completion |
 | Workout Editing | ✅ | Edit reps/rounds, delete via Edit mode |
 | Settings | ✅ | Audio prefs, confetti toggle, about section, clear history |
+| Launch Screen | ✅ | Animated splash with spinning arcs, toggleable in Settings |
 
 ## v1 Remaining Work
 
