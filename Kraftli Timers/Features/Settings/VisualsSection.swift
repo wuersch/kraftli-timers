@@ -33,6 +33,23 @@ struct VisualsSection: View {
             }
             .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            VStack(spacing: 0) {
+                // Launch Screen Toggle
+                Toggle(isOn: $settings.launchScreenEnabled) {
+                    Label("Launch Animation", systemImage: "wand.and.stars")
+                }
+                .padding()
+
+                Divider()
+
+                Text("Shows an animated splash screen when the app starts.")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .padding()
+            }
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 }

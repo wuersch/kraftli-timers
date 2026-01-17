@@ -31,6 +31,7 @@ final class AppSettings {
         static let audioEnabled = "audioEnabled"
         static let completionSoundStyle = "completionSoundStyle"
         static let confettiEnabled = "confettiEnabled"
+        static let launchScreenEnabled = "launchScreenEnabled"
     }
 
     // MARK: - Audio Preferences
@@ -52,6 +53,11 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(confettiEnabled, forKey: Keys.confettiEnabled) }
     }
 
+    /// Whether to show the animated launch screen on app start.
+    var launchScreenEnabled: Bool {
+        didSet { UserDefaults.standard.set(launchScreenEnabled, forKey: Keys.launchScreenEnabled) }
+    }
+
     // MARK: - Initialization
 
     init() {
@@ -66,6 +72,9 @@ final class AppSettings {
 
         // Confetti defaults to true
         self.confettiEnabled = defaults.object(forKey: Keys.confettiEnabled) as? Bool ?? true
+
+        // Launch screen defaults to true
+        self.launchScreenEnabled = defaults.object(forKey: Keys.launchScreenEnabled) as? Bool ?? true
     }
 
     // MARK: - Types
