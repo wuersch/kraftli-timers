@@ -11,6 +11,7 @@ import SwiftData
 @main
 struct Kraftli_TimersApp: App {
     let modelContainer: ModelContainer
+    @State private var settings = AppSettings()
 
     init() {
         let schema = Schema([
@@ -37,6 +38,7 @@ struct Kraftli_TimersApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(settings)
         }
         .modelContainer(modelContainer)
     }

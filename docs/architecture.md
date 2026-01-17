@@ -101,7 +101,63 @@ enum TimePeriod: String, CaseIterable {
 - `@Observable` for runtime timer state
 - `@State` for view-local state
 - `@Environment(\.modelContext)` for CRUD operations
+- `@Environment(AppSettings.self)` for user preferences
 - `@MainActor` isolation for thread safety
+
+## Settings Architecture
+
+### Decision: Pragmatic @Observable + @AppStorage
+
+User preferences are managed via `AppSettings`, an `@Observable` class with `@AppStorage` properties. This approach was chosen over alternatives:
+
+| Approach | Rejected Because |
+|----------|------------------|
+| SettingsService protocol | Overkill for 2 toggles; no business logic to abstract |
+| Scattered @AppStorage | Hard to maintain; no centralized defaults |
+| SwiftData @Model | Overkill for simple key-value preferences |
+
+### Current Implementation
+
+```swift
+@Observable
+final class AppSettings {
+    @ObservationIgnored
+    @AppStorage("completionSoundStyle") var completionSoundStyle: CompletionSoundStyle = .cheering
+
+    @ObservationIgnored
+    @AppStorage("confettiEnabled") var confettiEnabled: Bool = true
+}
+```
+
+**Key patterns:**
+- `@ObservationIgnored` prevents double-observation (AppStorage already triggers updates)
+- Environment injection via `.environment(settings)` in App
+- Factory method on `AudioFeedbackProvider` selects provider based on sound style
+- Settings passed explicitly to timer views (no global state)
+
+### Data Flow
+
+```
+User toggles setting in SettingsView
+    ↓
+@AppStorage writes to UserDefaults (automatic)
+    ↓
+Next timer session reads from AppSettings
+    ↓
+Audio: Factory creates appropriate provider
+Confetti: View checks confettiEnabled flag
+```
+
+### Future Direction
+
+If settings become more complex (10+ settings, validation logic, cloud sync):
+
+1. **Extract SettingsService protocol** for testability
+2. **Add UserDefaultsSettingsService** and **InMemorySettingsService** implementations
+3. **Consider NSUbiquitousKeyValueStore** for iCloud sync
+4. **Group related settings** into nested types (AudioSettings, VisualSettings, etc.)
+
+For now, the pragmatic approach provides sufficient structure without over-engineering.
 
 ## Key Components
 
@@ -118,6 +174,7 @@ enum TimePeriod: String, CaseIterable {
 | `WorkoutListView` | Filtered workout list (by exercise) |
 | `AllWorkoutsView` | Global workout list with edit/delete |
 | `WorkoutLogEditorView` | Edit reps/rounds for a workout |
+| `SettingsView` | User preferences and app info |
 
 ### Timer Models
 | Model | Purpose |
@@ -134,9 +191,11 @@ enum TimePeriod: String, CaseIterable {
 | `DisplayLinkTimerProvider` | CADisplayLink for smooth animations |
 | `FoundationTimerProvider` | Foundation Timer fallback |
 | `AudioFeedbackProvider` | Protocol for audio feedback |
-| `SystemSoundFeedback` | Production audio implementation |
+| `SystemSoundFeedback` | Production audio (cheering sound) |
+| `NeutralSoundFeedback` | Neutral audio (system beeps) |
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
+| `AppSettings` | User preferences (@Observable + @AppStorage) |
 
 ### UI Components
 | Component | Purpose |

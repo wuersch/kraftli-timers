@@ -23,7 +23,7 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                ComingSoonView(title: "Settings", description: "Adjust settings and more", image: "gearshape")
+                SettingsView()
             }.tabItem {
                 Label("Settings", systemImage: "gearshape")
             }
