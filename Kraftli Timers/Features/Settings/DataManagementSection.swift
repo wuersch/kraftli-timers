@@ -76,8 +76,7 @@ struct DataManagementSection: View {
                 }
                 .disabled(totalCount == 0)
             }
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .cardStyle()
         }
         .alert("Clear Workout History", isPresented: $showingClearWorkoutsAlert) {
             Button("Cancel", role: .cancel) { }

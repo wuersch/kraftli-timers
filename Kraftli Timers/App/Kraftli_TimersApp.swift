@@ -61,11 +61,17 @@ struct Kraftli_TimersApp: App {
     // MARK: - Data Seeding
 
     private static func seedDefaultDataIfNeeded(in context: ModelContext) {
-        // Check if we already have presets
-        let presetDescriptor = FetchDescriptor<TimerPreset>()
-        let existingPresets = (try? context.fetchCount(presetDescriptor)) ?? 0
+        let seededKey = "defaultDataSeeded"
 
-        guard existingPresets == 0 else { return }
+        // Already seeded? Done.
+        guard !UserDefaults.standard.bool(forKey: seededKey) else { return }
+
+        // Upgrade safety: existing users with data shouldn't re-seed
+        let presetDescriptor = FetchDescriptor<TimerPreset>()
+        if (try? context.fetchCount(presetDescriptor)) ?? 0 > 0 {
+            UserDefaults.standard.set(true, forKey: seededKey)
+            return
+        }
 
         // Load and create exercises from JSON
         let exerciseDataList = ExerciseLoader.loadBundled()
@@ -97,5 +103,8 @@ struct Kraftli_TimersApp: App {
         }
 
         try? context.save()
+
+        // Mark seeding complete
+        UserDefaults.standard.set(true, forKey: seededKey)
     }
 }

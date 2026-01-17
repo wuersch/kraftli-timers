@@ -40,8 +40,7 @@ struct ExerciseStatsCard: View {
                 .foregroundStyle(.tertiary)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Tap to view workouts")

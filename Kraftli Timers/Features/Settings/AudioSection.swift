@@ -24,7 +24,7 @@ struct AudioSection: View {
             Text("Audio")
                 .font(.headline)
 
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 // Sound Toggle
                 Toggle(isOn: $settings.audioEnabled) {
                     Label("Sound", systemImage: "speaker.wave.2")
@@ -48,8 +48,7 @@ struct AudioSection: View {
                         .padding()
                 }
             }
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .cardStyle()
         }
     }
 }

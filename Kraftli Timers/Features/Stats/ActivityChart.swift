@@ -69,8 +69,7 @@ struct ActivityChart: View {
             .accessibilityLabel(accessibilityDescription)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
     }
     
     /// Computes a padded x-domain so the last bucket isn't flush with the plot edges.

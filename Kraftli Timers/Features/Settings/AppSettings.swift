@@ -32,6 +32,7 @@ final class AppSettings {
         static let completionSoundStyle = "completionSoundStyle"
         static let confettiEnabled = "confettiEnabled"
         static let launchScreenEnabled = "launchScreenEnabled"
+        static let smoothAnimationsEnabled = "smoothAnimationsEnabled"
     }
 
     // MARK: - Audio Preferences
@@ -58,6 +59,11 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(launchScreenEnabled, forKey: Keys.launchScreenEnabled) }
     }
 
+    /// Whether to use 60 FPS display-synced updates for fluid timer animations.
+    var smoothAnimationsEnabled: Bool {
+        didSet { UserDefaults.standard.set(smoothAnimationsEnabled, forKey: Keys.smoothAnimationsEnabled) }
+    }
+
     // MARK: - Initialization
 
     init() {
@@ -75,6 +81,9 @@ final class AppSettings {
 
         // Launch screen defaults to true
         self.launchScreenEnabled = defaults.object(forKey: Keys.launchScreenEnabled) as? Bool ?? true
+
+        // Smooth animations defaults to true
+        self.smoothAnimationsEnabled = defaults.object(forKey: Keys.smoothAnimationsEnabled) as? Bool ?? true
     }
 
     // MARK: - Types

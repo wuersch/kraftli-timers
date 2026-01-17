@@ -141,8 +141,7 @@ struct StatsView: View {
                     .foregroundStyle(.tertiary)
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .cardStyle()
         }
         .buttonStyle(.plain)
     }

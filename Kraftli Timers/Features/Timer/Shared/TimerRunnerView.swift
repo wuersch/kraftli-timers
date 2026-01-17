@@ -22,6 +22,10 @@ struct TimerRunnerView: View {
         }
     }
 
+    private var timerProvider: any TimerProvider {
+        settings.smoothAnimationsEnabled ? DisplayLinkTimerProvider() : FoundationTimerProvider()
+    }
+
     @ViewBuilder
     private var timerContent: some View {
         let feedbackProvider: any AudioFeedbackProvider = settings.audioEnabled
@@ -34,6 +38,7 @@ struct TimerRunnerView: View {
                 timerModel: EMOMTimerModel(
                     totalDuration: preset.durationInterval,
                     intervalDuration: intervalDuration,
+                    timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
@@ -43,6 +48,7 @@ struct TimerRunnerView: View {
             AMRAPTimerView(
                 timerModel: AMRAPTimerModel(
                     totalDuration: preset.durationInterval,
+                    timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
