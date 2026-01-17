@@ -54,8 +54,8 @@ This is a learning project where educational value matters as much as working co
 
 ## License
 
-Private project - not for redistribution.
+MIT License - see LICENSE file.
 
 ## Credits
 
-- App icon by Guilherme Silva Soares via The Noun Project
+See ACKNOWLEDGEMENTS file.
