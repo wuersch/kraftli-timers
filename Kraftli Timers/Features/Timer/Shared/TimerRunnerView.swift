@@ -12,6 +12,7 @@ struct TimerRunnerView: View {
     let preset: TimerPreset
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         NavigationStack {
@@ -23,21 +24,29 @@ struct TimerRunnerView: View {
 
     @ViewBuilder
     private var timerContent: some View {
+        let feedbackProvider: any AudioFeedbackProvider = settings.audioEnabled
+            ? settings.completionSoundStyle.makeAudioProvider()
+            : SilentFeedback()
+
         switch preset.kind {
         case .emom:
             EMOMTimerView(
                 timerModel: EMOMTimerModel(
                     totalDuration: preset.durationInterval,
-                    intervalDuration: intervalDuration
+                    intervalDuration: intervalDuration,
+                    feedbackProvider: feedbackProvider
                 ),
-                onWorkoutCompleted: makeLoggingClosure()
+                onWorkoutCompleted: makeLoggingClosure(),
+                confettiEnabled: settings.confettiEnabled
             )
         case .amrap:
             AMRAPTimerView(
                 timerModel: AMRAPTimerModel(
-                    totalDuration: preset.durationInterval
+                    totalDuration: preset.durationInterval,
+                    feedbackProvider: feedbackProvider
                 ),
-                onWorkoutCompleted: makeLoggingClosure()
+                onWorkoutCompleted: makeLoggingClosure(),
+                confettiEnabled: settings.confettiEnabled
             )
         }
     }
@@ -80,6 +89,7 @@ struct TimerRunnerView: View {
             exercise: Exercise(name: "6-Count Burpees")
         )
     )
+    .environment(AppSettings())
 }
 
 #Preview("AMRAP") {
@@ -90,4 +100,5 @@ struct TimerRunnerView: View {
             exercise: Exercise(name: "Pull-ups")
         )
     )
+    .environment(AppSettings())
 }
