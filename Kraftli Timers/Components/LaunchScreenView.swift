@@ -93,16 +93,16 @@ struct LaunchScreenView: View {
     // MARK: - Animation Sequence
 
     private func startAnimationSequence() {
-        // Phase 1: Arcs expand and spin (0 - 2.5s)
-        // Outer arc: 3 full rotations CW, expands to full size
+        // Phase 1: Arcs expand and spin, overshooting slightly (0 - 2.5s)
+        // Outer arc: 3 full rotations + overshoot, expands to full size
         withAnimation(.easeOut(duration: 2.5)) {
-            outerRotation = 360 * 3
+            outerRotation = 360 * 3 + 30  // Overshoot past 12 o'clock
             outerScale = 1.0
         }
 
-        // Inner arc: 2 full rotations CCW, expands to full size (slightly slower)
+        // Inner arc: 2 full rotations CCW + overshoot, expands to full size
         withAnimation(.easeOut(duration: 2.5)) {
-            innerRotation = -360 * 2
+            innerRotation = -360 * 2 - 25  // Overshoot past 12 o'clock (CCW)
             innerScale = 1.0
         }
 
@@ -111,12 +111,12 @@ struct LaunchScreenView: View {
             titleOpacity = 1.0
         }
 
-        // Phase 3: Final settling - arcs do a small additional rotation to "lock in" (2.5s - 2.8s)
+        // Phase 3: Settle back to exactly 12 o'clock (2.5s - 2.8s)
+        // Like timer arcs that end at 12 o'clock when time elapses
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             withAnimation(.easeOut(duration: 0.3)) {
-                // Small final adjustments to settle into a balanced position
-                outerRotation += 15
-                innerRotation -= 10
+                outerRotation = 360 * 3  // Exactly 12 o'clock
+                innerRotation = -360 * 2  // Exactly 12 o'clock
             }
         }
 
@@ -146,19 +146,19 @@ struct LaunchScreenView: View {
 
         VStack(spacing: 24) {
             ZStack {
-                // Outer arc at rest position
+                // Outer arc at 12 o'clock (final position)
                 Circle()
                     .trim(from: 0, to: 0.65)
                     .stroke(Color.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                     .frame(width: 160, height: 160)
-                    .rotationEffect(.degrees(360 * 3 + 15 - 90))
+                    .rotationEffect(.degrees(-90))  // 12 o'clock
 
-                // Inner arc at rest position
+                // Inner arc at 12 o'clock (final position)
                 Circle()
                     .trim(from: 0, to: 0.45)
                     .stroke(Color.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .frame(width: 110, height: 110)
-                    .rotationEffect(.degrees(-360 * 2 - 10 - 90))
+                    .rotationEffect(.degrees(-90))  // 12 o'clock
 
                 // Icon
                 Image("pushup")
