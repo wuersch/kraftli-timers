@@ -13,7 +13,13 @@ struct Kraftli_TimersApp: App {
     let modelContainer: ModelContainer
     @State private var settings = AppSettings()
 
+    // Capture launch screen preference once at startup (not reactive to mid-session changes)
+    @State private var showLaunchScreen: Bool
+
     init() {
+        // Determine if launch screen should show (before settings is fully initialized)
+        let launchEnabled = UserDefaults.standard.object(forKey: "launchScreenEnabled") as? Bool ?? true
+        _showLaunchScreen = State(initialValue: launchEnabled)
         let schema = Schema([
             Exercise.self,
             TimerPreset.self,
@@ -37,8 +43,17 @@ struct Kraftli_TimersApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(settings)
+            ZStack {
+                ContentView()
+                    .environment(settings)
+
+                if showLaunchScreen {
+                    LaunchScreenView {
+                        showLaunchScreen = false
+                    }
+                    .zIndex(1)
+                }
+            }
         }
         .modelContainer(modelContainer)
     }

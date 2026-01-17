@@ -1,0 +1,16 @@
+{
+  "images" : [
+    {
+      "filename" : "noun-wide-push-up-1970890.pdf",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  },
+  "properties" : {
+    "preserves-vector-representation" : true,
+    "template-rendering-intent" : "template"
+  }
+}
