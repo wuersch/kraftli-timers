@@ -16,8 +16,24 @@ struct VisualsSection: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Visuals")
                 .font(.headline)
+            
+            VStack(alignment: .leading, spacing: 0) {
+                // Launch Screen Toggle
+                Toggle(isOn: $settings.launchScreenEnabled) {
+                    Label("Launch Animation", systemImage: "movieclapper")
+                }
+                .padding()
 
-            VStack(spacing: 0) {
+                Divider()
+
+                Text("Shows an animated splash screen when the app starts.")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .padding()
+            }
+            .cardStyle()
+
+            VStack(alignment: .leading, spacing: 0) {
                 // Confetti Toggle
                 Toggle(isOn: $settings.confettiEnabled) {
                     Label("Confetti", systemImage: "party.popper")
@@ -31,25 +47,23 @@ struct VisualsSection: View {
                     .font(.subheadline)
                     .padding()
             }
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .cardStyle()
 
-            VStack(spacing: 0) {
-                // Launch Screen Toggle
-                Toggle(isOn: $settings.launchScreenEnabled) {
-                    Label("Launch Animation", systemImage: "wand.and.stars")
+            VStack(alignment: .leading, spacing: 0) {
+                // Smooth Animations Toggle
+                Toggle(isOn: $settings.smoothAnimationsEnabled) {
+                    Label("Smooth Animations", systemImage: "waveform.path")
                 }
                 .padding()
 
                 Divider()
 
-                Text("Shows an animated splash screen when the app starts.")
+                Text("Uses 60 FPS display-synced updates for fluid timer animations. Disable for improved battery life during long workouts.")
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
                     .padding()
             }
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .cardStyle()
         }
     }
 }

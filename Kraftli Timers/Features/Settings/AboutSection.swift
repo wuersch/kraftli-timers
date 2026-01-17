@@ -67,8 +67,7 @@ struct AboutSection: View {
                     .contentShape(Rectangle())
                 }
             }
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .cardStyle()
         }
         .sheet(isPresented: $showingAcknowledgments) {
             AcknowledgmentsView()
