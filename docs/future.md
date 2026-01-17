@@ -148,6 +148,40 @@ Requires Exercise Library and Programs features.
 
 ---
 
+## Settings Enhancements
+
+**Priority**: Low to Medium
+
+Deferred settings features for future consideration:
+
+### Appearance / Themes
+- Color scheme customization (EMOM/AMRAP ring colors, muscle group colors)
+- Requires Asset Catalog color sets and theme system
+- Complexity: High (affects many views)
+
+### EMOM Display Options
+- Option to swap reps and countdown prominence
+- For users who focus more on rep counting during workouts
+
+### Data Export
+- Export workout history to CSV/JSON
+- Use iOS Share Sheet for destination flexibility (Files, Mail, AirDrop)
+- Consider privacy implications
+
+### iCloud Sync Toggle
+- Enable/disable sync across devices
+- Dependent on iCloud sync feature implementation
+- Use NSUbiquitousKeyValueStore for settings sync
+
+### Haptic Feedback Toggle
+- Enable/disable haptic feedback on button presses and interval changes
+
+### Keep Screen Awake
+- Already implemented during workouts
+- Could add toggle if users want different behavior
+
+---
+
 ## Other Ideas
 
 - Rest periods between intervals

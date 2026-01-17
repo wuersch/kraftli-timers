@@ -33,6 +33,9 @@ struct AMRAPTimerView: View {
     /// Called when the workout completes (timer reaches zero). Used for logging.
     private let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
 
+    /// Whether to show confetti on workout completion.
+    private let confettiEnabled: Bool
+
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private static let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
@@ -45,10 +48,12 @@ struct AMRAPTimerView: View {
     // MARK: - Initialization
     init(
         timerModel: AMRAPTimerModel = AMRAPTimerModel(),
-        onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil
+        onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
+        confettiEnabled: Bool = true
     ) {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
+        self.confettiEnabled = confettiEnabled
     }
 
     // MARK: - Styling
@@ -206,7 +211,7 @@ struct AMRAPTimerView: View {
 
                 SwipeHintOverlay(isVisible: session.showHint, fontSize: sizes.labelFont)
 
-                if session.showConfetti {
+                if confettiEnabled && session.showConfetti {
                     ConfettiView()
                         .ignoresSafeArea(.all)
                         .allowsHitTesting(false)

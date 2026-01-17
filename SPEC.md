@@ -20,11 +20,11 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 | Workout Stats | ✅ | Dashboard, charts, muscle group breakdown, per-exercise breakdown |
 | Workout Logging | ✅ | Automatic logging on timer completion |
 | Workout Editing | ✅ | Edit reps/rounds, delete via Edit mode |
-| Settings | 📋 | Audio prefs, theme, about section |
+| Settings | ✅ | Audio prefs, confetti toggle, about section, clear history |
 
 ## v1 Remaining Work
 
-- [ ] Settings screen implementation
+- [x] Settings screen implementation
 
 ## Documentation
 
