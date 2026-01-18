@@ -275,7 +275,7 @@ struct StatsServiceTests {
 
     @Test func groupedByExercise_lookupsMuscleGroupFromExercises() {
         let exercises = [
-            Exercise(name: "Burpees", exerciseDescription: "Full body", muscleGroup: .fullBody)
+            Exercise(name: "Burpees", exerciseDescription: "Full body", formTips: [], muscleGroup: .fullBody)
         ]
         let workouts = [
             makeWorkout(date: Date(), exerciseName: "Burpees", durationMinutes: 20)
@@ -337,9 +337,9 @@ struct StatsServiceTests {
 
     @Test func groupedByMuscleGroup_aggregatesByMuscleGroup() {
         let exercises = [
-            Exercise(name: "Burpees", muscleGroup: .fullBody),
-            Exercise(name: "Pull-ups", muscleGroup: .upperBody),
-            Exercise(name: "Squats", muscleGroup: .lowerBody)
+            Exercise(name: "Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody),
+            Exercise(name: "Pull-ups", exerciseDescription: "", formTips: [], muscleGroup: .upperBody),
+            Exercise(name: "Squats", exerciseDescription: "", formTips: [], muscleGroup: .lowerBody)
         ]
 
         let workouts = [
@@ -360,27 +360,9 @@ struct StatsServiceTests {
         #expect(lowerBodyStats == nil) // No workouts for lower body
     }
 
-    @Test func groupedByMuscleGroup_ignoresExercisesWithoutMuscleGroup() {
+    @Test func groupedByMuscleGroup_ignoresUnknownExercisesInWorkout() {
         let exercises = [
-            Exercise(name: "Burpees", muscleGroup: .fullBody),
-            Exercise(name: "Unknown", muscleGroup: nil)
-        ]
-
-        let workouts = [
-            makeWorkout(date: Date(), exerciseName: "Burpees", durationMinutes: 20),
-            makeWorkout(date: Date(), exerciseName: "Unknown", durationMinutes: 10)
-        ]
-
-        let stats = service.groupedByMuscleGroup(workouts: workouts, exercises: exercises)
-
-        #expect(stats.count == 1)
-        let fullBodyStats = stats.first { $0.muscleGroup == .fullBody }
-        #expect(fullBodyStats?.totalMinutes == 20) // Only Burpees counted
-    }
-
-    @Test func groupedByMuscleGroup_ignoresUnknownExercises() {
-        let exercises = [
-            Exercise(name: "Burpees", muscleGroup: .fullBody)
+            Exercise(name: "Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody)
         ]
 
         let workouts = [
@@ -401,23 +383,9 @@ struct StatsServiceTests {
         #expect(stats.isEmpty)
     }
 
-    @Test func groupedByMuscleGroup_noExercisesWithMuscleGroups_returnsEmpty() {
-        let exercises = [
-            Exercise(name: "Exercise Without Group", muscleGroup: nil)
-        ]
-
-        let workouts = [
-            makeWorkout(date: Date(), exerciseName: "Exercise Without Group", durationMinutes: 20)
-        ]
-
-        let stats = service.groupedByMuscleGroup(workouts: workouts, exercises: exercises)
-
-        #expect(stats.isEmpty)
-    }
-
     @Test func groupedByMuscleGroup_floorsMinutes() {
         let exercises = [
-            Exercise(name: "Burpees", muscleGroup: .fullBody)
+            Exercise(name: "Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody)
         ]
 
         // 90 seconds = 1.5 minutes, should floor to 1 minute

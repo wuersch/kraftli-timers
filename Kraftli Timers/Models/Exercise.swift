@@ -14,18 +14,18 @@ final class Exercise {
     // MARK: - Persisted Properties
     var id: UUID
     var name: String
-    var exerciseDescription: String?
-    var formTips: [String]?
-    var muscleGroup: MuscleGroup?
+    var exerciseDescription: String
+    var formTips: [String]
+    var muscleGroup: MuscleGroup
     var difficulty: Difficulty?
 
     // MARK: - Initialization
     init(
         id: UUID = UUID(),
         name: String,
-        exerciseDescription: String? = nil,
-        formTips: [String]? = nil,
-        muscleGroup: MuscleGroup? = nil,
+        exerciseDescription: String,
+        formTips: [String],
+        muscleGroup: MuscleGroup,
         difficulty: Difficulty? = nil
     ) {
         self.id = id

@@ -202,12 +202,12 @@ final class DefaultStatsService: StatsService {
         var grouped: [MuscleGroup: Int] = [:]
 
         for workout in workouts {
-            // Skip workouts for exercises without muscle groups
-            guard let exercise = exercisesByName[workout.exerciseName],
-                  let muscleGroup = exercise.muscleGroup else {
+            // Skip workouts for exercises not in the database
+            guard let exercise = exercisesByName[workout.exerciseName] else {
                 continue
             }
 
+            let muscleGroup = exercise.muscleGroup
             let minutes = Int(workout.durationMinutes)
             grouped[muscleGroup, default: 0] += minutes
         }

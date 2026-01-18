@@ -23,10 +23,6 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 | Settings | ✅ | Audio prefs, confetti toggle, about section, clear history |
 | Launch Screen | ✅ | Animated splash with spinning arcs, toggleable in Settings |
 
-## v1 Remaining Work
-
-- [x] Settings screen implementation
-
 ## Documentation
 
 | Document | Contents |
@@ -53,7 +49,7 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 ### Tab Structure
 1. **Timers** - Preset management and launching
 2. **Stats** - Workout statistics and history
-3. **Settings** - App configuration (placeholder)
+3. **Settings** - App configuration
 
 ---
 

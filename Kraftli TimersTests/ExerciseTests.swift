@@ -58,7 +58,7 @@ struct ExerciseTests {
 
         let exercise = Exercise(from: data)
 
-        #expect(exercise.formTips?.count == 3)
+        #expect(exercise.formTips.count == 3)
         #expect(exercise.formTips == tips)
     }
 }

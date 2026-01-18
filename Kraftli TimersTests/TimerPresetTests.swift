@@ -50,7 +50,7 @@ struct TimerPresetTests {
     }
 
     @Test func secondaryText_includesExerciseAndRepsForEMOM() {
-        let exercise = Exercise(name: "6-Count Burpees")
+        let exercise = Exercise(name: "6-Count Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody)
         let preset = TimerPreset(
             kind: .emom,
             durationInterval: 20 * 60,
@@ -62,7 +62,7 @@ struct TimerPresetTests {
     }
 
     @Test func secondaryText_includesOnlyExerciseForAMRAP() {
-        let exercise = Exercise(name: "Pull-ups")
+        let exercise = Exercise(name: "Pull-ups", exerciseDescription: "", formTips: [], muscleGroup: .upperBody)
         let preset = TimerPreset(
             kind: .amrap,
             durationInterval: 20 * 60,
