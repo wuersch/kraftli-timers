@@ -6,11 +6,17 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct WatchEMOMTimerView: View {
     // MARK: - Properties
     @State private var timerModel: EMOMTimerModel
+    @State private var hasLoggedWorkout = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    private let exerciseName: String
+    private let totalDuration: TimeInterval
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -24,8 +30,11 @@ struct WatchEMOMTimerView: View {
     // MARK: - Initialization
     init(
         totalDuration: TimeInterval = 20 * 60,
-        intervalDuration: TimeInterval = 60
+        intervalDuration: TimeInterval = 60,
+        exerciseName: String = "EMOM Workout"
     ) {
+        self.totalDuration = totalDuration
+        self.exerciseName = exerciseName
         self.timerModel = EMOMTimerModel(
             totalDuration: totalDuration,
             intervalDuration: intervalDuration,
@@ -124,6 +133,26 @@ struct WatchEMOMTimerView: View {
         }
         .ignoresSafeArea()
         .toolbar(.hidden)
+        .onChange(of: isCompleted) { _, completed in
+            if completed && !hasLoggedWorkout {
+                logWorkout()
+            }
+        }
+    }
+
+    // MARK: - Workout Logging
+
+    private func logWorkout() {
+        hasLoggedWorkout = true
+
+        let log = WorkoutLog(
+            exerciseName: exerciseName,
+            timerKind: .emom,
+            durationSeconds: totalDuration,
+            repsCompleted: timerModel.totalIntervals
+        )
+        modelContext.insert(log)
+        try? modelContext.save()
     }
 }
 

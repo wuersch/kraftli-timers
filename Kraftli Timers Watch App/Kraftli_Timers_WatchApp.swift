@@ -6,12 +6,39 @@
 //
 
 import SwiftUI
+import SwiftData
+import WatchConnectivity
 
 @main
 struct Kraftli_Timers_Watch_AppApp: App {
+    let modelContainer: ModelContainer
+
+    init() {
+        // Activate WatchConnectivity for real-time sync with iPhone
+        WatchConnectivityService.shared.activate()
+
+        let schema = Schema([
+            Exercise.self,
+            TimerPreset.self,
+            WorkoutLog.self
+        ])
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .private("iCloud.ch.omnom.kraftli.timers")
+        )
+
+        do {
+            modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(modelContainer)
     }
 }
