@@ -16,11 +16,12 @@ import SwiftData
 @Model
 final class WorkoutLog {
     // MARK: - Persisted Properties
-    var id: UUID
-    var date: Date
-    var exerciseName: String
-    var timerKindRawValue: String
-    var durationSeconds: TimeInterval
+    // CloudKit requires default values for all non-optional attributes
+    var id: UUID = UUID()
+    var date: Date = Date()
+    var exerciseName: String = ""
+    var timerKindRawValue: String = TimerKind.emom.rawValue
+    var durationSeconds: TimeInterval = 0
     var repsCompleted: Int?
     var roundsCompleted: Int?
 
