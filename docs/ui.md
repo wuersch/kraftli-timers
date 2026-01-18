@@ -8,7 +8,7 @@ Interface design and component specifications.
 |-----|---------|--------|
 | Timers | Timer preset management and launching | ✅ |
 | Stats | Workout statistics and history | ✅ |
-| Settings | App configuration | 📋 Placeholder |
+| Settings | App configuration | ✅ Implemented |
 
 ## Timer Preset List (Timers Tab)
 
@@ -33,7 +33,7 @@ Interface design and component specifications.
 
 ## EMOM Timer View (Full Screen)
 
-- Dark background for focus
+- Adapts to system appearance (light/dark mode)
 - Navigation title: "Exercise Name · EMOM"
 - **Drag handle**: Capsule indicator for swipe-to-dismiss
 - **Dual progress rings**:
@@ -49,7 +49,7 @@ Interface design and component specifications.
 
 ## AMRAP Timer View (Full Screen)
 
-- Dark background for focus
+- Adapts to system appearance (light/dark mode)
 - Navigation title: "Exercise Name · AMRAP"
 - **Drag handle**: Capsule indicator for swipe-to-dismiss
 - **Single progress ring** (indigo)
@@ -104,7 +104,7 @@ Interface design and component specifications.
 
 ## Design Principles
 
-- Dark backgrounds for timer views
+- Adaptive theming for timer views (respects system light/dark mode)
 - Native SwiftUI components throughout
 - Pill-shaped buttons and badges
 - Monospaced digits for time displays

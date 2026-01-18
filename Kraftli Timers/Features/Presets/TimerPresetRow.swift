@@ -65,7 +65,13 @@ struct TimerPresetRow: View {
         id: UUID(),
         kind: .amrap,
         durationInterval: 300,
-        exercise: Exercise(id: UUID(), name: "Squats")
+        exercise: Exercise(
+            id: UUID(),
+            name: "Squats",
+            exerciseDescription: "Lower body exercise",
+            formTips: [],
+            muscleGroup: .lowerBody
+        )
     )
     TimerPresetRow(preset: preset, didTapRun: { _ in }, didTapEdit: { _ in })
 }
@@ -76,7 +82,13 @@ struct TimerPresetRow: View {
         kind: .emom,
         durationInterval: 300,
         targetReps: 10,
-        exercise: Exercise(id: UUID(), name: "6-Count Burpees")
+        exercise: Exercise(
+            id: UUID(),
+            name: "6-Count Burpees",
+            exerciseDescription: "Full body exercise",
+            formTips: [],
+            muscleGroup: .fullBody
+        )
     )
     TimerPresetRow(preset: preset, didTapRun: { _ in }, didTapEdit: { _ in })
 }

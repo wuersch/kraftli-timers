@@ -181,7 +181,7 @@ Audio cues for workout timing without watching the screen.
 ### Implementation
 - `AudioFeedbackProvider` protocol for testability
 - `SystemSoundFeedback` for production
-- `SilentFeedback` for testing
+- `SilentFeedback` for preview and silent mode (integrated into production)
 
 ---
 
@@ -195,16 +195,40 @@ Audio cues for workout timing without watching the screen.
 
 ---
 
+## Launch Screen
+
+**Status**: ✅ Implemented
+
+Animated splash screen displayed on app launch.
+
+### Functionality
+- Animated splash with spinning concentric arcs
+- Smooth animation on appearance
+- Toggleable via "Show Animated Launch" in Settings
+
+---
+
 ## Settings
 
-**Status**: 📋 Planned
+**Status**: ✅ Implemented
 
-Currently shows "Coming soon" placeholder.
+App preferences and configuration.
 
-### Planned
-- Audio preferences (turn on/off cheer)
-- Confetti preferences (turn on/off)
-- Theme options
-- About section with app version and credits
-- Minimum interval duration for EMOM
-- Choose if number of reps or interval countdown is displayed more prominently in the EMOM timer
+### Sections
+
+#### Audio Preferences
+- Completion sound style selector (Cheer / Neutral)
+
+#### Visual Preferences
+- Confetti toggle (on/off)
+- Smooth animations toggle (on/off)
+- Show animated launch toggle (on/off)
+
+#### Data Management
+- Clear workouts (with confirmation)
+- Clear presets (with confirmation)
+- Clear all data (with confirmation)
+
+#### About
+- App version display
+- Credits and acknowledgments

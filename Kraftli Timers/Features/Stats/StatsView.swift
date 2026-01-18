@@ -200,9 +200,9 @@ private let previewContainer: ModelContainer = {
 
     // Add sample data
     let exercises = [
-        Exercise(name: "6-Count Burpees", muscleGroup: .fullBody),
-        Exercise(name: "Pull-ups", muscleGroup: .upperBody),
-        Exercise(name: "Squats", muscleGroup: .lowerBody)
+        Exercise(name: "6-Count Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody),
+        Exercise(name: "Pull-ups", exerciseDescription: "", formTips: [], muscleGroup: .upperBody),
+        Exercise(name: "Squats", exerciseDescription: "", formTips: [], muscleGroup: .lowerBody)
     ]
     exercises.forEach { container.mainContext.insert($0) }
 

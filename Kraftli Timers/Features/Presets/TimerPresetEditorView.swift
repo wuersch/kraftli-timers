@@ -133,9 +133,7 @@ struct TimerPresetEditorView: View {
                 Divider()
 
                 HStack(spacing: 8) {
-                    if let muscleGroup = exercise.muscleGroup {
-                        MuscleGroupTag(muscleGroup: muscleGroup, size: .compact)
-                    }
+                    MuscleGroupTag(muscleGroup: exercise.muscleGroup, size: .compact)
                     if let difficulty = exercise.difficulty {
                         DifficultyIndicator(
                             difficulty: difficulty,

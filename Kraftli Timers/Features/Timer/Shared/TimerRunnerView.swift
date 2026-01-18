@@ -92,7 +92,12 @@ struct TimerRunnerView: View {
             kind: .emom,
             durationInterval: 20 * 60,
             targetReps: 100,
-            exercise: Exercise(name: "6-Count Burpees")
+            exercise: Exercise(
+                name: "6-Count Burpees",
+                exerciseDescription: "Full body exercise",
+                formTips: [],
+                muscleGroup: .fullBody
+            )
         )
     )
     .environment(AppSettings())
@@ -103,7 +108,12 @@ struct TimerRunnerView: View {
         preset: TimerPreset(
             kind: .amrap,
             durationInterval: 15 * 60,
-            exercise: Exercise(name: "Pull-ups")
+            exercise: Exercise(
+                name: "Pull-ups",
+                exerciseDescription: "Upper body exercise",
+                formTips: [],
+                muscleGroup: .upperBody
+            )
         )
     )
     .environment(AppSettings())

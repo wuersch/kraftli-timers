@@ -77,18 +77,14 @@ struct ExerciseCardView: View {
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Description
-            if let description = exercise.exerciseDescription {
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(exercise.exerciseDescription)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             // Tags row
             HStack(spacing: 12) {
-                if let muscleGroup = exercise.muscleGroup {
-                    MuscleGroupTag(muscleGroup: muscleGroup, size: .regular)
-                }
+                MuscleGroupTag(muscleGroup: exercise.muscleGroup, size: .regular)
 
                 if let difficulty = exercise.difficulty {
                     DifficultyIndicator(difficulty: difficulty, style: .pill)
@@ -161,7 +157,12 @@ struct ExerciseCardView: View {
                 .foregroundStyle(.secondary)
 
             ExerciseCardView(
-                exercise: Exercise(name: "Custom Exercise"),
+                exercise: Exercise(
+                    name: "Custom Exercise",
+                    exerciseDescription: "A custom exercise with minimal configuration.",
+                    formTips: [],
+                    muscleGroup: .fullBody
+                ),
                 isExpanded: true,
                 onSelect: {},
                 onToggleExpand: {}
