@@ -46,8 +46,8 @@ class AMRAPTimerModel: WorkoutTimer {
     // MARK: - Initialization
     init(
         totalDuration: TimeInterval = 20 * 60,
-        timerProvider: TimerProvider = DisplayLinkTimerProvider(),
-        feedbackProvider: AudioFeedbackProvider = SystemSoundFeedback()
+        timerProvider: TimerProvider,
+        feedbackProvider: AudioFeedbackProvider
     ) {
         self.totalDuration = totalDuration
         self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)

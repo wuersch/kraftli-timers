@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		4C21C5A92F008244008D0E89 /* SPEC.md in Resources */ = {isa = PBXBuildFile; fileRef = 4C21C5A82F008244008D0E89 /* SPEC.md */; };
+		4C74D6DD2F1CE4E7009A425D /* Kraftli Timers Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4C74D6BD2F1CE4E6009A425D /* Kraftli Timers Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,13 +26,51 @@
 			remoteGlobalIDString = 4C33823B2EF2FA4700135BD7;
 			remoteInfo = "Kraftli Timers";
 		};
+		4C74D6CA2F1CE4E7009A425D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C3382342EF2FA4700135BD7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C74D6BC2F1CE4E6009A425D;
+			remoteInfo = "Kraftli Timers Watch Watch App";
+		};
+		4C74D6D42F1CE4E7009A425D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C3382342EF2FA4700135BD7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C74D6BC2F1CE4E6009A425D;
+			remoteInfo = "Kraftli Timers Watch Watch App";
+		};
+		4C74D6DB2F1CE4E7009A425D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C3382342EF2FA4700135BD7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C74D6BC2F1CE4E6009A425D;
+			remoteInfo = "Kraftli Timers Watch Watch App";
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4C74D6DE2F1CE4E7009A425D /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				4C74D6DD2F1CE4E7009A425D /* Kraftli Timers Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		4C21C5A82F008244008D0E89 /* SPEC.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SPEC.md; sourceTree = "<group>"; };
 		4C33823C2EF2FA4700135BD7 /* Kraftli Timers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Kraftli Timers.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C33824D2EF2FA4800135BD7 /* Kraftli TimersTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C3382572EF2FA4800135BD7 /* Kraftli TimersUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C74D6BD2F1CE4E6009A425D /* Kraftli Timers Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Kraftli Timers Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C74D6C92F1CE4E7009A425D /* Kraftli Timers Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli Timers Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C74D6D32F1CE4E7009A425D /* Kraftli Timers Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli Timers Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4CA514782EFD4F8200048217 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
 		4CDFEB8E2F1B734700782000 /* ACKNOWLEDGMENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ACKNOWLEDGMENTS.md; sourceTree = "<group>"; };
 		4CDFEB942F1B89F200782000 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -49,6 +88,30 @@
 			);
 			target = 4C33823B2EF2FA4700135BD7 /* Kraftli Timers */;
 		};
+		4C74D6EE2F1CE676009A425D /* Exceptions for "Kraftli Timers" folder in "Kraftli Timers Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Components/ProgressRing.swift,
+				"Extensions/TimeInterval+Format.swift",
+				Features/Timer/AMRAP/AMRAPTimerModel.swift,
+				Features/Timer/EMOM/EMOMTimerModel.swift,
+				Features/Timer/Shared/TimerCoordinator.swift,
+				Features/Timer/Shared/UISeparator.swift,
+				Features/Timer/Shared/WorkoutTimer.swift,
+				Models/Difficulty.swift,
+				Models/Exercise.swift,
+				Models/MuscleGroup.swift,
+				Models/TimerKind.swift,
+				Models/TimerPreset.swift,
+				Models/WorkoutLog.swift,
+				Services/AudioFeedbackProvider.swift,
+				Services/FoundationTimerProvider.swift,
+				Services/SilentFeedback.swift,
+				Services/TimerProvider.swift,
+				Services/WorkoutLoggingService.swift,
+			);
+			target = 4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -56,6 +119,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				4C33825F2EF2FA4800135BD7 /* Exceptions for "Kraftli Timers" folder in "Kraftli Timers" target */,
+				4C74D6EE2F1CE676009A425D /* Exceptions for "Kraftli Timers" folder in "Kraftli Timers Watch App" target */,
 			);
 			path = "Kraftli Timers";
 			sourceTree = "<group>";
@@ -68,6 +132,21 @@
 		4C33825A2EF2FA4800135BD7 /* Kraftli TimersUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Kraftli TimersUITests";
+			sourceTree = "<group>";
+		};
+		4C74D6BE2F1CE4E6009A425D /* Kraftli Timers Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Kraftli Timers Watch App";
+			sourceTree = "<group>";
+		};
+		4C74D6CC2F1CE4E7009A425D /* Kraftli Timers Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Kraftli Timers Watch AppTests";
+			sourceTree = "<group>";
+		};
+		4C74D6D62F1CE4E7009A425D /* Kraftli Timers Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Kraftli Timers Watch AppUITests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -94,6 +173,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4C74D6BA2F1CE4E6009A425D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C74D6C62F1CE4E7009A425D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C74D6D02F1CE4E7009A425D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -108,6 +208,9 @@
 				4C33823E2EF2FA4700135BD7 /* Kraftli Timers */,
 				4C3382502EF2FA4800135BD7 /* Kraftli TimersTests */,
 				4C33825A2EF2FA4800135BD7 /* Kraftli TimersUITests */,
+				4C74D6BE2F1CE4E6009A425D /* Kraftli Timers Watch App */,
+				4C74D6CC2F1CE4E7009A425D /* Kraftli Timers Watch AppTests */,
+				4C74D6D62F1CE4E7009A425D /* Kraftli Timers Watch AppUITests */,
 				4C33823D2EF2FA4700135BD7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -118,6 +221,9 @@
 				4C33823C2EF2FA4700135BD7 /* Kraftli Timers.app */,
 				4C33824D2EF2FA4800135BD7 /* Kraftli TimersTests.xctest */,
 				4C3382572EF2FA4800135BD7 /* Kraftli TimersUITests.xctest */,
+				4C74D6BD2F1CE4E6009A425D /* Kraftli Timers Watch App.app */,
+				4C74D6C92F1CE4E7009A425D /* Kraftli Timers Watch AppTests.xctest */,
+				4C74D6D32F1CE4E7009A425D /* Kraftli Timers Watch AppUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -143,10 +249,12 @@
 				4C3382382EF2FA4700135BD7 /* Sources */,
 				4C3382392EF2FA4700135BD7 /* Frameworks */,
 				4C33823A2EF2FA4700135BD7 /* Resources */,
+				4C74D6DE2F1CE4E7009A425D /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4C74D6DC2F1CE4E7009A425D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				4C33823E2EF2FA4700135BD7 /* Kraftli Timers */,
@@ -204,6 +312,74 @@
 			productReference = 4C3382572EF2FA4800135BD7 /* Kraftli TimersUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C74D6E52F1CE4E7009A425D /* Build configuration list for PBXNativeTarget "Kraftli Timers Watch App" */;
+			buildPhases = (
+				4C74D6B92F1CE4E6009A425D /* Sources */,
+				4C74D6BA2F1CE4E6009A425D /* Frameworks */,
+				4C74D6BB2F1CE4E6009A425D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4C74D6BE2F1CE4E6009A425D /* Kraftli Timers Watch App */,
+			);
+			name = "Kraftli Timers Watch App";
+			packageProductDependencies = (
+			);
+			productName = "Kraftli Timers Watch Watch App";
+			productReference = 4C74D6BD2F1CE4E6009A425D /* Kraftli Timers Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4C74D6C82F1CE4E7009A425D /* Kraftli Timers Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C74D6E62F1CE4E7009A425D /* Build configuration list for PBXNativeTarget "Kraftli Timers Watch AppTests" */;
+			buildPhases = (
+				4C74D6C52F1CE4E7009A425D /* Sources */,
+				4C74D6C62F1CE4E7009A425D /* Frameworks */,
+				4C74D6C72F1CE4E7009A425D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C74D6CB2F1CE4E7009A425D /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C74D6CC2F1CE4E7009A425D /* Kraftli Timers Watch AppTests */,
+			);
+			name = "Kraftli Timers Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "Kraftli Timers Watch Watch AppTests";
+			productReference = 4C74D6C92F1CE4E7009A425D /* Kraftli Timers Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4C74D6D22F1CE4E7009A425D /* Kraftli Timers Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C74D6E72F1CE4E7009A425D /* Build configuration list for PBXNativeTarget "Kraftli Timers Watch AppUITests" */;
+			buildPhases = (
+				4C74D6CF2F1CE4E7009A425D /* Sources */,
+				4C74D6D02F1CE4E7009A425D /* Frameworks */,
+				4C74D6D12F1CE4E7009A425D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C74D6D52F1CE4E7009A425D /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C74D6D62F1CE4E7009A425D /* Kraftli Timers Watch AppUITests */,
+			);
+			name = "Kraftli Timers Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "Kraftli Timers Watch Watch AppUITests";
+			productReference = 4C74D6D32F1CE4E7009A425D /* Kraftli Timers Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -225,6 +401,17 @@
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 4C33823B2EF2FA4700135BD7;
 					};
+					4C74D6BC2F1CE4E6009A425D = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					4C74D6C82F1CE4E7009A425D = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 4C74D6BC2F1CE4E6009A425D;
+					};
+					4C74D6D22F1CE4E7009A425D = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 4C74D6BC2F1CE4E6009A425D;
+					};
 				};
 			};
 			buildConfigurationList = 4C3382372EF2FA4700135BD7 /* Build configuration list for PBXProject "Kraftli Timers" */;
@@ -244,6 +431,9 @@
 				4C33823B2EF2FA4700135BD7 /* Kraftli Timers */,
 				4C33824C2EF2FA4800135BD7 /* Kraftli TimersTests */,
 				4C3382562EF2FA4800135BD7 /* Kraftli TimersUITests */,
+				4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */,
+				4C74D6C82F1CE4E7009A425D /* Kraftli Timers Watch AppTests */,
+				4C74D6D22F1CE4E7009A425D /* Kraftli Timers Watch AppUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -265,6 +455,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		4C3382552EF2FA4800135BD7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C74D6BB2F1CE4E6009A425D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C74D6C72F1CE4E7009A425D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C74D6D12F1CE4E7009A425D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -295,6 +506,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4C74D6B92F1CE4E6009A425D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C74D6C52F1CE4E7009A425D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C74D6CF2F1CE4E7009A425D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -308,6 +540,21 @@
 			target = 4C33823B2EF2FA4700135BD7 /* Kraftli Timers */;
 			targetProxy = 4C3382582EF2FA4800135BD7 /* PBXContainerItemProxy */;
 		};
+		4C74D6CB2F1CE4E7009A425D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */;
+			targetProxy = 4C74D6CA2F1CE4E7009A425D /* PBXContainerItemProxy */;
+		};
+		4C74D6D52F1CE4E7009A425D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */;
+			targetProxy = 4C74D6D42F1CE4E7009A425D /* PBXContainerItemProxy */;
+		};
+		4C74D6DC2F1CE4E7009A425D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */;
+			targetProxy = 4C74D6DB2F1CE4E7009A425D /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -316,9 +563,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "kraftli-icon-v1";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1.0.0.0;
-				DEVELOPMENT_TEAM = 7588KJGLLF;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -341,8 +589,9 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.Kraftli-Timers";
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -363,9 +612,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "kraftli-icon-v1";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1.0.0.0;
-				DEVELOPMENT_TEAM = 7588KJGLLF;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -388,8 +638,9 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.Kraftli-Timers";
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -525,15 +776,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 7588KJGLLF;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.Kraftli-TimersTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.internal.Tests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -552,15 +805,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 7588KJGLLF;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.Kraftli-TimersTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.internal.Tests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -578,15 +833,17 @@
 		4C3382692EF2FA4800135BD7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 7588KJGLLF;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.Kraftli-TimersUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.internal.UITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -604,15 +861,17 @@
 		4C33826A2EF2FA4800135BD7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 7588KJGLLF;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.Kraftli-TimersUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.internal.UITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -624,6 +883,179 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = "Kraftli Timers";
 				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		4C74D6DF2F1CE4E7009A425D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Kraftli Timers";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "ch.omnom.kraftli-timers";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		4C74D6E02F1CE4E7009A425D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Kraftli Timers";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "ch.omnom.kraftli-timers";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		4C74D6E12F1CE4E7009A425D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.watchkitapp.internal.AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kraftli Timers Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Kraftli Timers Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		4C74D6E22F1CE4E7009A425D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.watchkitapp.internal.AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kraftli Timers Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Kraftli Timers Watch App";
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		4C74D6E32F1CE4E7009A425D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.watchkitapp.internal.AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "Kraftli Timers Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		4C74D6E42F1CE4E7009A425D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "ch.omnom.kraftli-timers.watchkitapp.internal.AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "Kraftli Timers Watch App";
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
 		};
@@ -662,6 +1094,33 @@
 			buildConfigurations = (
 				4C3382692EF2FA4800135BD7 /* Debug */,
 				4C33826A2EF2FA4800135BD7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C74D6E52F1CE4E7009A425D /* Build configuration list for PBXNativeTarget "Kraftli Timers Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C74D6DF2F1CE4E7009A425D /* Debug */,
+				4C74D6E02F1CE4E7009A425D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C74D6E62F1CE4E7009A425D /* Build configuration list for PBXNativeTarget "Kraftli Timers Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C74D6E12F1CE4E7009A425D /* Debug */,
+				4C74D6E22F1CE4E7009A425D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C74D6E72F1CE4E7009A425D /* Build configuration list for PBXNativeTarget "Kraftli Timers Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C74D6E32F1CE4E7009A425D /* Debug */,
+				4C74D6E42F1CE4E7009A425D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -77,8 +77,8 @@ public class EMOMTimerModel: WorkoutTimer {
         totalDuration: TimeInterval = 20 * 60,
         intervalDuration: TimeInterval = 60,
         intervalWarningThreshold: TimeInterval = 3,
-        timerProvider: TimerProvider = DisplayLinkTimerProvider(),
-        feedbackProvider: AudioFeedbackProvider = SystemSoundFeedback()
+        timerProvider: TimerProvider,
+        feedbackProvider: AudioFeedbackProvider
     ) {
         precondition(totalDuration > 0, "totalDuration must be > 0")
         precondition(intervalDuration > 0, "intervalDuration must be > 0")
@@ -100,8 +100,8 @@ public class EMOMTimerModel: WorkoutTimer {
     convenience init(
         totalReps: Int,
         totalMinutes: Int,
-        timerProvider: TimerProvider = DisplayLinkTimerProvider(),
-        feedbackProvider: AudioFeedbackProvider = SystemSoundFeedback()
+        timerProvider: TimerProvider,
+        feedbackProvider: AudioFeedbackProvider
     ) {
         precondition(totalReps > 0, "totalReps must be > 0")
         precondition(totalMinutes > 0, "totalMinutes must be > 0")
@@ -112,7 +112,8 @@ public class EMOMTimerModel: WorkoutTimer {
         self.init(
             totalDuration: totalSeconds,
             intervalDuration: intervalSeconds,
-            timerProvider: timerProvider
+            timerProvider: timerProvider,
+            feedbackProvider: feedbackProvider
         )
     }
     
