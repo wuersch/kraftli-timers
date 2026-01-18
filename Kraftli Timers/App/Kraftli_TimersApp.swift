@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import WatchConnectivity
 
 @main
 struct Kraftli_TimersApp: App {
@@ -17,6 +18,8 @@ struct Kraftli_TimersApp: App {
     @State private var showLaunchScreen: Bool
 
     init() {
+        // Activate WatchConnectivity for real-time sync with Watch
+        WatchConnectivityService.shared.activate()
         // Determine if launch screen should show (before settings is fully initialized)
         let launchEnabled = UserDefaults.standard.object(forKey: "launchScreenEnabled") as? Bool ?? true
         _showLaunchScreen = State(initialValue: launchEnabled)
@@ -27,7 +30,8 @@ struct Kraftli_TimersApp: App {
         ])
         let modelConfiguration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: false
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .private("iCloud.ch.omnom.kraftli.timers")
         )
 
         do {
@@ -40,6 +44,8 @@ struct Kraftli_TimersApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }
+
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -56,6 +62,23 @@ struct Kraftli_TimersApp: App {
             }
         }
         .modelContainer(modelContainer)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                syncPresetsToWatch()
+            }
+        }
+    }
+
+    // MARK: - WatchConnectivity Sync
+
+    private func syncPresetsToWatch() {
+        let context = modelContainer.mainContext
+        let descriptor = FetchDescriptor<TimerPreset>(sortBy: [SortDescriptor(\.sortOrder)])
+
+        guard let presets = try? context.fetch(descriptor) else { return }
+
+        let transferData = presets.map { PresetTransferData(from: $0) }
+        WatchConnectivityService.shared.sendPresetsToWatch(transferData)
     }
 
     // MARK: - Data Seeding

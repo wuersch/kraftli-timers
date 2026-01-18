@@ -7,12 +7,18 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct WatchAMRAPTimerView: View {
     // MARK: - Properties
     @State private var timerModel: AMRAPTimerModel
     @State private var crownValue: Double = 0
+    @State private var hasLoggedWorkout = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    private let exerciseName: String
+    private let totalDuration: TimeInterval
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -22,7 +28,12 @@ struct WatchAMRAPTimerView: View {
     private let accentColor: Color = .indigo
 
     // MARK: - Initialization
-    init(totalDuration: TimeInterval = 20 * 60) {
+    init(
+        totalDuration: TimeInterval = 20 * 60,
+        exerciseName: String = "AMRAP Workout"
+    ) {
+        self.totalDuration = totalDuration
+        self.exerciseName = exerciseName
         self.timerModel = AMRAPTimerModel(
             totalDuration: totalDuration,
             timerProvider: FoundationTimerProvider(),
@@ -118,6 +129,26 @@ struct WatchAMRAPTimerView: View {
             }
         }
         .toolbar(.hidden)
+        .onChange(of: isCompleted) { _, completed in
+            if completed && !hasLoggedWorkout {
+                logWorkout()
+            }
+        }
+    }
+
+    // MARK: - Workout Logging
+
+    private func logWorkout() {
+        hasLoggedWorkout = true
+
+        let log = WorkoutLog(
+            exerciseName: exerciseName,
+            timerKind: .amrap,
+            durationSeconds: totalDuration,
+            roundsCompleted: timerModel.roundsCompleted
+        )
+        modelContext.insert(log)
+        try? modelContext.save()
     }
 }
 

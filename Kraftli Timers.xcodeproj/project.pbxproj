@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4C03B9AE2F1D658D006EDB06 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C03B9AD2F1D658D006EDB06 /* WatchConnectivity.framework */; };
+		4C03B9B02F1D65A7006EDB06 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C03B9AF2F1D65A7006EDB06 /* WatchConnectivity.framework */; };
 		4C21C5A92F008244008D0E89 /* SPEC.md in Resources */ = {isa = PBXBuildFile; fileRef = 4C21C5A82F008244008D0E89 /* SPEC.md */; };
 		4C74D6DD2F1CE4E7009A425D /* Kraftli Timers Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4C74D6BD2F1CE4E6009A425D /* Kraftli Timers Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -64,6 +66,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4C03B9AD2F1D658D006EDB06 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/WatchConnectivity.framework; sourceTree = DEVELOPER_DIR; };
+		4C03B9AF2F1D65A7006EDB06 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.2.sdk/System/Library/Frameworks/WatchConnectivity.framework; sourceTree = DEVELOPER_DIR; };
 		4C21C5A82F008244008D0E89 /* SPEC.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SPEC.md; sourceTree = "<group>"; };
 		4C33823C2EF2FA4700135BD7 /* Kraftli Timers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Kraftli Timers.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C33824D2EF2FA4800135BD7 /* Kraftli TimersTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -108,6 +112,7 @@
 				Services/FoundationTimerProvider.swift,
 				Services/SilentFeedback.swift,
 				Services/TimerProvider.swift,
+				Services/WatchConnectivityService.swift,
 				Services/WorkoutLoggingService.swift,
 			);
 			target = 4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */;
@@ -156,6 +161,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C03B9AE2F1D658D006EDB06 /* WatchConnectivity.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -177,6 +183,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C03B9B02F1D65A7006EDB06 /* WatchConnectivity.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -197,6 +204,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4C03B9AC2F1D658D006EDB06 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				4C03B9AF2F1D65A7006EDB06 /* WatchConnectivity.framework */,
+				4C03B9AD2F1D658D006EDB06 /* WatchConnectivity.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		4C3382332EF2FA4700135BD7 = {
 			isa = PBXGroup;
 			children = (
@@ -211,6 +227,7 @@
 				4C74D6BE2F1CE4E6009A425D /* Kraftli Timers Watch App */,
 				4C74D6CC2F1CE4E7009A425D /* Kraftli Timers Watch AppTests */,
 				4C74D6D62F1CE4E7009A425D /* Kraftli Timers Watch AppUITests */,
+				4C03B9AC2F1D658D006EDB06 /* Frameworks */,
 				4C33823D2EF2FA4700135BD7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -563,6 +580,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "kraftli-icon-v1";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Kraftli Timers/Kraftli Timers.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1.0.0.0;
@@ -612,6 +630,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "kraftli-icon-v1";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Kraftli Timers/Kraftli Timers.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1.0.0.0;
@@ -891,6 +910,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Kraftli Timers Watch App/Kraftli Timers Watch App.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -926,6 +946,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Kraftli Timers Watch App/Kraftli Timers Watch App.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
