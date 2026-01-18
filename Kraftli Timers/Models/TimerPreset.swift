@@ -12,11 +12,12 @@ import SwiftData
 @Model
 final class TimerPreset {
     // MARK: - Persisted Properties
-    var id: UUID
-    var kindRawValue: String
-    var durationInterval: TimeInterval
+    // CloudKit requires default values for all non-optional attributes
+    var id: UUID = UUID()
+    var kindRawValue: String = TimerKind.emom.rawValue
+    var durationInterval: TimeInterval = 20 * 60
     var targetReps: Int?
-    var sortOrder: Int
+    var sortOrder: Int = 0
 
     // MARK: - Relationships
     var exercise: Exercise?
