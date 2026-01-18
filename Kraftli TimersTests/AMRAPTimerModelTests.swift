@@ -12,7 +12,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func initialState_isNotRunning() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         #expect(model.isRunning == false)
@@ -23,7 +24,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func start_setsIsRunningTrue() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         model.start()
@@ -35,7 +37,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func pause_setsIsRunningFalse() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         model.start()
@@ -48,7 +51,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func reset_restoresInitialState() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         model.start()
@@ -65,7 +69,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func incrementRoundsCompleted_incrementsCount() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         model.incrementRoundsCompleted()
@@ -78,7 +83,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func decrementRoundsCompleted_decrementsCount() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         model.incrementRoundsCompleted()
@@ -91,7 +97,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func decrementRoundsCompleted_doesNotGoBelowZero() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         model.decrementRoundsCompleted()
@@ -102,7 +109,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func progress_startsAtOne() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         #expect(model.progress == 1.0)
@@ -111,7 +119,8 @@ struct AMRAPTimerModelTests {
     @Test @MainActor func elapsedTime_startsAtZero() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
-            timerProvider: MockTimerProvider()
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
 
         #expect(model.elapsedTime == 0)

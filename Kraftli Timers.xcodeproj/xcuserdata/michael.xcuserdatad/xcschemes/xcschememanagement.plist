@@ -4,10 +4,50 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
+		<key>Kraftli Timers Watch App.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>isShown</key>
+			<true/>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 		<key>Kraftli Timers.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>4C33823B2EF2FA4700135BD7</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>4C33824C2EF2FA4800135BD7</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>4C3382562EF2FA4800135BD7</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>4C74D6BC2F1CE4E6009A425D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>4C74D6C82F1CE4E7009A425D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>4C74D6D22F1CE4E7009A425D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

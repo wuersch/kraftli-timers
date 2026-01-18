@@ -16,7 +16,7 @@ final class TimerCoordinator {
     private var startDate: Date?
 
     // MARK: - Initialization
-    init(timerProvider: TimerProvider = DisplayLinkTimerProvider()) {
+    init(timerProvider: TimerProvider) {
         self.timerProvider = timerProvider
     }
 

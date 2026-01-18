@@ -50,7 +50,9 @@ struct EMOMTimerView: View {
     init(
         timerModel: EMOMTimerModel = EMOMTimerModel(
             totalReps: 5,
-            totalMinutes: 1
+            totalMinutes: 1,
+            timerProvider: DisplayLinkTimerProvider(),
+            feedbackProvider: SystemSoundFeedback()
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         confettiEnabled: Bool = true
@@ -266,7 +268,12 @@ struct EMOMTimerView: View {
 #Preview("EMOM Timer") {
     NavigationStack {
         EMOMTimerView(
-            timerModel: EMOMTimerModel(totalReps: 100, totalMinutes: 20)
+            timerModel: EMOMTimerModel(
+                totalReps: 100,
+                totalMinutes: 20,
+                timerProvider: DisplayLinkTimerProvider(),
+                feedbackProvider: SystemSoundFeedback()
+            )
         )
     }
 }

@@ -47,7 +47,10 @@ struct AMRAPTimerView: View {
 
     // MARK: - Initialization
     init(
-        timerModel: AMRAPTimerModel = AMRAPTimerModel(),
+        timerModel: AMRAPTimerModel = AMRAPTimerModel(
+            timerProvider: DisplayLinkTimerProvider(),
+            feedbackProvider: SystemSoundFeedback()
+        ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         confettiEnabled: Bool = true
     ) {
@@ -273,7 +276,11 @@ struct AMRAPTimerView: View {
 #Preview("AMRAP Timer") {
     NavigationStack {
         AMRAPTimerView(
-            timerModel: AMRAPTimerModel(totalDuration: 5 * 60)
+            timerModel: AMRAPTimerModel(
+                totalDuration: 5 * 60,
+                timerProvider: DisplayLinkTimerProvider(),
+                feedbackProvider: SystemSoundFeedback()
+            )
         )
     }
 }
