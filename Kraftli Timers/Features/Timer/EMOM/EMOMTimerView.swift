@@ -179,7 +179,7 @@ struct EMOMTimerView: View {
                                         design: .rounded
                                     )
                                 )
-                                .foregroundStyle(accentColor)
+                                .foregroundStyle(isCompleted ? Color.gray.opacity(0.2) : accentColor)
                                 .monospacedDigit()
                                 .accessibilityElement(children: .ignore)
                                 .accessibilityLabel("Interval time")
