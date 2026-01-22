@@ -9,23 +9,41 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Timer Presentation Model
+
+/// Captures all timer configuration at tap time, ensuring data is available when the cover presents.
+/// This avoids SwiftUI state timing issues with `fullScreenCover(isPresented:)`.
+enum TimerPresentation: Identifiable {
+    case quickEMOM
+    case quickAMRAP
+    case emom(duration: TimeInterval, intervalDuration: TimeInterval, exerciseName: String)
+    case amrap(duration: TimeInterval, exerciseName: String)
+
+    var id: String {
+        switch self {
+        case .quickEMOM: return "quick-emom"
+        case .quickAMRAP: return "quick-amrap"
+        case .emom(let duration, let interval, _): return "emom-\(duration)-\(interval)"
+        case .amrap(let duration, _): return "amrap-\(duration)"
+        }
+    }
+}
+
+// MARK: - WatchPresetListView
+
 struct WatchPresetListView: View {
     @Query(sort: \TimerPreset.sortOrder) private var presets: [TimerPreset]
 
-    @State private var selectedPreset: TimerPreset?
-    @State private var showEMOMTimer = false
-    @State private var showAMRAPTimer = false
-
-    // Quick timer state (default timers when no preset selected)
-    @State private var showQuickEMOM = false
-    @State private var showQuickAMRAP = false
+    /// The currently presented timer, if any. Using item-based presentation
+    /// guarantees data is captured before the cover appears.
+    @State private var activeTimer: TimerPresentation?
 
     var body: some View {
         List {
             // Quick Timers - always available for standalone use
             Section("Quick Start") {
                 Button {
-                    showQuickEMOM = true
+                    activeTimer = .quickEMOM
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Quick EMOM")
@@ -37,7 +55,7 @@ struct WatchPresetListView: View {
                 }
 
                 Button {
-                    showQuickAMRAP = true
+                    activeTimer = .quickAMRAP
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Quick AMRAP")
@@ -54,11 +72,17 @@ struct WatchPresetListView: View {
                 Section("My Presets") {
                     ForEach(presets) { preset in
                         Button {
-                            selectedPreset = preset
                             if preset.kind == .emom {
-                                showEMOMTimer = true
+                                activeTimer = .emom(
+                                    duration: preset.durationInterval,
+                                    intervalDuration: preset.intervalDuration,
+                                    exerciseName: preset.exercise?.name ?? "EMOM Workout"
+                                )
                             } else {
-                                showAMRAPTimer = true
+                                activeTimer = .amrap(
+                                    duration: preset.durationInterval,
+                                    exerciseName: preset.exercise?.name ?? "AMRAP Workout"
+                                )
                             }
                         } label: {
                             WatchPresetRowView(preset: preset)
@@ -68,28 +92,22 @@ struct WatchPresetListView: View {
             }
         }
         .navigationTitle("Timers")
-        // Quick timers (default durations)
-        .fullScreenCover(isPresented: $showQuickEMOM) {
-            WatchEMOMTimerView(totalDuration: 5 * 60, intervalDuration: 30)
-        }
-        .fullScreenCover(isPresented: $showQuickAMRAP) {
-            WatchAMRAPTimerView(totalDuration: 5 * 60)
-        }
-        // Preset timers
-        .fullScreenCover(isPresented: $showEMOMTimer) {
-            if let preset = selectedPreset {
+        .fullScreenCover(item: $activeTimer) { timer in
+            switch timer {
+            case .quickEMOM:
+                WatchEMOMTimerView(totalDuration: 5 * 60, intervalDuration: 30)
+            case .quickAMRAP:
+                WatchAMRAPTimerView(totalDuration: 5 * 60)
+            case .emom(let duration, let intervalDuration, let exerciseName):
                 WatchEMOMTimerView(
-                    totalDuration: preset.durationInterval,
-                    intervalDuration: preset.intervalDuration,
-                    exerciseName: preset.exercise?.name ?? "EMOM Workout"
+                    totalDuration: duration,
+                    intervalDuration: intervalDuration,
+                    exerciseName: exerciseName
                 )
-            }
-        }
-        .fullScreenCover(isPresented: $showAMRAPTimer) {
-            if let preset = selectedPreset {
+            case .amrap(let duration, let exerciseName):
                 WatchAMRAPTimerView(
-                    totalDuration: preset.durationInterval,
-                    exerciseName: preset.exercise?.name ?? "AMRAP Workout"
+                    totalDuration: duration,
+                    exerciseName: exerciseName
                 )
             }
         }
