@@ -918,6 +918,7 @@
 				DEVELOPMENT_TEAM = 7588KJGLLF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Kraftli-Timers-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Kraftli Timers";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "ch.omnom.kraftli-timers";
@@ -954,6 +955,7 @@
 				DEVELOPMENT_TEAM = 7588KJGLLF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Kraftli-Timers-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Kraftli Timers";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "ch.omnom.kraftli-timers";

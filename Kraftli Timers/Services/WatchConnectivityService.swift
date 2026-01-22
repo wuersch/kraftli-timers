@@ -110,6 +110,14 @@ extension WatchConnectivityService: WCSessionDelegate {
         DispatchQueue.main.async {
             self.isReachable = session.isReachable
         }
+
+        #if os(watchOS)
+        // Check for any context sent before the app launched
+        let context = session.receivedApplicationContext
+        if let presetsData = context["presets"] as? [[String: Any]] {
+            handleReceivedPresets(presetsData)
+        }
+        #endif
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
