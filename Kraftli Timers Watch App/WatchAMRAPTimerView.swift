@@ -8,17 +8,25 @@
 
 import SwiftUI
 import SwiftData
+import Combine
 
 struct WatchAMRAPTimerView: View {
     // MARK: - Properties
     @State private var timerModel: AMRAPTimerModel
     @State private var crownValue: Double = 0
     @State private var hasLoggedWorkout = false
+    @State private var cancellables = Set<AnyCancellable>()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     private let exerciseName: String
     private let totalDuration: TimeInterval
+
+    /// When true, skip workout logging (timer was started from iPhone).
+    private let displayOnly: Bool
+
+    /// Service for syncing timer controls with iPhone (nil for standalone timers).
+    private let syncService: WatchTimerSyncService?
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -30,10 +38,14 @@ struct WatchAMRAPTimerView: View {
     // MARK: - Initialization
     init(
         totalDuration: TimeInterval = 20 * 60,
-        exerciseName: String = "AMRAP Workout"
+        exerciseName: String = "AMRAP Workout",
+        displayOnly: Bool = false,
+        syncService: WatchTimerSyncService? = nil
     ) {
         self.totalDuration = totalDuration
         self.exerciseName = exerciseName
+        self.displayOnly = displayOnly
+        self.syncService = syncService
         self.timerModel = AMRAPTimerModel(
             totalDuration: totalDuration,
             timerProvider: FoundationTimerProvider(),
@@ -87,8 +99,7 @@ struct WatchAMRAPTimerView: View {
             .overlay(alignment: .bottom) {
                 HStack {
                     Button {
-                        timerModel.reset()
-                        dismiss()
+                        handleStop()
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 12, weight: .semibold))
@@ -98,15 +109,11 @@ struct WatchAMRAPTimerView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    
+
                     Spacer()
-                    
+
                     Button {
-                        if timerModel.isRunning {
-                            timerModel.pause()
-                        } else {
-                            timerModel.start()
-                        }
+                        handlePlayPause()
                     } label: {
                         Image(systemName: timerModel.isRunning ? "pause.fill" : "play.fill")
                             .font(.system(size: 12, weight: .semibold))
@@ -126,12 +133,67 @@ struct WatchAMRAPTimerView: View {
             // Tap only counts rounds when running
             if timerModel.isRunning && !isCompleted {
                 timerModel.incrementRoundsCompleted()
+                syncService?.sendTimerControl(.incrementRound, completion: nil)
             }
         }
         .toolbar(.hidden)
+        .watchTimerLifecycle(timer: timerModel)
+        .onAppear {
+            setupControlSubscription()
+        }
         .onChange(of: isCompleted) { _, completed in
-            if completed && !hasLoggedWorkout {
+            if completed && !hasLoggedWorkout && !displayOnly {
+                hasLoggedWorkout = true  // Set immediately to prevent race condition
                 logWorkout()
+            }
+        }
+    }
+
+    // MARK: - Timer Control
+
+    private func handlePlayPause() {
+        if timerModel.isRunning {
+            timerModel.pause()
+            syncService?.sendTimerControl(.pause, completion: nil)
+        } else {
+            timerModel.start()
+            syncService?.sendTimerControl(.play, completion: nil)
+        }
+    }
+
+    private func handleStop() {
+        timerModel.reset()
+        syncService?.sendTimerControl(.stop, completion: nil)
+        dismiss()
+    }
+
+    /// Sets up subscription to receive control messages from iPhone.
+    private func setupControlSubscription() {
+        syncService?.timerControlReceived
+            .receive(on: DispatchQueue.main)
+            .sink { [self] action in
+                handleRemoteControl(action)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Handles control messages received from iPhone.
+    private func handleRemoteControl(_ action: TimerControlAction) {
+        switch action {
+        case .play:
+            if !timerModel.isRunning {
+                timerModel.start()
+            }
+        case .pause:
+            if timerModel.isRunning {
+                timerModel.pause()
+            }
+        case .stop:
+            timerModel.reset()
+            dismiss()
+        case .incrementRound:
+            if timerModel.isRunning && !isCompleted {
+                timerModel.incrementRoundsCompleted()
             }
         }
     }
@@ -139,8 +201,6 @@ struct WatchAMRAPTimerView: View {
     // MARK: - Workout Logging
 
     private func logWorkout() {
-        hasLoggedWorkout = true
-
         let log = WorkoutLog(
             exerciseName: exerciseName,
             timerKind: .amrap,
