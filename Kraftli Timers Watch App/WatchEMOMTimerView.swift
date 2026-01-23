@@ -7,16 +7,24 @@
 
 import SwiftUI
 import SwiftData
+import Combine
 
 struct WatchEMOMTimerView: View {
     // MARK: - Properties
     @State private var timerModel: EMOMTimerModel
     @State private var hasLoggedWorkout = false
+    @State private var cancellables = Set<AnyCancellable>()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     private let exerciseName: String
     private let totalDuration: TimeInterval
+
+    /// When true, skip workout logging (timer was started from iPhone).
+    private let displayOnly: Bool
+
+    /// Service for syncing timer controls with iPhone (nil for standalone timers).
+    private let syncService: WatchTimerSyncService?
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -31,10 +39,14 @@ struct WatchEMOMTimerView: View {
     init(
         totalDuration: TimeInterval = 20 * 60,
         intervalDuration: TimeInterval = 60,
-        exerciseName: String = "EMOM Workout"
+        exerciseName: String = "EMOM Workout",
+        displayOnly: Bool = false,
+        syncService: WatchTimerSyncService? = nil
     ) {
         self.totalDuration = totalDuration
         self.exerciseName = exerciseName
+        self.displayOnly = displayOnly
+        self.syncService = syncService
         self.timerModel = EMOMTimerModel(
             totalDuration: totalDuration,
             intervalDuration: intervalDuration,
@@ -98,8 +110,7 @@ struct WatchEMOMTimerView: View {
             .overlay(alignment: .bottom) {
                 HStack {
                     Button {
-                        timerModel.reset()
-                        dismiss()
+                        handleStop()
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 12, weight: .semibold))
@@ -109,15 +120,11 @@ struct WatchEMOMTimerView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    
+
                     Spacer()
-                    
+
                     Button {
-                        if timerModel.isRunning {
-                            timerModel.pause()
-                        } else {
-                            timerModel.start()
-                        }
+                        handlePlayPause()
                     } label: {
                         Image(systemName: timerModel.isRunning ? "pause.fill" : "play.fill")
                             .font(.system(size: 12, weight: .semibold))
@@ -133,18 +140,68 @@ struct WatchEMOMTimerView: View {
         }
         .ignoresSafeArea()
         .toolbar(.hidden)
+        .watchTimerLifecycle(timer: timerModel)
+        .onAppear {
+            setupControlSubscription()
+        }
         .onChange(of: isCompleted) { _, completed in
-            if completed && !hasLoggedWorkout {
+            if completed && !hasLoggedWorkout && !displayOnly {
+                hasLoggedWorkout = true  // Set immediately to prevent race condition
                 logWorkout()
             }
+        }
+    }
+
+    // MARK: - Timer Control
+
+    private func handlePlayPause() {
+        if timerModel.isRunning {
+            timerModel.pause()
+            syncService?.sendTimerControl(.pause, completion: nil)
+        } else {
+            timerModel.start()
+            syncService?.sendTimerControl(.play, completion: nil)
+        }
+    }
+
+    private func handleStop() {
+        timerModel.reset()
+        syncService?.sendTimerControl(.stop, completion: nil)
+        dismiss()
+    }
+
+    /// Sets up subscription to receive control messages from iPhone.
+    private func setupControlSubscription() {
+        syncService?.timerControlReceived
+            .receive(on: DispatchQueue.main)
+            .sink { [self] action in
+                handleRemoteControl(action)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Handles control messages received from iPhone.
+    private func handleRemoteControl(_ action: TimerControlAction) {
+        switch action {
+        case .play:
+            if !timerModel.isRunning {
+                timerModel.start()
+            }
+        case .pause:
+            if timerModel.isRunning {
+                timerModel.pause()
+            }
+        case .stop:
+            timerModel.reset()
+            dismiss()
+        case .incrementRound:
+            break  // Not applicable to EMOM timers
         }
     }
 
     // MARK: - Workout Logging
 
     private func logWorkout() {
-        hasLoggedWorkout = true
-
         let log = WorkoutLog(
             exerciseName: exerciseName,
             timerKind: .emom,
