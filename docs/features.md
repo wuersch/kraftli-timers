@@ -244,9 +244,31 @@ Apple Watch companion for quick timer access during workouts.
 ### Functionality
 - Standalone timer operation (works without iPhone)
 - Quick Start timers (5 min EMOM and AMRAP)
-- CloudKit sync for presets from iPhone
+- Full preset management (create, edit, delete)
+- CloudKit sync for presets with iPhone
 - Haptic feedback instead of audio (wrist-friendly)
 - Automatic workout logging
+
+### Preset Editing on Watch
+
+Full CRUD operations for timer presets directly on Apple Watch.
+
+#### Create/Edit Features
+- Digital Crown input for duration (1-60 min) and reps
+- Custom timer kind toggle (EMOM/AMRAP)
+- Simple exercise list picker
+- Calculated interval display for EMOM
+
+#### List Management
+- Swipe left to edit existing preset
+- Swipe right to delete (with confirmation)
+- "Add Preset" button at bottom of My Presets section
+- Sheet-based editor presentation
+
+#### Digital Crown Integration
+- `DigitalCrownStepperView` component for numeric input
+- Haptic feedback on value changes
+- Smooth rotation with step increments
 
 ### iPhone → Watch Timer Sync
 

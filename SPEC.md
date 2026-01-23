@@ -22,7 +22,7 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 | Workout Editing | ✅ | Edit reps/rounds, delete via Edit mode |
 | Settings | ✅ | Audio prefs, confetti toggle, about section, clear history |
 | Launch Screen | ✅ | Animated splash with spinning arcs, toggleable in Settings |
-| watchOS Companion | ✅ | Standalone timers, CloudKit sync, haptic feedback |
+| watchOS Companion | ✅ | Standalone timers, preset editing, CloudKit sync, haptic feedback |
 | iPhone → Watch Sync | ✅ | Auto-show timer on Watch when started on iPhone |
 
 ## Documentation
