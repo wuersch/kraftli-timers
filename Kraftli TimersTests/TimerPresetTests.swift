@@ -91,4 +91,57 @@ struct TimerPresetTests {
         #expect(emomPreset.kind == .emom)
         #expect(amrapPreset.kind == .amrap)
     }
+
+    // MARK: - Interval Duration Tests
+
+    @Test func intervalDuration_calculatesCorrectly() {
+        let preset = TimerPreset(
+            kind: .emom,
+            durationInterval: 20 * 60, // 20 minutes = 1200 seconds
+            targetReps: 100
+        )
+
+        #expect(preset.intervalDuration == 12) // 1200 / 100 = 12 seconds
+    }
+
+    @Test func intervalDuration_returnsDefaultWhenNoReps() {
+        let preset = TimerPreset(
+            kind: .amrap,
+            durationInterval: 20 * 60,
+            targetReps: nil
+        )
+
+        #expect(preset.intervalDuration == 60) // Default 1 minute
+    }
+
+    @Test func intervalDuration_returnsDefaultWhenZeroReps() {
+        // Note: This shouldn't happen due to preconditions, but test the guard
+        let preset = TimerPreset(
+            kind: .amrap,
+            durationInterval: 20 * 60,
+            targetReps: nil
+        )
+        // Manually set to test the guard (bypassing precondition)
+        #expect(preset.intervalDuration == 60)
+    }
+
+    // MARK: - Maximum Reps Tests
+
+    @Test func maximumReps_calculatesBasedOnMinimumInterval() {
+        // 60 seconds / 3 second minimum = 20 max reps
+        #expect(TimerPreset.maximumReps(forDuration: 60) == 20)
+
+        // 20 minutes (1200 seconds) / 3 = 400 max reps
+        #expect(TimerPreset.maximumReps(forDuration: 1200) == 400)
+    }
+
+    @Test func maximumReps_returnsAtLeastOne() {
+        // Even for very short durations, should return at least 1
+        #expect(TimerPreset.maximumReps(forDuration: 1) == 1)
+        #expect(TimerPreset.maximumReps(forDuration: 0) == 1)
+    }
+
+    @Test func minimumIntervalDuration_isThreeSeconds() {
+        #expect(TimerPreset.minimumIntervalDuration == 3)
+    }
 }

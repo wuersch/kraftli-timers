@@ -37,4 +37,19 @@ extension TimeInterval {
             return "\(minutes) min \(seconds) sec"
         }
     }
+
+    /// Returns interval description: "30s interval" or "1m 30s interval".
+    /// Use `compact: true` for Watch (shorter format).
+    func intervalDescription(compact: Bool = false) -> String {
+        let seconds = self
+        if seconds >= 60 {
+            let mins = Int(seconds / 60)
+            let secs = Int(seconds.truncatingRemainder(dividingBy: 60))
+            if secs == 0 {
+                return compact ? "\(mins)m interval" : "\(mins) min per interval"
+            }
+            return compact ? "\(mins)m \(secs)s interval" : "\(mins) min \(secs) sec per interval"
+        }
+        return compact ? "\(Int(seconds))s interval" : "\(Int(seconds)) sec per interval"
+    }
 }

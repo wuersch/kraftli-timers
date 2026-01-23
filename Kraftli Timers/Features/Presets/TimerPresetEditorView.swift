@@ -50,41 +50,19 @@ struct TimerPresetEditorView: View {
         return exercises.first { $0.id == id }
     }
 
-    // Minimum interval duration: 3 seconds
+    /// Maximum reps based on duration (uses shared constant for minimum interval).
     private var maxReps: Int {
-        let totalSeconds = durationMinutes * 60
-        return totalSeconds / 3
+        TimerPreset.maximumReps(forDuration: TimeInterval(durationMinutes * 60))
     }
 
-    private var intervalDuration: Double {
+    /// Calculated interval duration for display.
+    private var intervalDuration: TimeInterval {
         guard targetReps > 0 else { return 0 }
-        let totalSeconds = durationMinutes * 60
-        return Double(totalSeconds) / Double(targetReps)
+        return TimeInterval(durationMinutes * 60) / Double(targetReps)
     }
 
     private var intervalDescription: String {
-        let seconds = intervalDuration
-        if seconds >= 60 {
-            let minutes = Int(seconds / 60)
-            let remainingSeconds = seconds.truncatingRemainder(dividingBy: 60)
-            if remainingSeconds == 0 {
-                return "\(minutes) min per interval"
-            } else {
-                // Show decimal only if not a whole number
-                let formatted =
-                    remainingSeconds.truncatingRemainder(dividingBy: 1) == 0
-                    ? String(format: "%.0f", remainingSeconds)
-                    : String(format: "%.1f", remainingSeconds)
-                return "\(minutes) min \(formatted) sec per interval"
-            }
-        } else {
-            // Show decimal only if not a whole number
-            let formatted =
-                seconds.truncatingRemainder(dividingBy: 1) == 0
-                ? String(format: "%.0f", seconds)
-                : String(format: "%.1f", seconds)
-            return "\(formatted) sec per interval"
-        }
+        intervalDuration.intervalDescription()
     }
 
     // MARK: - Subviews
