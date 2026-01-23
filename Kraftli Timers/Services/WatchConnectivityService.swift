@@ -65,12 +65,103 @@ final class WatchConnectivityService: NSObject, ObservableObject {
             print("Failed to send presets to Watch: \(error)")
         }
     }
+
+    /// Sends a message to Watch for immediate delivery.
+    ///
+    /// Uses WCSession.sendMessage for real-time communication when Watch is reachable.
+    /// This is ideal for time-sensitive actions like starting a timer.
+    ///
+    /// - Parameters:
+    ///   - message: The message to send
+    ///   - completion: Called with success/failure result
+    func sendMessage(
+        _ message: WatchMessage,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        guard let session = session,
+              session.activationState == .activated,
+              session.isReachable else {
+            completion?(.failure(WatchConnectivityError.watchNotReachable))
+            return
+        }
+
+        do {
+            let encoded = try WatchMessageCoder.encode(message)
+            session.sendMessage(encoded, replyHandler: { _ in
+                completion?(.success(()))
+            }, errorHandler: { error in
+                completion?(.failure(error))
+            })
+        } catch {
+            completion?(.failure(error))
+        }
+    }
+
+    /// Called when a real-time message is received from Watch.
+    /// Used for timer control messages (play/pause/stop) from mirrored timers.
+    var onMessageReceived: ((WatchMessage) -> Void)?
+
+    private func handleReceivedMessage(_ dictionary: [String: Any]) {
+        do {
+            let message = try WatchMessageCoder.decode(dictionary)
+            DispatchQueue.main.async { [weak self] in
+                self?.onMessageReceived?(message)
+            }
+        } catch {
+            print("Failed to decode message from Watch: \(error)")
+        }
+    }
     #endif
 
     #if os(watchOS)
     /// Called when presets are received from iPhone.
     /// Override point for subclasses or set a callback.
     var onPresetsReceived: (([PresetTransferData]) -> Void)?
+
+    /// Called when a real-time message is received from iPhone.
+    /// Used for immediate actions like starting a timer.
+    var onMessageReceived: ((WatchMessage) -> Void)?
+
+    /// Sends a message to iPhone for immediate delivery.
+    ///
+    /// Used for timer control messages (play/pause/stop) from mirrored timers.
+    ///
+    /// - Parameters:
+    ///   - message: The message to send
+    ///   - completion: Called with success/failure result
+    func sendMessage(
+        _ message: WatchMessage,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        guard let session = session,
+              session.activationState == .activated,
+              session.isReachable else {
+            completion?(.failure(WatchConnectivityError.iPhoneNotReachable))
+            return
+        }
+
+        do {
+            let encoded = try WatchMessageCoder.encode(message)
+            session.sendMessage(encoded, replyHandler: { _ in
+                completion?(.success(()))
+            }, errorHandler: { error in
+                completion?(.failure(error))
+            })
+        } catch {
+            completion?(.failure(error))
+        }
+    }
+
+    private func handleReceivedMessage(_ dictionary: [String: Any]) {
+        do {
+            let message = try WatchMessageCoder.decode(dictionary)
+            DispatchQueue.main.async { [weak self] in
+                self?.onMessageReceived?(message)
+            }
+        } catch {
+            print("Failed to decode message from iPhone: \(error)")
+        }
+    }
 
     private func handleReceivedPresets(_ data: [[String: Any]]) {
         let presets = data.compactMap { dict -> PresetTransferData? in
@@ -132,6 +223,16 @@ extension WatchConnectivityService: WCSessionDelegate {
         // Reactivate for switching watches
         session.activate()
     }
+
+    func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any],
+        replyHandler: @escaping ([String: Any]) -> Void
+    ) {
+        handleReceivedMessage(message)
+        // Send empty reply to acknowledge receipt
+        replyHandler([:])
+    }
     #endif
 
     #if os(watchOS)
@@ -143,7 +244,33 @@ extension WatchConnectivityService: WCSessionDelegate {
             handleReceivedPresets(presetsData)
         }
     }
+
+    func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any],
+        replyHandler: @escaping ([String: Any]) -> Void
+    ) {
+        handleReceivedMessage(message)
+        // Send empty reply to acknowledge receipt
+        replyHandler([:])
+    }
     #endif
+}
+
+// MARK: - Errors
+
+enum WatchConnectivityError: Error, LocalizedError {
+    case watchNotReachable
+    case iPhoneNotReachable
+
+    var errorDescription: String? {
+        switch self {
+        case .watchNotReachable:
+            return "Apple Watch is not reachable"
+        case .iPhoneNotReachable:
+            return "iPhone is not reachable"
+        }
+    }
 }
 
 // MARK: - Transfer Data Model

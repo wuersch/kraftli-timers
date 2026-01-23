@@ -232,3 +232,46 @@ App preferences and configuration.
 #### About
 - App version display
 - Credits and acknowledgments
+
+---
+
+## watchOS Companion App
+
+**Status**: ✅ Implemented
+
+Apple Watch companion for quick timer access during workouts.
+
+### Functionality
+- Standalone timer operation (works without iPhone)
+- Quick Start timers (5 min EMOM and AMRAP)
+- CloudKit sync for presets from iPhone
+- Haptic feedback instead of audio (wrist-friendly)
+- Automatic workout logging
+
+### iPhone → Watch Timer Sync
+
+**Status**: ✅ Implemented
+
+When you start a timer on iPhone, the Watch automatically shows the same timer.
+
+#### How It Works
+1. Start any timer on iPhone
+2. If Watch app is open, timer instantly appears on Watch
+3. Watch runs in "display-only" mode (iPhone logs the workout)
+4. Single source of truth prevents duplicate workout logs
+
+#### Architecture
+- `WatchMessage` protocol for typed message passing
+- `StartTimerMessage` carries timer configuration
+- `TimerSyncService` abstracts WatchConnectivity from views
+- `displayOnly` flag on watch timers skips logging
+
+#### Limitations
+- Watch app must be open/active to receive sync
+- Apple doesn't allow programmatic app launch on Watch
+- Timers run independently (not continuously synced)
+
+### Data Model
+- Shares `TimerPreset`, `Exercise`, `WorkoutLog` models with iOS
+- CloudKit sync for persistent data
+- WatchConnectivity for real-time timer sync

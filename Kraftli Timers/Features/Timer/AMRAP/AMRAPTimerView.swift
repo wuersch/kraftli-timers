@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import Combine
 
 // MARK: - TimerSizes
 /// Holds all calculated sizes for responsive layout
@@ -29,12 +30,16 @@ struct AMRAPTimerView: View {
     @State private var session = TimerSessionState()
     @State private var dragOffset: CGFloat = 0
     @State private var isHandleActive = false
+    @State private var cancellables = Set<AnyCancellable>()
 
     /// Called when the workout completes (timer reaches zero). Used for logging.
     private let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
 
     /// Whether to show confetti on workout completion.
     private let confettiEnabled: Bool
+
+    /// Service for syncing timer controls with Apple Watch (nil for standalone timers).
+    private let syncService: TimerSyncService?
 
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -52,11 +57,13 @@ struct AMRAPTimerView: View {
             feedbackProvider: SystemSoundFeedback()
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
-        confettiEnabled: Bool = true
+        confettiEnabled: Bool = true,
+        syncService: TimerSyncService? = nil
     ) {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
         self.confettiEnabled = confettiEnabled
+        self.syncService = syncService
     }
 
     // MARK: - Styling
@@ -84,11 +91,13 @@ struct AMRAPTimerView: View {
         guard !isCompleted else { return }
         guard timerModel.isRunning else {
             startAndScheduleHintHide()
+            syncService?.sendTimerControl(.play, completion: nil)
             Self.lightHaptic.impactOccurred()
             return
         }
 
         timerModel.incrementRoundsCompleted()
+        syncService?.sendTimerControl(.incrementRound, completion: nil)
         Self.lightHaptic.impactOccurred()
     }
 
@@ -98,15 +107,18 @@ struct AMRAPTimerView: View {
         if timerModel.isRunning {
             timerModel.pause()
             session.onTimerPaused()
+            syncService?.sendTimerControl(.pause, completion: nil)
             Self.mediumHaptic.impactOccurred()
         } else {
             startAndScheduleHintHide()
+            syncService?.sendTimerControl(.play, completion: nil)
             Self.lightHaptic.impactOccurred()
         }
     }
 
     private func handleSwipeDismiss() {
         timerModel.reset()
+        syncService?.sendTimerControl(.stop, completion: nil)
         dismiss()
     }
 
@@ -114,6 +126,40 @@ struct AMRAPTimerView: View {
         guard !timerModel.isRunning else { return }
         timerModel.start()
         session.onTimerStarted { [timerModel] in timerModel.isRunning }
+    }
+
+    // MARK: - Watch Sync
+
+    /// Sets up subscription to receive control messages from Apple Watch.
+    private func setupControlSubscription() {
+        syncService?.timerControlReceived
+            .receive(on: DispatchQueue.main)
+            .sink { [self] action in
+                handleRemoteControl(action)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Handles control messages received from Apple Watch.
+    private func handleRemoteControl(_ action: TimerControlAction) {
+        switch action {
+        case .play:
+            if !timerModel.isRunning && !isCompleted {
+                startAndScheduleHintHide()
+            }
+        case .pause:
+            if timerModel.isRunning {
+                timerModel.pause()
+                session.onTimerPaused()
+            }
+        case .stop:
+            timerModel.reset()
+            dismiss()
+        case .incrementRound:
+            if timerModel.isRunning && !isCompleted {
+                timerModel.incrementRoundsCompleted()
+            }
+        }
     }
 
     // MARK: - Body
@@ -231,6 +277,7 @@ struct AMRAPTimerView: View {
         .onAppear {
             Self.lightHaptic.prepare()
             Self.mediumHaptic.prepare()
+            setupControlSubscription()
         }
     }
 

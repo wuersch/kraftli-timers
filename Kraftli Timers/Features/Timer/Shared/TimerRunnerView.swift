@@ -14,12 +14,36 @@ struct TimerRunnerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
 
+    /// Service for syncing timer to Apple Watch.
+    private let timerSyncService: TimerSyncService
+
+    init(preset: TimerPreset, timerSyncService: TimerSyncService = DefaultTimerSyncService()) {
+        self.preset = preset
+        self.timerSyncService = timerSyncService
+    }
+
     var body: some View {
         NavigationStack {
             timerContent
                 .navigationTitle("\(preset.exercise?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)")
                 .navigationBarTitleDisplayMode(.inline)
+                .onAppear {
+                    sendTimerToWatch()
+                }
         }
+    }
+
+    // MARK: - Watch Sync
+
+    /// Sends the timer configuration to Apple Watch for display-only mode.
+    private func sendTimerToWatch() {
+        timerSyncService.startTimerOnWatch(
+            kind: preset.kind,
+            totalDuration: preset.durationInterval,
+            intervalDuration: preset.kind == .emom ? intervalDuration : nil,
+            exerciseName: preset.exercise?.name ?? "Workout",
+            completion: nil  // Fire and forget - watch sync is best-effort
+        )
     }
 
     private var timerProvider: any TimerProvider {
@@ -42,7 +66,8 @@ struct TimerRunnerView: View {
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
-                confettiEnabled: settings.confettiEnabled
+                confettiEnabled: settings.confettiEnabled,
+                syncService: timerSyncService
             )
         case .amrap:
             AMRAPTimerView(
@@ -52,7 +77,8 @@ struct TimerRunnerView: View {
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
-                confettiEnabled: settings.confettiEnabled
+                confettiEnabled: settings.confettiEnabled,
+                syncService: timerSyncService
             )
         }
     }
