@@ -16,15 +16,34 @@ import SwiftData
 enum TimerPresentation: Identifiable {
     case quickEMOM
     case quickAMRAP
-    case emom(duration: TimeInterval, intervalDuration: TimeInterval, exerciseName: String)
-    case amrap(duration: TimeInterval, exerciseName: String)
+    case emom(duration: TimeInterval, intervalDuration: TimeInterval, exerciseName: String, displayOnly: Bool = false)
+    case amrap(duration: TimeInterval, exerciseName: String, displayOnly: Bool = false)
 
     var id: String {
         switch self {
         case .quickEMOM: return "quick-emom"
         case .quickAMRAP: return "quick-amrap"
-        case .emom(let duration, let interval, _): return "emom-\(duration)-\(interval)"
-        case .amrap(let duration, _): return "amrap-\(duration)"
+        case .emom(let duration, let interval, _, _): return "emom-\(duration)-\(interval)"
+        case .amrap(let duration, _, _): return "amrap-\(duration)"
+        }
+    }
+
+    /// Creates a TimerPresentation from a StartTimerMessage received from iPhone.
+    static func fromMessage(_ message: StartTimerMessage) -> TimerPresentation {
+        switch message.timerKind {
+        case .emom:
+            return .emom(
+                duration: message.totalDuration,
+                intervalDuration: message.intervalDuration ?? 60,
+                exerciseName: message.exerciseName,
+                displayOnly: message.displayOnly
+            )
+        case .amrap:
+            return .amrap(
+                duration: message.totalDuration,
+                exerciseName: message.exerciseName,
+                displayOnly: message.displayOnly
+            )
         }
     }
 }
@@ -37,6 +56,10 @@ struct WatchPresetListView: View {
     /// The currently presented timer, if any. Using item-based presentation
     /// guarantees data is captured before the cover appears.
     @State private var activeTimer: TimerPresentation?
+
+    /// Sync service for mirrored timers (started from iPhone).
+    /// Created when receiving a StartTimerMessage, nil for standalone timers.
+    @State private var syncService: DefaultWatchTimerSyncService?
 
     var body: some View {
         List {
@@ -92,24 +115,62 @@ struct WatchPresetListView: View {
             }
         }
         .navigationTitle("Timers")
+        .onAppear {
+            setupMessageHandling()
+        }
         .fullScreenCover(item: $activeTimer) { timer in
             switch timer {
             case .quickEMOM:
                 WatchEMOMTimerView(totalDuration: 5 * 60, intervalDuration: 30)
             case .quickAMRAP:
                 WatchAMRAPTimerView(totalDuration: 5 * 60)
-            case .emom(let duration, let intervalDuration, let exerciseName):
+            case .emom(let duration, let intervalDuration, let exerciseName, let displayOnly):
                 WatchEMOMTimerView(
                     totalDuration: duration,
                     intervalDuration: intervalDuration,
-                    exerciseName: exerciseName
+                    exerciseName: exerciseName,
+                    displayOnly: displayOnly,
+                    syncService: displayOnly ? syncService : nil
                 )
-            case .amrap(let duration, let exerciseName):
+            case .amrap(let duration, let exerciseName, let displayOnly):
                 WatchAMRAPTimerView(
                     totalDuration: duration,
-                    exerciseName: exerciseName
+                    exerciseName: exerciseName,
+                    displayOnly: displayOnly,
+                    syncService: displayOnly ? syncService : nil
                 )
             }
+        }
+        .onDisappear {
+            // Clean up sync service when view is dismissed
+            syncService = nil
+        }
+    }
+
+    // MARK: - Message Handling
+
+    /// Sets up the callback to receive timer start messages from iPhone.
+    ///
+    /// Note: This captures `self` (a struct), but `@State` properties use external
+    /// storage managed by SwiftUI, so mutations work correctly across captures.
+    private func setupMessageHandling() {
+        WatchConnectivityService.shared.onMessageReceived = { message in
+            handleMessage(message)
+        }
+    }
+
+    /// Handles incoming messages from iPhone.
+    @MainActor
+    private func handleMessage(_ message: WatchMessage) {
+        switch message {
+        case let startTimer as StartTimerMessage:
+            // Create sync service for mirrored timer (enables bidirectional control)
+            syncService = DefaultWatchTimerSyncService()
+            // Present the timer and start it immediately
+            activeTimer = TimerPresentation.fromMessage(startTimer)
+        default:
+            // Unknown message type - ignore for now
+            break
         }
     }
 }

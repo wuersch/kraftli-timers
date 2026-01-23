@@ -73,6 +73,9 @@ Run timers from Apple Watch without needing phone nearby.
 - Use FoundationTimerProvider (no CADisplayLink on watchOS)
 - SwiftData works on watchOS 10.4+ with shared CloudKit container
 
+### iPhone → Watch Sync Enhancements
+- **Synchronized countdown**: When starting timer from iPhone, show 3-2-1 countdown on both devices simultaneously before timer begins. Requires coordinated UI design across platforms.
+
 ---
 
 ## Workout Stats Enhancements

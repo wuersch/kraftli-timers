@@ -114,6 +114,7 @@
 				Services/SilentFeedback.swift,
 				Services/TimerProvider.swift,
 				Services/WatchConnectivityService.swift,
+				Services/WatchMessage.swift,
 				Services/WorkoutLoggingService.swift,
 			);
 			target = 4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */;
