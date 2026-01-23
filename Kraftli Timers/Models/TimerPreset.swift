@@ -46,6 +46,25 @@ final class TimerPreset {
         return parts.joined(separator: UISeparator.dot)
     }
 
+    /// Duration of each interval for EMOM timers (total duration / reps).
+    /// Returns 60 seconds as default if reps is not set.
+    var intervalDuration: TimeInterval {
+        guard let reps = targetReps, reps > 0 else {
+            return 60
+        }
+        return durationInterval / Double(reps)
+    }
+
+    // MARK: - Constants
+
+    /// Minimum allowed interval duration in seconds.
+    static let minimumIntervalDuration: TimeInterval = 3
+
+    /// Calculates maximum reps for a given duration based on minimum interval.
+    static func maximumReps(forDuration duration: TimeInterval) -> Int {
+        max(1, Int(duration / minimumIntervalDuration))
+    }
+
     // MARK: - Initialization
     init(
         id: UUID = UUID(),

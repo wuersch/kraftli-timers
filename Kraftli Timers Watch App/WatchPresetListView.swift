@@ -9,7 +9,20 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Timer Presentation Model
+// MARK: - Presentation Models
+
+/// Identifies which editor sheet to present.
+enum ActiveEditor: Identifiable {
+    case add
+    case edit(TimerPreset)
+
+    var id: String {
+        switch self {
+        case .add: return "add"
+        case .edit(let preset): return preset.id.uuidString
+        }
+    }
+}
 
 /// Captures all timer configuration at tap time, ensuring data is available when the cover presents.
 /// This avoids SwiftUI state timing issues with `fullScreenCover(isPresented:)`.
@@ -51,11 +64,15 @@ enum TimerPresentation: Identifiable {
 // MARK: - WatchPresetListView
 
 struct WatchPresetListView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \TimerPreset.sortOrder) private var presets: [TimerPreset]
 
     /// The currently presented timer, if any. Using item-based presentation
     /// guarantees data is captured before the cover appears.
     @State private var activeTimer: TimerPresentation?
+
+    /// The currently presented editor sheet, if any.
+    @State private var activeEditor: ActiveEditor?
 
     /// Sync service for mirrored timers (started from iPhone).
     /// Created when receiving a StartTimerMessage, nil for standalone timers.
@@ -90,27 +107,36 @@ struct WatchPresetListView: View {
                 }
             }
 
-            // Synced presets from iPhone
-            if !presets.isEmpty {
-                Section("My Presets") {
-                    ForEach(presets) { preset in
-                        Button {
-                            if preset.kind == .emom {
-                                activeTimer = .emom(
-                                    duration: preset.durationInterval,
-                                    intervalDuration: preset.intervalDuration,
-                                    exerciseName: preset.exercise?.name ?? "EMOM Workout"
-                                )
-                            } else {
-                                activeTimer = .amrap(
-                                    duration: preset.durationInterval,
-                                    exerciseName: preset.exercise?.name ?? "AMRAP Workout"
-                                )
-                            }
+            // User presets (synced via CloudKit or created on Watch)
+            Section("My Presets") {
+                ForEach(presets) { preset in
+                    Button {
+                        launchTimer(for: preset)
+                    } label: {
+                        WatchPresetRowView(preset: preset)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            deletePreset(preset)
                         } label: {
-                            WatchPresetRowView(preset: preset)
+                            Label("Delete", systemImage: "trash")
                         }
                     }
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            activeEditor = .edit(preset)
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(.orange)
+                    }
+                }
+
+                // Add Preset button at bottom of section
+                Button {
+                    activeEditor = .add
+                } label: {
+                    Label("Add Preset", systemImage: "plus")
                 }
             }
         }
@@ -145,6 +171,35 @@ struct WatchPresetListView: View {
             // Clean up sync service when view is dismissed
             syncService = nil
         }
+        .sheet(item: $activeEditor) { editor in
+            switch editor {
+            case .add:
+                WatchPresetEditorView()
+            case .edit(let preset):
+                WatchPresetEditorView(presetToEdit: preset)
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func launchTimer(for preset: TimerPreset) {
+        if preset.kind == .emom {
+            activeTimer = .emom(
+                duration: preset.durationInterval,
+                intervalDuration: preset.intervalDuration,
+                exerciseName: preset.exercise?.name ?? "EMOM Workout"
+            )
+        } else {
+            activeTimer = .amrap(
+                duration: preset.durationInterval,
+                exerciseName: preset.exercise?.name ?? "AMRAP Workout"
+            )
+        }
+    }
+
+    private func deletePreset(_ preset: TimerPreset) {
+        modelContext.delete(preset)
     }
 
     // MARK: - Message Handling
@@ -172,18 +227,6 @@ struct WatchPresetListView: View {
             // Unknown message type - ignore for now
             break
         }
-    }
-}
-
-// MARK: - TimerPreset Extension
-
-private extension TimerPreset {
-    /// Calculates interval duration for EMOM (total duration / reps).
-    var intervalDuration: TimeInterval {
-        guard let reps = targetReps, reps > 0 else {
-            return 60 // Default 1 minute intervals
-        }
-        return durationInterval / Double(reps)
     }
 }
 
