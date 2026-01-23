@@ -27,6 +27,11 @@ final class TimerPreset {
     var duration: Duration
     var primaryText: String       // "EMOM · 20 min"
     var secondaryText: String     // "Exercise · 10 Reps"
+    var intervalDuration: TimeInterval  // duration / reps (or 60 default)
+
+    // Static utilities
+    static let minimumIntervalDuration: TimeInterval = 3
+    static func maximumReps(forDuration: TimeInterval) -> Int
 }
 ```
 
@@ -222,9 +227,25 @@ For now, the pragmatic approach provides sufficient structure without over-engin
 | `SwipeToDismissModifier` | Swipe gesture handling |
 | `TimerLifecycleModifier` | Background pause, idle timer |
 
+### watchOS Components
+| Component | Purpose |
+|-----------|---------|
+| `WatchPresetListView` | Preset list with swipe actions for edit/delete |
+| `WatchPresetEditorView` | Create/edit preset with Digital Crown input |
+| `WatchExerciseListView` | Simple exercise picker with checkmark selection |
+| `DigitalCrownStepperView` | Reusable Digital Crown numeric input |
+| `WatchEMOMTimerView` | Full-screen EMOM timer for Watch |
+| `WatchAMRAPTimerView` | Full-screen AMRAP timer for Watch |
+
+### watchOS Services
+| Service | Purpose |
+|---------|---------|
+| `WatchHapticFeedback` | Haptic feedback during timer intervals |
+| `TimerSyncService` | WatchConnectivity for iPhone → Watch timer sync |
+
 ## Utilities
 
-- `TimeInterval+Format` - MM:SS and HH:MM:SS formatting
+- `TimeInterval+Format` - MM:SS, HH:MM:SS, and interval description formatting
 - `View+ReadSize` - GeometryReader-based size measurement
 - `UISeparator` - Consistent separator characters (e.g., middle dot)
 - `TimePeriod+Chart` - Chart x-axis unit for time periods
