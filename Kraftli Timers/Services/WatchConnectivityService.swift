@@ -9,6 +9,7 @@
 import Foundation
 import Combine
 import WatchConnectivity
+import os
 
 /// Manages WatchConnectivity session for real-time preset sync.
 ///
@@ -62,7 +63,7 @@ final class WatchConnectivityService: NSObject, ObservableObject {
         do {
             try session.updateApplicationContext(["presets": data])
         } catch {
-            print("Failed to send presets to Watch: \(error)")
+            Logger.watchConnectivity.error("Failed to send presets to Watch: \(error.localizedDescription)")
         }
     }
 
@@ -108,7 +109,7 @@ final class WatchConnectivityService: NSObject, ObservableObject {
                 self?.onMessageReceived?(message)
             }
         } catch {
-            print("Failed to decode message from Watch: \(error)")
+            Logger.watchConnectivity.error("Failed to decode message from Watch: \(error.localizedDescription)")
         }
     }
     #endif
@@ -159,7 +160,7 @@ final class WatchConnectivityService: NSObject, ObservableObject {
                 self?.onMessageReceived?(message)
             }
         } catch {
-            print("Failed to decode message from iPhone: \(error)")
+            Logger.watchConnectivity.error("Failed to decode message from iPhone: \(error.localizedDescription)")
         }
     }
 

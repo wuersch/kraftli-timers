@@ -41,7 +41,9 @@ struct WatchEMOMTimerView: View {
         intervalDuration: TimeInterval = 60,
         exerciseName: String = "EMOM Workout",
         displayOnly: Bool = false,
-        syncService: WatchTimerSyncService? = nil
+        syncService: WatchTimerSyncService? = nil,
+        timerProvider: TimerProvider = FoundationTimerProvider(),
+        feedbackProvider: FeedbackProvider = WatchHapticFeedback()
     ) {
         self.totalDuration = totalDuration
         self.exerciseName = exerciseName
@@ -50,8 +52,8 @@ struct WatchEMOMTimerView: View {
         self.timerModel = EMOMTimerModel(
             totalDuration: totalDuration,
             intervalDuration: intervalDuration,
-            timerProvider: FoundationTimerProvider(),
-            feedbackProvider: WatchHapticFeedback()
+            timerProvider: timerProvider,
+            feedbackProvider: feedbackProvider
         )
     }
 

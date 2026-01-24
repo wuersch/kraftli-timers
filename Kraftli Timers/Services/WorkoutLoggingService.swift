@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import os
 
 /// Protocol for logging completed workouts.
 ///
@@ -60,8 +61,7 @@ final class DefaultWorkoutLoggingService: WorkoutLoggingService {
         do {
             try modelContext.save()
         } catch {
-            // Log error in production; for now just print
-            print("Failed to save workout log: \(error)")
+            Logger.workoutLogging.error("Failed to save workout log: \(error.localizedDescription)")
         }
     }
 }

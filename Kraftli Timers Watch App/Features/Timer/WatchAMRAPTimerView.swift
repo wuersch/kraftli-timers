@@ -40,7 +40,9 @@ struct WatchAMRAPTimerView: View {
         totalDuration: TimeInterval = 20 * 60,
         exerciseName: String = "AMRAP Workout",
         displayOnly: Bool = false,
-        syncService: WatchTimerSyncService? = nil
+        syncService: WatchTimerSyncService? = nil,
+        timerProvider: TimerProvider = FoundationTimerProvider(),
+        feedbackProvider: FeedbackProvider = WatchHapticFeedback()
     ) {
         self.totalDuration = totalDuration
         self.exerciseName = exerciseName
@@ -48,8 +50,8 @@ struct WatchAMRAPTimerView: View {
         self.syncService = syncService
         self.timerModel = AMRAPTimerModel(
             totalDuration: totalDuration,
-            timerProvider: FoundationTimerProvider(),
-            feedbackProvider: WatchHapticFeedback()
+            timerProvider: timerProvider,
+            feedbackProvider: feedbackProvider
         )
     }
 

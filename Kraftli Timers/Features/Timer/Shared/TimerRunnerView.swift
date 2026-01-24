@@ -52,8 +52,8 @@ struct TimerRunnerView: View {
 
     @ViewBuilder
     private var timerContent: some View {
-        let feedbackProvider: any AudioFeedbackProvider = settings.audioEnabled
-            ? settings.completionSoundStyle.makeAudioProvider()
+        let feedbackProvider: any FeedbackProvider = settings.audioEnabled
+            ? settings.completionSoundStyle.makeFeedbackProvider()
             : SilentFeedback()
 
         switch preset.kind {
