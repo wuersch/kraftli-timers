@@ -1,4 +1,14 @@
 # Kraftli Timers
+![Platform](https://img.shields.io/badge/platform-iOS%20|%20watchOS-blue)
+![Swift](https://img.shields.io/badge/Swift-6.2-orange)
+![TestFlight](https://img.shields.io/badge/TestFlight-Available-blue)
+![Build](https://img.shields.io/github/actions/workflow/status/wuersch/kraftli-timers/ios-build.yml?branch=main&label=build)
+![Release](https://img.shields.io/github/v/release/wuersch/kraftli-timers)
+![Last Commit](https://img.shields.io/github/last-commit/wuersch/kraftli-timers)
+![Issues](https://img.shields.io/github/issues/wuersch/kraftli-timers)
+![LOC](https://sloc.xyz/github/wuersch/kraftli-timers?category=code)
+![LOC](https://sloc.xyz/github/wuersch/kraftli-timers?category=cocomo)
+![LOC](https://sloc.xyz/github/wuersch/kraftli-timers?category=effort)
 
 A native iOS and watchOS app for high-intensity interval training. Minimalistic, distraction-free workout timers for focused fitness sessions.
 
