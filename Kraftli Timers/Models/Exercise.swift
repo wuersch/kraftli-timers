@@ -53,7 +53,6 @@ final class Exercise {
         self.difficulty = difficulty
     }
 
-    #if !os(watchOS)
     /// Create Exercise from ExerciseData (JSON DTO)
     convenience init(from data: ExerciseData) {
         self.init(
@@ -65,5 +64,4 @@ final class Exercise {
             difficulty: data.difficulty
         )
     }
-    #endif
 }

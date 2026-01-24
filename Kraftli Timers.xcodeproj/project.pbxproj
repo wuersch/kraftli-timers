@@ -96,6 +96,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Components/ProgressRing.swift,
+				Exercises.json,
 				"Extensions/TimeInterval+Format.swift",
 				Features/Timer/AMRAP/AMRAPTimerModel.swift,
 				Features/Timer/EMOM/EMOMTimerModel.swift,
@@ -109,6 +110,7 @@
 				Models/TimerKind.swift,
 				Models/TimerPreset.swift,
 				Models/WorkoutLog.swift,
+				Services/ExerciseLoader.swift,
 				Services/FeedbackProvider.swift,
 				Services/FoundationTimerProvider.swift,
 				Services/SilentFeedback.swift,
