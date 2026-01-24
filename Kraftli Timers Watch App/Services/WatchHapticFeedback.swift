@@ -3,28 +3,27 @@
 //  Kraftli Timers Watch App
 //
 //  Haptic feedback implementation for watchOS.
-//  Conforms to AudioFeedbackProvider so it can be used with existing timer models.
 //
 
 import WatchKit
 
 /// Provides haptic feedback on watchOS using WKInterfaceDevice.
-final class WatchHapticFeedback: AudioFeedbackProvider {
+final class WatchHapticFeedback: FeedbackProvider {
     private let device = WKInterfaceDevice.current()
 
-    func playStart() {
+    func onStart() {
         device.play(.start)
     }
 
-    func playIntervalComplete() {
+    func onIntervalComplete() {
         device.play(.notification)
     }
 
-    func playWarning() {
+    func onWarning() {
         device.play(.retry)
     }
 
-    func playWorkoutComplete() {
+    func onWorkoutComplete() {
         device.play(.success)
     }
 }

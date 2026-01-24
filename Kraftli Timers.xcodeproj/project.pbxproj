@@ -109,7 +109,6 @@
 				Models/TimerKind.swift,
 				Models/TimerPreset.swift,
 				Models/WorkoutLog.swift,
-				Services/AudioFeedbackProvider.swift,
 				Services/FoundationTimerProvider.swift,
 				Services/SilentFeedback.swift,
 				Services/TimerProvider.swift,

@@ -8,7 +8,7 @@
 import AVFoundation
 import os
 
-final class SystemSoundFeedback: AudioFeedbackProvider {
+final class SystemSoundFeedback: FeedbackProvider {
     private var completionPlayer: AVAudioPlayer?
 
     init() {
@@ -40,20 +40,20 @@ final class SystemSoundFeedback: AudioFeedbackProvider {
         }
     }
 
-    func playIntervalComplete() {
+    func onIntervalComplete() {
         AudioServicesPlaySystemSound(1057)  // Begin
     }
 
-    func playWarning() {
+    func onWarning() {
         // no warning sound for now
     }
 
-    func playWorkoutComplete() {
+    func onWorkoutComplete() {
         completionPlayer?.currentTime = 0
         completionPlayer?.play()
     }
 
-    func playStart() {
+    func onStart() {
         // no start sound for now
     }
 }

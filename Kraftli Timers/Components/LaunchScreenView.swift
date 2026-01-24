@@ -136,7 +136,7 @@ struct LaunchScreenView: View {
 
 #Preview("Launch Screen Animation") {
     LaunchScreenView {
-        print("Animation complete")
+        // Animation complete
     }
 }
 

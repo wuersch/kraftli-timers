@@ -104,8 +104,8 @@ final class AppSettings {
             }
         }
 
-        /// Creates the appropriate audio feedback provider for this sound style.
-        func makeAudioProvider() -> any AudioFeedbackProvider {
+        /// Creates the appropriate feedback provider for this sound style.
+        func makeFeedbackProvider() -> any FeedbackProvider {
             switch self {
             case .cheering:
                 return SystemSoundFeedback()

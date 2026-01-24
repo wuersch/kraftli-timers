@@ -5,9 +5,9 @@
 //  Created by Michael Würsch on 21.12.2025.
 //
 
-final class SilentFeedback: AudioFeedbackProvider {
-    func playIntervalComplete() { }
-    func playWarning() { }
-    func playWorkoutComplete() { }
-    func playStart() { }
+final class SilentFeedback: FeedbackProvider {
+    func onIntervalComplete() { }
+    func onWarning() { }
+    func onWorkoutComplete() { }
+    func onStart() { }
 }

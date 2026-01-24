@@ -12,16 +12,16 @@ import AVFoundation
 /// Plays system sound 1057 (Begin) for all audio cues instead of
 /// the crowd cheering sound. For workout completion, plays the
 /// sound three times in sequence.
-final class NeutralSoundFeedback: AudioFeedbackProvider {
-    func playIntervalComplete() {
+final class NeutralSoundFeedback: FeedbackProvider {
+    func onIntervalComplete() {
         AudioServicesPlaySystemSound(1057)
     }
 
-    func playWarning() {
+    func onWarning() {
         // No warning sound
     }
 
-    func playWorkoutComplete() {
+    func onWorkoutComplete() {
         // Play system sound 1057 three times with delays
         AudioServicesPlaySystemSound(1057)
 
@@ -34,7 +34,7 @@ final class NeutralSoundFeedback: AudioFeedbackProvider {
         }
     }
 
-    func playStart() {
+    func onStart() {
         // No start sound
     }
 }

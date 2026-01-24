@@ -17,7 +17,7 @@ class AMRAPTimerModel: WorkoutTimer {
     // MARK: - Private Properties
     let totalDuration: TimeInterval
     private let timerCoordinator: TimerCoordinator
-    private let audioFeedbackProvider: AudioFeedbackProvider
+    private let feedbackProvider: FeedbackProvider
 
     private var startDate: Date?
     private var pausedTime: TimeInterval?
@@ -47,12 +47,12 @@ class AMRAPTimerModel: WorkoutTimer {
     init(
         totalDuration: TimeInterval = 20 * 60,
         timerProvider: TimerProvider,
-        feedbackProvider: AudioFeedbackProvider
+        feedbackProvider: FeedbackProvider
     ) {
         self.totalDuration = totalDuration
         self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
         self.totalTimeRemaining = totalDuration
-        self.audioFeedbackProvider = feedbackProvider
+        self.feedbackProvider = feedbackProvider
     }
 
     // MARK: - Public Methods
@@ -120,7 +120,7 @@ class AMRAPTimerModel: WorkoutTimer {
             timerCoordinator.stop()
             isRunning = false
             totalTimeRemaining = 0
-            audioFeedbackProvider.playWorkoutComplete()
+            feedbackProvider.onWorkoutComplete()
         }
     }
 }
