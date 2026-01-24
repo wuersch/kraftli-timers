@@ -12,7 +12,7 @@ final class WatchHapticFeedback: FeedbackProvider {
     private let device = WKInterfaceDevice.current()
 
     func onStart() {
-        device.play(.start)
+        // no haptics for now
     }
 
     func onIntervalComplete() {
@@ -20,7 +20,7 @@ final class WatchHapticFeedback: FeedbackProvider {
     }
 
     func onWarning() {
-        device.play(.retry)
+        // no haptics for now
     }
 
     func onWorkoutComplete() {

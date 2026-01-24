@@ -8,6 +8,7 @@
 
 import SwiftUI
 import SwiftData
+import Combine
 
 // MARK: - Presentation Models
 
@@ -26,7 +27,7 @@ enum ActiveEditor: Identifiable {
 
 /// Captures all timer configuration at tap time, ensuring data is available when the cover presents.
 /// This avoids SwiftUI state timing issues with `fullScreenCover(isPresented:)`.
-enum TimerPresentation: Identifiable {
+enum TimerPresentation: Identifiable, Equatable {
     case emom(duration: TimeInterval, intervalDuration: TimeInterval, exerciseName: String, displayOnly: Bool = false)
     case amrap(duration: TimeInterval, exerciseName: String, displayOnly: Bool = false)
 
@@ -61,6 +62,7 @@ enum TimerPresentation: Identifiable {
 
 struct WatchPresetListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(WatchMessageCoordinator.self) private var messageCoordinator
     @Query(sort: \TimerPreset.sortOrder) private var presets: [TimerPreset]
 
     /// The currently presented timer, if any. Using item-based presentation
@@ -74,6 +76,9 @@ struct WatchPresetListView: View {
     /// Created when receiving a StartTimerMessage, nil for standalone timers.
     @State private var syncService: DefaultWatchTimerSyncService?
 
+    /// Cancellables for subscriptions.
+    @State private var cancellables = Set<AnyCancellable>()
+
     var body: some View {
         Group {
             if presets.isEmpty {
@@ -84,10 +89,7 @@ struct WatchPresetListView: View {
         }
         .navigationTitle("Timers")
         .onAppear {
-            setupMessageHandling()
-        }
-        .onDisappear {
-            syncService = nil
+            setupStartTimerSubscription()
         }
         .fullScreenCover(item: $activeTimer) { timer in
             switch timer {
@@ -106,6 +108,15 @@ struct WatchPresetListView: View {
                     displayOnly: displayOnly,
                     syncService: displayOnly ? syncService : nil
                 )
+            }
+        }
+        .onChange(of: activeTimer) { _, newValue in
+            // Update coordinator's active sync service when timer is presented/dismissed
+            if newValue != nil {
+                messageCoordinator.activeSyncService = syncService
+            } else {
+                messageCoordinator.activeSyncService = nil
+                syncService = nil
             }
         }
         .sheet(item: $activeEditor) { editor in
@@ -209,29 +220,25 @@ struct WatchPresetListView: View {
 
     // MARK: - Message Handling
 
-    /// Sets up the callback to receive timer start messages from iPhone.
-    ///
-    /// Note: This captures `self` (a struct), but `@State` properties use external
-    /// storage managed by SwiftUI, so mutations work correctly across captures.
-    private func setupMessageHandling() {
-        WatchConnectivityService.shared.onMessageReceived = { message in
-            handleMessage(message)
-        }
+    /// Subscribes to timer start messages from the coordinator.
+    /// The coordinator handles message routing at the app level, ensuring
+    /// handlers are ready before any messages arrive.
+    private func setupStartTimerSubscription() {
+        messageCoordinator.startTimerReceived
+            .receive(on: DispatchQueue.main)
+            .sink { [self] message in
+                handleStartTimer(message)
+            }
+            .store(in: &cancellables)
     }
 
-    /// Handles incoming messages from iPhone.
+    /// Handles a timer start message from iPhone.
     @MainActor
-    private func handleMessage(_ message: WatchMessage) {
-        switch message {
-        case let startTimer as StartTimerMessage:
-            // Create sync service for mirrored timer (enables bidirectional control)
-            syncService = DefaultWatchTimerSyncService()
-            // Present the timer and start it immediately
-            activeTimer = TimerPresentation.fromMessage(startTimer)
-        default:
-            // Unknown message type - ignore for now
-            break
-        }
+    private func handleStartTimer(_ message: StartTimerMessage) {
+        // Create sync service for mirrored timer (enables bidirectional control)
+        syncService = DefaultWatchTimerSyncService()
+        // Present the timer
+        activeTimer = TimerPresentation.fromMessage(message)
     }
 }
 
