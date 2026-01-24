@@ -243,7 +243,6 @@ Apple Watch companion for quick timer access during workouts.
 
 ### Functionality
 - Standalone timer operation (works without iPhone)
-- Quick Start timers (5 min EMOM and AMRAP)
 - Full preset management (create, edit, delete)
 - CloudKit sync for presets with iPhone
 - Haptic feedback instead of audio (wrist-friendly)

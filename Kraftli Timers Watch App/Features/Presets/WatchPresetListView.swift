@@ -27,15 +27,11 @@ enum ActiveEditor: Identifiable {
 /// Captures all timer configuration at tap time, ensuring data is available when the cover presents.
 /// This avoids SwiftUI state timing issues with `fullScreenCover(isPresented:)`.
 enum TimerPresentation: Identifiable {
-    case quickEMOM
-    case quickAMRAP
     case emom(duration: TimeInterval, intervalDuration: TimeInterval, exerciseName: String, displayOnly: Bool = false)
     case amrap(duration: TimeInterval, exerciseName: String, displayOnly: Bool = false)
 
     var id: String {
         switch self {
-        case .quickEMOM: return "quick-emom"
-        case .quickAMRAP: return "quick-amrap"
         case .emom(let duration, let interval, _, _): return "emom-\(duration)-\(interval)"
         case .amrap(let duration, _, _): return "amrap-\(duration)"
         }
@@ -79,77 +75,22 @@ struct WatchPresetListView: View {
     @State private var syncService: DefaultWatchTimerSyncService?
 
     var body: some View {
-        List {
-            // Quick Timers - always available for standalone use
-            Section("Quick Start") {
-                Button {
-                    activeTimer = .quickEMOM
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Quick EMOM")
-                            .font(.headline)
-                        Text("5 min · 10 intervals")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Button {
-                    activeTimer = .quickAMRAP
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Quick AMRAP")
-                            .font(.headline)
-                        Text("5 min")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            // User presets (synced via CloudKit or created on Watch)
-            Section("My Presets") {
-                ForEach(presets) { preset in
-                    Button {
-                        launchTimer(for: preset)
-                    } label: {
-                        WatchPresetRowView(preset: preset)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            deletePreset(preset)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                    .swipeActions(edge: .leading) {
-                        Button {
-                            activeEditor = .edit(preset)
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        .tint(.orange)
-                    }
-                }
-
-                // Add Preset button at bottom of section
-                Button {
-                    activeEditor = .add
-                } label: {
-                    Label("Add Preset", systemImage: "plus")
-                }
+        Group {
+            if presets.isEmpty {
+                emptyStateView
+            } else {
+                presetListView
             }
         }
         .navigationTitle("Timers")
         .onAppear {
             setupMessageHandling()
         }
+        .onDisappear {
+            syncService = nil
+        }
         .fullScreenCover(item: $activeTimer) { timer in
             switch timer {
-            case .quickEMOM:
-                WatchEMOMTimerView(totalDuration: 5 * 60, intervalDuration: 30)
-            case .quickAMRAP:
-                WatchAMRAPTimerView(totalDuration: 5 * 60)
             case .emom(let duration, let intervalDuration, let exerciseName, let displayOnly):
                 WatchEMOMTimerView(
                     totalDuration: duration,
@@ -167,10 +108,6 @@ struct WatchPresetListView: View {
                 )
             }
         }
-        .onDisappear {
-            // Clean up sync service when view is dismissed
-            syncService = nil
-        }
         .sheet(item: $activeEditor) { editor in
             switch editor {
             case .add:
@@ -179,6 +116,74 @@ struct WatchPresetListView: View {
                 WatchPresetEditorView(presetToEdit: preset)
             }
         }
+    }
+
+    // MARK: - Subviews
+
+    private var emptyStateView: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                VStack(spacing: 8) {
+                    Text("No presets")
+                        .font(.headline)
+                    Text("Create one to get started")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                addButton
+            }
+            .padding()
+        }
+    }
+
+    private var presetListView: some View {
+        List {
+            ForEach(presets) { preset in
+                Button {
+                    launchTimer(for: preset)
+                } label: {
+                    WatchPresetRowView(preset: preset)
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        deletePreset(preset)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+                .swipeActions(edge: .leading) {
+                    Button {
+                        activeEditor = .edit(preset)
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    .tint(.orange)
+                }
+            }
+
+            addButton
+                .listRowBackground(Color.clear)
+        }
+    }
+
+    private var addButton: some View {
+        Button {
+            activeEditor = .add
+        } label: {
+            Image(systemName: "plus")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundStyle(.white)
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.circle)
+        .controlSize(.mini)
+        .tint(.gray)
+        .scaleEffect(1.2)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 16)
     }
 
     // MARK: - Actions
