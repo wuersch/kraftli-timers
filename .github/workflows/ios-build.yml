@@ -28,3 +28,22 @@ jobs:
             -destination "platform=iOS Simulator,OS=latest,name=iPhone 17 Pro" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO
+
+  watchos-build:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build for watchOS Simulator
+        run: |
+          xcodebuild build \
+            -project "Kraftli Timers.xcodeproj" \
+            -scheme "Kraftli Timers Watch App" \
+            -destination "platform=watchOS Simulator,OS=latest,name=Apple Watch Series 11 (46mm)" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO
