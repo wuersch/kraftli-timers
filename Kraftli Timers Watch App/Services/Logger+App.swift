@@ -17,4 +17,7 @@ extension Logger {
 
     /// Logs related to workout logging and persistence
     static let workoutLogging = Logger(subsystem: subsystem, category: "workoutLogging")
+
+    /// Logs related to timer sync between iPhone and Watch
+    static let timerSync = Logger(subsystem: subsystem, category: "timerSync")
 }

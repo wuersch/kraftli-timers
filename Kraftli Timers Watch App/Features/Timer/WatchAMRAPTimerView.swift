@@ -139,7 +139,7 @@ struct WatchAMRAPTimerView: View {
             }
         }
         .toolbar(.hidden)
-        .watchTimerLifecycle(timer: timerModel)
+        .watchTimerLifecycle(timer: timerModel, onPause: { timerModel.pause() })
         .onAppear {
             setupControlSubscription()
         }

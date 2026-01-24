@@ -36,13 +36,16 @@ protocol WatchTimerSyncService {
 // MARK: - Default Implementation
 
 /// Default implementation using WatchConnectivityService.
+///
+/// Note: This service no longer sets up its own message handler.
+/// The WatchMessageCoordinator handles message routing and forwards
+/// control messages via `handleControlMessage(_:)`.
 final class DefaultWatchTimerSyncService: WatchTimerSyncService {
     private let connectivity: WatchConnectivityService
     private let timerControlSubject = PassthroughSubject<TimerControlAction, Never>()
 
     init(connectivity: WatchConnectivityService = .shared) {
         self.connectivity = connectivity
-        setupMessageHandling()
     }
 
     var isPhoneReachable: Bool {
@@ -61,28 +64,11 @@ final class DefaultWatchTimerSyncService: WatchTimerSyncService {
         connectivity.sendMessage(message, completion: completion)
     }
 
-    // MARK: - Private
+    // MARK: - Internal (for WatchMessageCoordinator)
 
-    private func setupMessageHandling() {
-        // Store existing handler to chain with it
-        let existingHandler = connectivity.onMessageReceived
-
-        connectivity.onMessageReceived = { [weak self] message in
-            // Call existing handler first (for StartTimerMessage handling)
-            existingHandler?(message)
-
-            // Then handle control messages
-            self?.handleMessage(message)
-        }
-    }
-
-    private func handleMessage(_ message: WatchMessage) {
-        switch message {
-        case let controlMessage as TimerControlMessage:
-            timerControlSubject.send(controlMessage.action)
-        default:
-            break
-        }
+    /// Handles a control message forwarded from the coordinator.
+    func handleControlMessage(_ message: TimerControlMessage) {
+        timerControlSubject.send(message.action)
     }
 }
 

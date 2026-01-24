@@ -13,6 +13,10 @@ import WatchConnectivity
 struct Kraftli_Timers_Watch_AppApp: App {
     let modelContainer: ModelContainer
 
+    /// Coordinates message handling with iPhone.
+    /// Created at app startup to ensure handlers are ready before any messages arrive.
+    @State private var messageCoordinator = WatchMessageCoordinator()
+
     init() {
         // Activate WatchConnectivity for real-time sync with iPhone
         WatchConnectivityService.shared.activate()
@@ -38,6 +42,7 @@ struct Kraftli_Timers_Watch_AppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(messageCoordinator)
         }
         .modelContainer(modelContainer)
     }

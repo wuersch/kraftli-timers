@@ -4,6 +4,7 @@
 //
 //  Manages WKExtendedRuntimeSession to prevent watch from sleeping during workouts.
 //  watchOS doesn't have isIdleTimerDisabled, so we use extended runtime sessions instead.
+//  Also pauses the timer when the app enters background.
 //
 
 import SwiftUI
@@ -12,10 +13,15 @@ import WatchKit
 /// A view modifier that manages an extended runtime session to keep the watch awake
 /// during active timer workouts. The session starts when the timer starts running
 /// and ends when the timer stops or the view disappears.
+///
+/// Also pauses the timer when the app enters background to prevent haptics
+/// from continuing to fire while the app is not visible.
 struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     let timer: Timer
+    let onPause: () -> Void
 
     @State private var session: WKExtendedRuntimeSession?
+    @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
         content
@@ -24,6 +30,11 @@ struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
                     startExtendedSession()
                 } else {
                     endExtendedSession()
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .background && timer.isRunning {
+                    onPause()
                 }
             }
             .onDisappear {
@@ -55,8 +66,12 @@ extension View {
     /// the timer is running. The session automatically ends when the timer stops
     /// or when the view disappears.
     ///
-    /// - Parameter timer: The workout timer to observe for running state changes
-    func watchTimerLifecycle<T: WorkoutTimer>(timer: T) -> some View {
-        modifier(WatchTimerLifecycleModifier(timer: timer))
+    /// Also pauses the timer when the app enters background to stop haptic feedback.
+    ///
+    /// - Parameters:
+    ///   - timer: The workout timer to observe for running state changes
+    ///   - onPause: Called when the timer should pause (e.g., app backgrounded)
+    func watchTimerLifecycle<T: WorkoutTimer>(timer: T, onPause: @escaping () -> Void) -> some View {
+        modifier(WatchTimerLifecycleModifier(timer: timer, onPause: onPause))
     }
 }
