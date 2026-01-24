@@ -3,7 +3,7 @@
 ![Swift](https://img.shields.io/badge/Swift-6.2-orange)
 ![TestFlight](https://img.shields.io/badge/TestFlight-Available-blue)
 ![Build](https://img.shields.io/github/actions/workflow/status/wuersch/kraftli-timers/ios-build.yml?branch=main&label=build)
-![Release](https://img.shields.io/github/v/release/wuersch/kraftli-timers?include_prereleases)
+![Release](https://img.shields.io/github/v/release/wuersch/kraftli-timers?include_prereleases=true)
 ![Last Commit](https://img.shields.io/github/last-commit/wuersch/kraftli-timers)
 ![Issues](https://img.shields.io/github/issues/wuersch/kraftli-timers)
 ![LOC](https://sloc.xyz/github/wuersch/kraftli-timers?category=code)
