@@ -1,18 +1,28 @@
 # Kraftli Timers
 
-A native iOS app for high-intensity interval training. Minimalistic, distraction-free workout timers for focused fitness sessions.
+A native iOS and watchOS app for high-intensity interval training. Minimalistic, distraction-free workout timers for focused fitness sessions.
 
 ## Features
 
+### iPhone
 - **EMOM Timer** - Interval-based workouts with automatic rep pacing
 - **AMRAP Timer** - Time-based rounds, track as many rounds as possible
-- **Preset Management** - Save and reuse timer configurations
-- **Workout Stats** - Track completed workouts and view progress over time
+- **Preset Management** - Save, edit, delete, and reorder timer configurations
+- **Workout Stats** - Dashboard with charts, muscle group breakdown, and history
 - **Exercise Library** - 21 curated bodyweight exercises with form tips
+- **Audio Feedback** - Warning beeps, interval sounds, and completion cheer
+- **Settings** - Audio preferences, confetti toggle, animated launch screen
+
+### Apple Watch
+- **Standalone Timers** - Run EMOM and AMRAP workouts directly on Watch
+- **Preset Editor** - Create and edit presets with Digital Crown input
+- **CloudKit Sync** - Presets sync automatically between iPhone and Watch
+- **Haptic Feedback** - Wrist taps for interval transitions and warnings
+- **Auto-Launch** - Timer appears on Watch when started from iPhone
 
 ## Requirements
 
-- iOS 26+
+- iOS 26+ / watchOS 26+
 - Xcode 17+
 - Swift 6.2
 
@@ -33,14 +43,21 @@ A native iOS app for high-intensity interval training. Minimalistic, distraction
 
 ```
 Kraftli Timers/
-├── App/              # Entry point and root navigation
-├── Features/         # Feature modules (Timer/, Presets/, Stats/)
-├── Models/           # SwiftData persistence models
-├── Services/         # Protocols + implementations
-├── Components/       # Reusable UI components
-├── Modifiers/        # SwiftUI view modifiers
-├── Extensions/       # Type extensions
-└── Audio/            # Sound files
+├── App/                          # Entry point and root navigation
+├── Features/                     # Feature modules (Timer/, Presets/, Stats/)
+├── Models/                       # SwiftData persistence models
+├── Services/                     # Protocols + implementations
+├── Components/                   # Reusable UI components
+├── Modifiers/                    # SwiftUI view modifiers
+├── Extensions/                   # Type extensions
+└── Audio/                        # Sound files
+
+Kraftli Timers Watch App/
+├── App/                          # Watch app entry point
+├── Features/                     # Timer and preset modules
+├── Services/                     # Watch-specific services
+├── Components/                   # Watch UI components
+└── Modifiers/                    # Watch view modifiers
 ```
 
 ## Contributing
