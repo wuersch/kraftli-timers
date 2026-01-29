@@ -67,6 +67,7 @@ struct TimerRunnerView: View {
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
                 confettiEnabled: settings.confettiEnabled,
+                showRepsInCenter: settings.emomShowRepsInCenter,
                 syncService: timerSyncService
             )
         case .amrap:

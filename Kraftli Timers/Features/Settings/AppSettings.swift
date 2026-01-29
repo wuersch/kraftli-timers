@@ -33,6 +33,7 @@ final class AppSettings {
         static let confettiEnabled = "confettiEnabled"
         static let launchScreenEnabled = "launchScreenEnabled"
         static let smoothAnimationsEnabled = "smoothAnimationsEnabled"
+        static let emomShowRepsInCenter = "emomShowRepsInCenter"
     }
 
     // MARK: - Audio Preferences
@@ -64,6 +65,11 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(smoothAnimationsEnabled, forKey: Keys.smoothAnimationsEnabled) }
     }
 
+    /// Whether to show reps count in center of EMOM timer instead of interval countdown.
+    var emomShowRepsInCenter: Bool {
+        didSet { UserDefaults.standard.set(emomShowRepsInCenter, forKey: Keys.emomShowRepsInCenter) }
+    }
+
     // MARK: - Initialization
 
     init() {
@@ -84,6 +90,9 @@ final class AppSettings {
 
         // Smooth animations defaults to true
         self.smoothAnimationsEnabled = defaults.object(forKey: Keys.smoothAnimationsEnabled) as? Bool ?? true
+
+        // EMOM reps in center defaults to false (show interval countdown by default)
+        self.emomShowRepsInCenter = defaults.object(forKey: Keys.emomShowRepsInCenter) as? Bool ?? false
     }
 
     // MARK: - Types
