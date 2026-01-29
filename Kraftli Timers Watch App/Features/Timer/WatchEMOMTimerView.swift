@@ -43,7 +43,7 @@ struct WatchEMOMTimerView: View {
         displayOnly: Bool = false,
         syncService: WatchTimerSyncService? = nil,
         timerProvider: TimerProvider = FoundationTimerProvider(),
-        feedbackProvider: FeedbackProvider = WatchHapticFeedback()
+        feedbackProvider: FeedbackProvider = SilentFeedback()
     ) {
         self.totalDuration = totalDuration
         self.exerciseName = exerciseName

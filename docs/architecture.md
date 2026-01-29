@@ -240,7 +240,6 @@ For now, the pragmatic approach provides sufficient structure without over-engin
 ### watchOS Services
 | Service | Purpose |
 |---------|---------|
-| `WatchHapticFeedback` | Haptic feedback during timer intervals |
 | `TimerSyncService` | WatchConnectivity for iPhone → Watch timer sync |
 
 ## Utilities

@@ -2,26 +2,22 @@
 //  WatchTimerLifecycleModifier.swift
 //  Kraftli Timers Watch App
 //
-//  Manages WKExtendedRuntimeSession to prevent watch from sleeping during workouts.
+//  Manages WKExtendedRuntimeSession to keep the timer running when wrist is lowered.
 //  watchOS doesn't have isIdleTimerDisabled, so we use extended runtime sessions instead.
-//  Also pauses the timer when the app enters background.
 //
 
 import SwiftUI
 import WatchKit
 
-/// A view modifier that manages an extended runtime session to keep the watch awake
-/// during active timer workouts. The session starts when the timer starts running
-/// and ends when the timer stops or the view disappears.
-///
-/// Also pauses the timer when the app enters background to prevent haptics
-/// from continuing to fire while the app is not visible.
+/// A view modifier that manages an extended runtime session to keep the timer running
+/// during workouts, even when the wrist is lowered and the display dims.
+/// The session starts when the timer starts running and ends when the timer stops
+/// or the view disappears.
 struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     let timer: Timer
     let onPause: () -> Void
 
     @State private var session: WKExtendedRuntimeSession?
-    @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
         content
@@ -30,11 +26,6 @@ struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
                     startExtendedSession()
                 } else {
                     endExtendedSession()
-                }
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .background && timer.isRunning {
-                    onPause()
                 }
             }
             .onDisappear {
@@ -60,17 +51,15 @@ struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
 }
 
 extension View {
-    /// Adds watch timer lifecycle handling to keep the screen awake during workouts.
+    /// Adds watch timer lifecycle handling to keep the timer running during workouts.
     ///
-    /// Uses `WKExtendedRuntimeSession` to prevent the watch from sleeping while
-    /// the timer is running. The session automatically ends when the timer stops
-    /// or when the view disappears.
-    ///
-    /// Also pauses the timer when the app enters background to stop haptic feedback.
+    /// Uses `WKExtendedRuntimeSession` to keep the timer running even when the
+    /// wrist is lowered and the display dims. The session automatically ends when
+    /// the timer stops or when the view disappears.
     ///
     /// - Parameters:
     ///   - timer: The workout timer to observe for running state changes
-    ///   - onPause: Called when the timer should pause (e.g., app backgrounded)
+    ///   - onPause: Called when the timer should pause (reserved for future use)
     func watchTimerLifecycle<T: WorkoutTimer>(timer: T, onPause: @escaping () -> Void) -> some View {
         modifier(WatchTimerLifecycleModifier(timer: timer, onPause: onPause))
     }
