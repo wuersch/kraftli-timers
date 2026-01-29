@@ -64,6 +64,22 @@ struct VisualsSection: View {
                     .padding()
             }
             .cardStyle()
+
+            VStack(alignment: .leading, spacing: 0) {
+                // EMOM Reps in Center Toggle
+                Toggle(isOn: $settings.emomShowRepsInCenter) {
+                    Label("Show Reps in Center", systemImage: "number")
+                }
+                .padding()
+
+                Divider()
+
+                Text("Displays reps count prominently in the EMOM timer instead of interval countdown.")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .padding()
+            }
+            .cardStyle()
         }
     }
 }

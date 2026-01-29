@@ -40,6 +40,9 @@ struct EMOMTimerView: View {
     /// Whether to show confetti on workout completion.
     private let confettiEnabled: Bool
 
+    /// Whether to show reps count in center instead of interval countdown.
+    private let showRepsInCenter: Bool
+
     /// Service for syncing timer controls with Apple Watch (nil for standalone timers).
     private let syncService: TimerSyncService?
 
@@ -61,11 +64,13 @@ struct EMOMTimerView: View {
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         confettiEnabled: Bool = true,
+        showRepsInCenter: Bool = false,
         syncService: TimerSyncService? = nil
     ) {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
         self.confettiEnabled = confettiEnabled
+        self.showRepsInCenter = showRepsInCenter
         self.syncService = syncService
     }
 
@@ -209,43 +214,89 @@ struct EMOMTimerView: View {
                         .accessibilityHidden(true)
 
                         VStack(spacing: 8) {
-                            Text("INTERVAL")
+                            Text(showRepsInCenter ? "REPS" : "INTERVAL")
                                 .font(.system(size: sizes.labelFont))
                                 .foregroundStyle(.gray)
 
-                            Text(timerModel.intervalTimeRemaining.formatted)
-                                .font(
-                                    .system(
-                                        size: sizes.intervalFont,
-                                        weight: .semibold,
-                                        design: .rounded
+                            if showRepsInCenter {
+                                // Reps-focused mode: show reps count prominently
+                                Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
+                                    .font(
+                                        .system(
+                                            size: sizes.intervalFont,
+                                            weight: .semibold,
+                                            design: .rounded
+                                        )
                                     )
-                                )
-                                .foregroundStyle(isCompleted ? Color.gray.opacity(0.2) : accentColor)
-                                .monospacedDigit()
-                                .accessibilityElement(children: .ignore)
-                                .accessibilityLabel("Interval time")
-                                .accessibilityValue(
-                                    timerModel.intervalTimeRemaining.formatted
-                                )
+                                    .foregroundStyle(isCompleted ? .green : accentColor)
+                                    .monospacedDigit()
+                                    .accessibilityElement(children: .ignore)
+                                    .accessibilityLabel("Reps completed")
+                                    .accessibilityValue(
+                                        "\(timerModel.completedIntervals) of \(timerModel.totalIntervals)"
+                                    )
 
-                            if isCompleted {
-                                RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
-                                    .accessibilityLabel("Timer completed")
-                                    .accessibilityHint("Swipe down to close")
-                            } else if session.showHint {
-                                Text(hintText)
-                                    .font(.system(size: sizes.labelFont))
-                                    .foregroundStyle(.gray)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.9)
-                                    .transition(
-                                        .opacity.combined(with: .scale(scale: 0.98))
-                                    )
-                                    .accessibilityHidden(true)
+                                // Third element for vertical balance
+                                if isCompleted {
+                                    Text("DONE")
+                                        .font(.system(size: sizes.pillFont, weight: .semibold))
+                                        .foregroundStyle(.green)
+                                        .accessibilityLabel("Timer completed")
+                                } else if session.showHint {
+                                    Text(hintText)
+                                        .font(.system(size: sizes.labelFont))
+                                        .foregroundStyle(.gray)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.9)
+                                        .transition(
+                                            .opacity.combined(with: .scale(scale: 0.98))
+                                        )
+                                        .accessibilityHidden(true)
+                                } else {
+                                    // Small interval countdown as secondary info
+                                    Text(timerModel.intervalTimeRemaining.formatted)
+                                        .font(.system(size: sizes.labelFont, weight: .medium, design: .rounded))
+                                        .foregroundStyle(.secondary)
+                                        .monospacedDigit()
+                                        .accessibilityLabel("Interval time remaining")
+                                        .accessibilityValue(timerModel.intervalTimeRemaining.formatted)
+                                }
                             } else {
-                                RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor, fontSize: sizes.pillFont)
-                                    .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
+                                // Interval-focused mode: show countdown
+                                Text(timerModel.intervalTimeRemaining.formatted)
+                                    .font(
+                                        .system(
+                                            size: sizes.intervalFont,
+                                            weight: .semibold,
+                                            design: .rounded
+                                        )
+                                    )
+                                    .foregroundStyle(isCompleted ? Color.gray.opacity(0.2) : accentColor)
+                                    .monospacedDigit()
+                                    .accessibilityElement(children: .ignore)
+                                    .accessibilityLabel("Interval time")
+                                    .accessibilityValue(
+                                        timerModel.intervalTimeRemaining.formatted
+                                    )
+
+                                if isCompleted {
+                                    RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
+                                        .accessibilityLabel("Timer completed")
+                                        .accessibilityHint("Swipe down to close")
+                                } else if session.showHint {
+                                    Text(hintText)
+                                        .font(.system(size: sizes.labelFont))
+                                        .foregroundStyle(.gray)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.9)
+                                        .transition(
+                                            .opacity.combined(with: .scale(scale: 0.98))
+                                        )
+                                        .accessibilityHidden(true)
+                                } else {
+                                    RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor, fontSize: sizes.pillFont)
+                                        .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
+                                }
                             }
                         }
                     }
