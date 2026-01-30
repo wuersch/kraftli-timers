@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		4C03B9AE2F1D658D006EDB06 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C03B9AD2F1D658D006EDB06 /* WatchConnectivity.framework */; };
 		4C03B9B02F1D65A7006EDB06 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C03B9AF2F1D65A7006EDB06 /* WatchConnectivity.framework */; };
-		4C21C5A92F008244008D0E89 /* SPEC.md in Resources */ = {isa = PBXBuildFile; fileRef = 4C21C5A82F008244008D0E89 /* SPEC.md */; };
 		4C74D6DD2F1CE4E7009A425D /* Kraftli Timers Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4C74D6BD2F1CE4E6009A425D /* Kraftli Timers Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -68,7 +67,6 @@
 /* Begin PBXFileReference section */
 		4C03B9AD2F1D658D006EDB06 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/WatchConnectivity.framework; sourceTree = DEVELOPER_DIR; };
 		4C03B9AF2F1D65A7006EDB06 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.2.sdk/System/Library/Frameworks/WatchConnectivity.framework; sourceTree = DEVELOPER_DIR; };
-		4C21C5A82F008244008D0E89 /* SPEC.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SPEC.md; sourceTree = "<group>"; };
 		4C33823C2EF2FA4700135BD7 /* Kraftli Timers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Kraftli Timers.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C33824D2EF2FA4800135BD7 /* Kraftli TimersTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C3382572EF2FA4800135BD7 /* Kraftli TimersUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Kraftli TimersUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -78,10 +76,6 @@
 		4CA514782EFD4F8200048217 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
 		4CDFEB8E2F1B734700782000 /* ACKNOWLEDGMENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ACKNOWLEDGMENTS.md; sourceTree = "<group>"; };
 		4CDFEB942F1B89F200782000 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		4CFB612C2F13DC2600E5C2D9 /* architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = architecture.md; sourceTree = "<group>"; };
-		4CFB612D2F13DC2600E5C2D9 /* features.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = features.md; sourceTree = "<group>"; };
-		4CFB612E2F13DC2600E5C2D9 /* future.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = future.md; sourceTree = "<group>"; };
-		4CFB612F2F13DC2600E5C2D9 /* ui.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ui.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -222,8 +216,6 @@
 			children = (
 				4CDFEB8E2F1B734700782000 /* ACKNOWLEDGMENTS.md */,
 				4CDFEB942F1B89F200782000 /* README.md */,
-				4C21C5A82F008244008D0E89 /* SPEC.md */,
-				4CFB61302F13DC2600E5C2D9 /* docs */,
 				4CA514782EFD4F8200048217 /* CLAUDE.md */,
 				4C33823E2EF2FA4700135BD7 /* Kraftli Timers */,
 				4C3382502EF2FA4800135BD7 /* Kraftli TimersTests */,
@@ -247,17 +239,6 @@
 				4C74D6D32F1CE4E7009A425D /* Kraftli Timers Watch AppUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		4CFB61302F13DC2600E5C2D9 /* docs */ = {
-			isa = PBXGroup;
-			children = (
-				4CFB612C2F13DC2600E5C2D9 /* architecture.md */,
-				4CFB612D2F13DC2600E5C2D9 /* features.md */,
-				4CFB612E2F13DC2600E5C2D9 /* future.md */,
-				4CFB612F2F13DC2600E5C2D9 /* ui.md */,
-			);
-			path = docs;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -464,7 +445,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C21C5A92F008244008D0E89 /* SPEC.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
