@@ -92,10 +92,10 @@ enum Difficulty: String, Codable, CaseIterable {
 }
 
 enum TimePeriod: String, CaseIterable {
-    case week, month, year
+    case week, month, sixMonths, year
     var displayName: String
-    var dateRange: (start: Date, end: Date)
-    var chartGrouping: Calendar.Component
+    var dateRange: (start: Date, end: Date) -> (Date, Date)
+    var bucketUnit: BucketUnit
 }
 ```
 
