@@ -39,11 +39,14 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: List available simulators
+        run: xcrun simctl list devices available
+
       - name: Build for watchOS Simulator
         run: |
           xcodebuild build \
             -project "Kraftli Timers.xcodeproj" \
             -scheme "Kraftli Timers Watch App" \
-            -destination "platform=watchOS Simulator,OS=latest,name=Apple Watch Series 11 (46mm)" \
+            -destination "generic/platform=watchOS Simulator" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO
