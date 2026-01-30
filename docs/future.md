@@ -47,34 +47,13 @@ struct ProgramPhase: Identifiable {
 
 ---
 
-## watchOS Companion App
+## watchOS Enhancements
 
-**Priority**: 2.5
+**Priority**: Low
 
-Run timers from Apple Watch without needing phone nearby.
-
-### Functionality
-- List timer presets synced from iPhone
-- Default timer for standalone mode (App Store compliance)
-- Simplified UI: rings and content only
-- Haptic feedback instead of audio
-- Run-only (no preset creation on Watch)
-
-### Data Sync
-- **Watch Connectivity**: Real-time sync when iPhone nearby
-- **CloudKit/iCloud**: Background sync for standalone operation
-
-### Smart Remote Control
-- Starting on Watch controls iPhone only if app is active/unlocked
-- Independent operation when iPhone unavailable
-
-### Technical Notes
-- Reuse timer models (same logic, different UI)
-- Use FoundationTimerProvider (no CADisplayLink on watchOS)
-- SwiftData works on watchOS 10.4+ with shared CloudKit container
-
-### iPhone → Watch Sync Enhancements
-- **Synchronized countdown**: When starting timer from iPhone, show 3-2-1 countdown on both devices simultaneously before timer begins. Requires coordinated UI design across platforms.
+### Synchronized Countdown
+- When starting timer from iPhone, show 3-2-1 countdown on both devices simultaneously before timer begins
+- Requires coordinated UI design across platforms
 
 ---
 

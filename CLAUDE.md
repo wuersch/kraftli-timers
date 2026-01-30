@@ -8,16 +8,24 @@ Native iOS fitness app for high-intensity, minimalistic workouts.
 ## Project Goal
 Learning project: educational value matters as much as working code. Explain SwiftUI concepts when introducing new patterns.
 
-## Features v1
+## Features (v1.1)
 - **EMOM Timer**: Interval-based workouts (customizable interval = duration / reps)
 - **AMRAP Timer**: Time-based rounds, track rounds completed
-- **Preset Management**: Save and reuse timer configurations
+- **Preset Management**: Save, edit, delete, reorder timer configurations
+- **Exercise Library**: 21 curated exercises with form tips and filtering
+- **Workout Stats**: Dashboard, charts, muscle group breakdown, history
+- **Workout Logging**: Automatic logging on timer completion
+- **Settings**: Audio prefs, confetti toggle, launch screen toggle, data management
+- **watchOS Companion**: Standalone timers, preset editing, CloudKit sync
 - **UI**: Minimalistic, native components, no Liquid Glass effects
 
 ## Domain Model
-- `TimerPreset`: id, kind, duration, exercise, reps (optional for EMOM)
+- `TimerPreset`: id, kind, duration, exercise, reps (optional for EMOM), sortOrder
 - `TimerKind`: Enum - EMOM | AMRAP
-- `Exercise`: Name (e.g., 6 Count Burpees, Navy Seals, High Jumps)
+- `Exercise`: id, name, description, formTips, muscleGroup, difficulty
+- `WorkoutLog`: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted
+- `MuscleGroup`: Enum - fullBody | upperBody | lowerBody | core
+- `Difficulty`: Enum - beginner | intermediate | advanced
 
 ## Project Structure
 - `App/` - Entry point and root navigation
