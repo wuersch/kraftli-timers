@@ -52,6 +52,23 @@ struct AboutSection: View {
 
                 Divider().padding(.leading, 16)
 
+                // Privacy Policy
+                Button {
+                    openPrivacyPolicy()
+                } label: {
+                    HStack {
+                        Label("Privacy Policy", systemImage: "hand.raised")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding()
+                    .contentShape(Rectangle())
+                }
+
+                Divider().padding(.leading, 16)
+
                 // Acknowledgments
                 Button {
                     showingAcknowledgments = true
@@ -76,6 +93,12 @@ struct AboutSection: View {
 
     private func openGitHub() {
         if let url = URL(string: "https://github.com/wuersch/kraftli-timers") {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    private func openPrivacyPolicy() {
+        if let url = URL(string: "https://github.com/wuersch/kraftli-timers/blob/main/PRIVACY.md") {
             UIApplication.shared.open(url)
         }
     }
