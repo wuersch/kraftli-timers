@@ -2,6 +2,19 @@
 
 Data models, patterns, and key components.
 
+## Domain Model Summary
+
+Quick reference for the core domain types:
+
+| Type | Purpose |
+|------|---------|
+| `TimerPreset` | Saved timer configuration: id, kind, duration, exercise, reps (EMOM), sortOrder |
+| `TimerKind` | Enum: EMOM \| AMRAP |
+| `Exercise` | Exercise metadata: id, name, description, formTips, muscleGroup, difficulty |
+| `WorkoutLog` | Completed workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted |
+| `MuscleGroup` | Enum: fullBody \| upperBody \| lowerBody \| core |
+| `Difficulty` | Enum: beginner \| intermediate \| advanced |
+
 ## Patterns
 
 - **SwiftData** for persistence (@Model classes, @Query for fetching)
@@ -111,58 +124,9 @@ enum TimePeriod: String, CaseIterable {
 
 ## Settings Architecture
 
-### Decision: Pragmatic @Observable + @AppStorage
+User preferences are managed via `AppSettings`, an `@Observable` class with `@AppStorage` properties.
 
-User preferences are managed via `AppSettings`, an `@Observable` class with `@AppStorage` properties. This approach was chosen over alternatives:
-
-| Approach | Rejected Because |
-|----------|------------------|
-| SettingsService protocol | Overkill for 2 toggles; no business logic to abstract |
-| Scattered @AppStorage | Hard to maintain; no centralized defaults |
-| SwiftData @Model | Overkill for simple key-value preferences |
-
-### Current Implementation
-
-```swift
-@Observable
-final class AppSettings {
-    @ObservationIgnored
-    @AppStorage("completionSoundStyle") var completionSoundStyle: CompletionSoundStyle = .cheering
-
-    @ObservationIgnored
-    @AppStorage("confettiEnabled") var confettiEnabled: Bool = true
-}
-```
-
-**Key patterns:**
-- `@ObservationIgnored` prevents double-observation (AppStorage already triggers updates)
-- Environment injection via `.environment(settings)` in App
-- Factory method on `AudioFeedbackProvider` selects provider based on sound style
-- Settings passed explicitly to timer views (no global state)
-
-### Data Flow
-
-```
-User toggles setting in SettingsView
-    ↓
-@AppStorage writes to UserDefaults (automatic)
-    ↓
-Next timer session reads from AppSettings
-    ↓
-Audio: Factory creates appropriate provider
-Confetti: View checks confettiEnabled flag
-```
-
-### Future Direction
-
-If settings become more complex (10+ settings, validation logic, cloud sync):
-
-1. **Extract SettingsService protocol** for testability
-2. **Add UserDefaultsSettingsService** and **InMemorySettingsService** implementations
-3. **Consider NSUbiquitousKeyValueStore** for iCloud sync
-4. **Group related settings** into nested types (AudioSettings, VisualSettings, etc.)
-
-For now, the pragmatic approach provides sufficient structure without over-engineering.
+See [ADR-001: Settings Pattern](decisions/ADR-001-settings-pattern.md) for full decision rationale and implementation details.
 
 ## Key Components
 

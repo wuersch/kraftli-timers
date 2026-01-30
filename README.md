@@ -45,10 +45,10 @@ A native iOS and watchOS app for high-intensity interval training. Minimalistic,
 
 ## Documentation
 
-- [Features](docs/features.md) - Detailed feature documentation
-- [Architecture](docs/architecture.md) - Data models, patterns, and components
-- [UI Specification](docs/ui.md) - Interface design and components
-- [Future Plans](docs/future.md) - Roadmap and v2+ considerations
+- [Scope](SPEC/scope.md) - Current features, details, and UI specification
+- [Backlog](SPEC/backlog.md) - Future features and ideas
+- [Architecture](ARCHITECTURE/architecture.md) - Data models, patterns, and components
+- [ADRs](ARCHITECTURE/decisions/) - Architecture Decision Records
 
 ## Project Structure
 
@@ -71,11 +71,20 @@ Kraftli Timers Watch App/
 └── Modifiers/                    # Watch view modifiers
 ```
 
+## CloudKit Schema Deployment
+
+When making schema changes (adding fields, record types, etc.):
+
+1. Changes are automatically applied to the **Development** CloudKit environment during Xcode builds
+2. **TestFlight and App Store builds use Production** - schema must be manually deployed
+3. Go to [CloudKit Dashboard](https://icloud.developer.apple.com/) → Your Container → Schema → **Deploy Schema Changes...**
+4. Failure to deploy results in silent sync failures in production builds
+
 ## Contributing
 
 This is a learning project where educational value matters as much as working code. When contributing:
 
-1. Read through the [documentation](docs/) to understand patterns and conventions
+1. Read through the [documentation](SPEC/scope.md) to understand patterns and conventions
 2. Follow existing code style and SwiftUI idioms
 3. Keep UI minimalistic - native components, no unnecessary features
 4. Test on iOS Simulator (iPhone 17 Pro recommended)
