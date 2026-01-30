@@ -37,9 +37,69 @@ struct Kraftli_Timers_Watch_AppApp: App {
 
             // Seed exercises locally (reference data, works without CloudKit)
             Self.seedExercisesIfNeeded(in: modelContainer.mainContext)
+
+            // Wire up preset sync from iPhone via WatchConnectivity
+            Self.setupPresetSyncHandler(with: modelContainer.mainContext)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
+    }
+
+    // MARK: - Preset Sync
+
+    @MainActor
+    private static func setupPresetSyncHandler(with context: ModelContext) {
+        WatchConnectivityService.shared.onPresetsReceived = { presets in
+            Task { @MainActor in
+                syncPresets(presets, in: context)
+            }
+        }
+    }
+
+    @MainActor
+    private static func syncPresets(_ received: [PresetTransferData], in context: ModelContext) {
+        // Build lookup of received presets by ID
+        let receivedById = Dictionary(uniqueKeysWithValues: received.map { ($0.id, $0) })
+
+        // Fetch existing presets
+        let descriptor = FetchDescriptor<TimerPreset>()
+        let existing = (try? context.fetch(descriptor)) ?? []
+        let existingById = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+
+        // Fetch exercises for linking
+        let exerciseDescriptor = FetchDescriptor<Exercise>()
+        let exercises = (try? context.fetch(exerciseDescriptor)) ?? []
+        let exercisesByName = Dictionary(exercises.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+
+        // Update or create presets
+        for data in received {
+            if let preset = existingById[data.id] {
+                // Update existing preset
+                preset.kindRawValue = data.kind
+                preset.durationInterval = data.duration
+                preset.targetReps = data.targetReps
+                preset.sortOrder = data.sortOrder
+                preset.exercise = data.exerciseName.flatMap { exercisesByName[$0] }
+            } else {
+                // Create new preset
+                let preset = TimerPreset(
+                    id: data.id,
+                    kind: TimerKind(rawValue: data.kind) ?? .emom,
+                    durationInterval: data.duration,
+                    targetReps: data.targetReps,
+                    sortOrder: data.sortOrder,
+                    exercise: data.exerciseName.flatMap { exercisesByName[$0] }
+                )
+                context.insert(preset)
+            }
+        }
+
+        // Delete presets that no longer exist on iPhone
+        for preset in existing where receivedById[preset.id] == nil {
+            context.delete(preset)
+        }
+
+        try? context.save()
     }
 
     // MARK: - Data Seeding

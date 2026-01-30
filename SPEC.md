@@ -55,26 +55,6 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 
 ---
 
-## Known Issues
-
-### WatchConnectivity Instant Sync Not Wired Up
-
-**Status**: 🐛 Incomplete Implementation
-
-The `WatchConnectivityService.onPresetsReceived` callback is declared but never connected to persist presets on the Watch side. This was intended to provide instant preset sync when the iPhone app backgrounds (via `updateApplicationContext`), supplementing CloudKit.
-
-**Current behavior**: Preset sync relies entirely on CloudKit, which works but may have delays.
-
-**Impact**: Low - CloudKit sync works correctly, this would just make it faster.
-
-**To fix**: Wire up `onPresetsReceived` in the Watch app to persist received presets to SwiftData. Must handle bidirectional sync correctly (Watch can also create presets).
-
-**Files involved**:
-- `WatchConnectivityService.swift` - `onPresetsReceived` callback (line ~120)
-- `Kraftli_Timers_WatchApp.swift` - Needs to set up the callback handler
-
----
-
 ## Operational Notes
 
 ### CloudKit Schema Deployment
