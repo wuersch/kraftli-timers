@@ -18,13 +18,13 @@ enum BucketUnit {
     ) -> Date {
         switch self {
         case .day:
-            return calendar.date(byAdding: .day, value: 1, to: date)!
+            return calendar.date(byAdding: .day, value: 1, to: date) ?? date
         case .week:
-            return calendar.date(byAdding: .day, value: 7, to: date)!
+            return calendar.date(byAdding: .day, value: 7, to: date) ?? date
         case .month:
-            return calendar.date(byAdding: .month, value: 1, to: date)!
+            return calendar.date(byAdding: .month, value: 1, to: date) ?? date
         case .quarter:
-            return calendar.date(byAdding: .month, value: 3, to: date)!
+            return calendar.date(byAdding: .month, value: 3, to: date) ?? date
         }
     }
     
@@ -39,19 +39,20 @@ enum BucketUnit {
         case .week:
             return calendar.date(
                 from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
-            )!
+            ) ?? calendar.startOfDay(for: date)
 
         case .month:
             return calendar.date(
                 from: calendar.dateComponents([.year, .month], from: date)
-            )!
+            ) ?? calendar.startOfDay(for: date)
 
         case .quarter:
             let comps = calendar.dateComponents([.year, .month], from: date)
-            let quarterStartMonth = ((comps.month! - 1) / 3) * 3 + 1
+            guard let month = comps.month else { return calendar.startOfDay(for: date) }
+            let quarterStartMonth = ((month - 1) / 3) * 3 + 1
             return calendar.date(
                 from: DateComponents(year: comps.year, month: quarterStartMonth)
-            )!
+            ) ?? calendar.startOfDay(for: date)
         }
     }
 }

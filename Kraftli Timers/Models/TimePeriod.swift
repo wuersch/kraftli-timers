@@ -54,13 +54,13 @@ enum TimePeriod: String, CaseIterable, Identifiable {
 
         switch self {
         case .week:
-            start = calendar.date(byAdding: .day, value: -6, to: end)! // last 7 days
+            start = calendar.date(byAdding: .day, value: -6, to: end) ?? end // last 7 days
         case .month:
-            start = calendar.date(byAdding: .day, value: -27, to: end)! // last 28 days (~4 weeks)
+            start = calendar.date(byAdding: .day, value: -27, to: end) ?? end // last 28 days (~4 weeks)
         case .sixMonths:
-            start = calendar.date(byAdding: .month, value: -6, to: end)!
+            start = calendar.date(byAdding: .month, value: -6, to: end) ?? end
         case .year:
-            start = calendar.date(byAdding: .month, value: -11, to: end)!
+            start = calendar.date(byAdding: .month, value: -11, to: end) ?? end
         }
 
         return (start, end)
