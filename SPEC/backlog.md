@@ -1,6 +1,10 @@
-# Future Considerations
+# Kraftli Timers - Backlog
 
-Roadmap and v2+ feature ideas.
+Future features and ideas. Items here are **not in active scope**.
+
+> **Promotion Rule**: Backlog items require explicit discussion and approval before implementation. Do not implement directly from this file.
+
+---
 
 ## Form Tips During Workout
 
@@ -12,7 +16,7 @@ Display form tips overlay when timer is paused. Uses existing `formTips` data fr
 
 ## Programs
 
-**Priority**: 2
+**Priority**: Medium
 
 Combine timer presets into structured training programs with scheduling and progression.
 
@@ -59,7 +63,7 @@ struct ProgramPhase: Identifiable {
 
 ## Workout Stats Enhancements
 
-**Priority**: After v1 Stats + Programs
+**Priority**: Low (after Programs)
 
 ### Personal Bests
 - Track best performance per exercise
@@ -80,7 +84,7 @@ struct ProgramPhase: Identifiable {
 
 ## AI-Assisted Program Generation
 
-**Priority**: 4
+**Priority**: Low
 
 Generate personalized training programs based on fitness level and goals.
 
@@ -105,7 +109,7 @@ Requires Exercise Library and Programs features.
 
 ## HealthKit Integration
 
-**Priority**: Can be implemented alongside Workout History
+**Priority**: Medium (can be implemented alongside Workout History)
 
 ### Write to HealthKit
 - Record completed workouts (duration, type, estimated calories)
@@ -141,10 +145,6 @@ Deferred settings features for future consideration:
 - Requires Asset Catalog color sets and theme system
 - Complexity: High (affects many views)
 
-### EMOM Display Options
-- Option to swap reps and countdown prominence
-- For users who focus more on rep counting during workouts
-
 ### Data Export
 - Export workout history to CSV/JSON
 - Use iOS Share Sheet for destination flexibility (Files, Mail, AirDrop)
@@ -158,10 +158,6 @@ Deferred settings features for future consideration:
 ### Haptic Feedback Toggle
 - Enable/disable haptic feedback on button presses and interval changes
 
-### Keep Screen Awake
-- Already implemented during workouts
-- Could add toggle if users want different behavior
-
 ---
 
 ## Other Ideas
@@ -171,12 +167,3 @@ Deferred settings features for future consideration:
 - Tabata timer mode
 - Simple timer mode
 - Adaptive presets (automatic progression based on feedback)
-
----
-
-## Status Legend
-
-- ✅ **Implemented**: Complete and tested
-- 🚧 **In Progress**: Currently being developed
-- 📋 **Planned**: Documented but not started
-- 🔮 **Future**: Under consideration for later versions
