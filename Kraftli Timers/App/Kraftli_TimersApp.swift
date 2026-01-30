@@ -96,14 +96,23 @@ struct Kraftli_TimersApp: App {
             return
         }
 
-        // Load and create exercises from JSON
+        // Load and create exercises from JSON (skip if already exists from CloudKit sync)
         let exerciseDataList = ExerciseLoader.loadBundled()
         var exercisesByName: [String: Exercise] = [:]
 
         for data in exerciseDataList {
-            let exercise = Exercise(from: data)
-            context.insert(exercise)
-            exercisesByName[data.name] = exercise
+            // Check if exercise with this ID already exists (e.g., from CloudKit sync)
+            let exerciseId = data.id
+            var descriptor = FetchDescriptor<Exercise>(predicate: #Predicate { $0.id == exerciseId })
+            descriptor.fetchLimit = 1
+
+            if let existing = try? context.fetch(descriptor).first {
+                exercisesByName[data.name] = existing
+            } else {
+                let exercise = Exercise(from: data)
+                context.insert(exercise)
+                exercisesByName[data.name] = exercise
+            }
         }
 
         // Create default presets

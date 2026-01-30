@@ -106,8 +106,9 @@ final class DefaultStatsService: StatsService {
     // MARK: - Private Helpers
 
     /// Builds a lookup dictionary mapping exercise names to Exercise objects.
+    /// Handles duplicates (from CloudKit sync) by keeping the first occurrence.
     private func buildExerciseLookup(_ exercises: [Exercise]) -> [String: Exercise] {
-        Dictionary(uniqueKeysWithValues: exercises.map { ($0.name, $0) })
+        Dictionary(exercises.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     // MARK: - Public Methods
