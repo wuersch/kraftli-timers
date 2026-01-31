@@ -28,13 +28,24 @@ enum ActiveEditor: Identifiable {
 /// Captures all timer configuration at tap time, ensuring data is available when the cover presents.
 /// This avoids SwiftUI state timing issues with `fullScreenCover(isPresented:)`.
 enum TimerPresentation: Identifiable, Equatable {
-    case emom(duration: TimeInterval, intervalDuration: TimeInterval, exerciseName: String, displayOnly: Bool = false)
-    case amrap(duration: TimeInterval, exerciseName: String, displayOnly: Bool = false)
+    case emom(
+        duration: TimeInterval,
+        intervalDuration: TimeInterval,
+        exerciseName: String,
+        displayOnly: Bool = false,
+        scheduledStartTime: Date? = nil
+    )
+    case amrap(
+        duration: TimeInterval,
+        exerciseName: String,
+        displayOnly: Bool = false,
+        scheduledStartTime: Date? = nil
+    )
 
     var id: String {
         switch self {
-        case .emom(let duration, let interval, _, _): return "emom-\(duration)-\(interval)"
-        case .amrap(let duration, _, _): return "amrap-\(duration)"
+        case .emom(let duration, let interval, _, _, _): return "emom-\(duration)-\(interval)"
+        case .amrap(let duration, _, _, _): return "amrap-\(duration)"
         }
     }
 
@@ -46,13 +57,15 @@ enum TimerPresentation: Identifiable, Equatable {
                 duration: message.totalDuration,
                 intervalDuration: message.intervalDuration ?? 60,
                 exerciseName: message.exerciseName,
-                displayOnly: message.displayOnly
+                displayOnly: message.displayOnly,
+                scheduledStartTime: message.scheduledStartTime
             )
         case .amrap:
             return .amrap(
                 duration: message.totalDuration,
                 exerciseName: message.exerciseName,
-                displayOnly: message.displayOnly
+                displayOnly: message.displayOnly,
+                scheduledStartTime: message.scheduledStartTime
             )
         }
     }
@@ -93,20 +106,22 @@ struct WatchPresetListView: View {
         }
         .fullScreenCover(item: $activeTimer) { timer in
             switch timer {
-            case .emom(let duration, let intervalDuration, let exerciseName, let displayOnly):
+            case .emom(let duration, let intervalDuration, let exerciseName, let displayOnly, let scheduledStartTime):
                 WatchEMOMTimerView(
                     totalDuration: duration,
                     intervalDuration: intervalDuration,
                     exerciseName: exerciseName,
                     displayOnly: displayOnly,
-                    syncService: displayOnly ? syncService : nil
+                    syncService: displayOnly ? syncService : nil,
+                    scheduledStartTime: scheduledStartTime
                 )
-            case .amrap(let duration, let exerciseName, let displayOnly):
+            case .amrap(let duration, let exerciseName, let displayOnly, let scheduledStartTime):
                 WatchAMRAPTimerView(
                     totalDuration: duration,
                     exerciseName: exerciseName,
                     displayOnly: displayOnly,
-                    syncService: displayOnly ? syncService : nil
+                    syncService: displayOnly ? syncService : nil,
+                    scheduledStartTime: scheduledStartTime
                 )
             }
         }

@@ -27,23 +27,7 @@ struct TimerRunnerView: View {
             timerContent
                 .navigationTitle("\(preset.exercise?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)")
                 .navigationBarTitleDisplayMode(.inline)
-                .onAppear {
-                    sendTimerToWatch()
-                }
         }
-    }
-
-    // MARK: - Watch Sync
-
-    /// Sends the timer configuration to Apple Watch for display-only mode.
-    private func sendTimerToWatch() {
-        timerSyncService.startTimerOnWatch(
-            kind: preset.kind,
-            totalDuration: preset.durationInterval,
-            intervalDuration: preset.kind == .emom ? intervalDuration : nil,
-            exerciseName: preset.exercise?.name ?? "Workout",
-            completion: nil  // Fire and forget - watch sync is best-effort
-        )
     }
 
     private var timerProvider: any TimerProvider {
@@ -68,7 +52,9 @@ struct TimerRunnerView: View {
                 onWorkoutCompleted: makeLoggingClosure(),
                 confettiEnabled: settings.confettiEnabled,
                 showRepsInCenter: settings.emomShowRepsInCenter,
-                syncService: timerSyncService
+                syncService: timerSyncService,
+                exerciseName: preset.exercise?.name ?? "Workout",
+                syncIntervalDuration: intervalDuration
             )
         case .amrap:
             AMRAPTimerView(
@@ -79,7 +65,8 @@ struct TimerRunnerView: View {
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
                 confettiEnabled: settings.confettiEnabled,
-                syncService: timerSyncService
+                syncService: timerSyncService,
+                exerciseName: preset.exercise?.name ?? "Workout"
             )
         }
     }

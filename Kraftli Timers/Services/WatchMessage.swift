@@ -42,8 +42,9 @@ protocol WatchMessage: Codable {
 ///
 /// When received, the Watch should:
 /// 1. Present the appropriate timer view (EMOM or AMRAP)
-/// 2. Start the timer immediately
-/// 3. Run in display-only mode (skip workout logging since iPhone logs it)
+/// 2. If `scheduledStartTime` is set, join the countdown in progress
+/// 3. Start the timer at the scheduled time
+/// 4. Run in display-only mode (skip workout logging since iPhone logs it)
 struct StartTimerMessage: WatchMessage, Equatable {
     var messageType: WatchMessageType { .startTimer }
 
@@ -55,6 +56,10 @@ struct StartTimerMessage: WatchMessage, Equatable {
     /// When true, watch should not log the workout (iPhone is the source of truth).
     let displayOnly: Bool
 
+    /// Absolute time when the timer should start (after countdown completes).
+    /// Watch uses this to join countdown in progress and synchronize timer start.
+    let scheduledStartTime: Date?
+
     /// Convenience accessor for the timer kind enum.
     var timerKind: TimerKind {
         TimerKind(rawValue: timerKindRaw) ?? .emom
@@ -65,18 +70,20 @@ struct StartTimerMessage: WatchMessage, Equatable {
         totalDuration: TimeInterval,
         intervalDuration: TimeInterval? = nil,
         exerciseName: String,
-        displayOnly: Bool = true
+        displayOnly: Bool = true,
+        scheduledStartTime: Date? = nil
     ) {
         self.timerKindRaw = timerKind.rawValue
         self.totalDuration = totalDuration
         self.intervalDuration = intervalDuration
         self.exerciseName = exerciseName
         self.displayOnly = displayOnly
+        self.scheduledStartTime = scheduledStartTime
     }
 
     // Custom Codable to exclude computed messageType
     private enum CodingKeys: String, CodingKey {
-        case timerKindRaw, totalDuration, intervalDuration, exerciseName, displayOnly
+        case timerKindRaw, totalDuration, intervalDuration, exerciseName, displayOnly, scheduledStartTime
     }
 }
 

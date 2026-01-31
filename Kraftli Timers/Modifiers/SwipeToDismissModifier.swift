@@ -16,6 +16,8 @@ struct SwipeToDismissModifier: ViewModifier {
     @Binding var isHandleActive: Bool
     /// Called when the user completes a dismiss gesture
     let onDismiss: () -> Void
+    /// When true, gestures are ignored
+    let isDisabled: Bool
 
     func body(content: Content) -> some View {
         content
@@ -24,6 +26,7 @@ struct SwipeToDismissModifier: ViewModifier {
             .gesture(
                 DragGesture(minimumDistance: 10)
                     .onChanged { value in
+                        guard !isDisabled else { return }
                         if value.translation.height > 0 {
                             dragOffset = value.translation.height
                             if !isHandleActive {
@@ -34,6 +37,7 @@ struct SwipeToDismissModifier: ViewModifier {
                         }
                     }
                     .onEnded { value in
+                        guard !isDisabled else { return }
                         let shouldDismiss = value.predictedEndTranslation.height > 200
                             || value.velocity.height > 500
 
@@ -60,15 +64,18 @@ extension View {
     ///   - dragOffset: Binding to the current drag offset
     ///   - isHandleActive: Binding to track if drag handle should highlight
     ///   - onDismiss: Closure called when dismiss gesture completes
+    ///   - isDisabled: When true, gestures are ignored
     func swipeToDismiss(
         dragOffset: Binding<CGFloat>,
         isHandleActive: Binding<Bool>,
-        onDismiss: @escaping () -> Void
+        onDismiss: @escaping () -> Void,
+        isDisabled: Bool = false
     ) -> some View {
         modifier(SwipeToDismissModifier(
             dragOffset: dragOffset,
             isHandleActive: isHandleActive,
-            onDismiss: onDismiss
+            onDismiss: onDismiss,
+            isDisabled: isDisabled
         ))
     }
 }

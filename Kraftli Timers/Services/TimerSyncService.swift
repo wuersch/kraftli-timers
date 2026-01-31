@@ -32,20 +32,23 @@ protocol TimerSyncService {
     ///
     /// When the Watch receives this message, it will:
     /// 1. Present the appropriate timer view (EMOM or AMRAP)
-    /// 2. Start the timer immediately
-    /// 3. Run in display-only mode (no workout logging on Watch)
+    /// 2. Join countdown in progress if `scheduledStartTime` is set
+    /// 3. Start the timer at the scheduled time
+    /// 4. Run in display-only mode (no workout logging on Watch)
     ///
     /// - Parameters:
     ///   - kind: The type of timer (EMOM or AMRAP)
     ///   - totalDuration: Total workout duration in seconds
     ///   - intervalDuration: Interval duration for EMOM timers (nil for AMRAP)
     ///   - exerciseName: Name of the exercise being performed
+    ///   - scheduledStartTime: Absolute time when the timer should start (after countdown)
     ///   - completion: Called with the result of the send operation
     func startTimerOnWatch(
         kind: TimerKind,
         totalDuration: TimeInterval,
         intervalDuration: TimeInterval?,
         exerciseName: String,
+        scheduledStartTime: Date?,
         completion: ((Result<Void, Error>) -> Void)?
     )
 
@@ -94,6 +97,7 @@ final class DefaultTimerSyncService: TimerSyncService {
         totalDuration: TimeInterval,
         intervalDuration: TimeInterval?,
         exerciseName: String,
+        scheduledStartTime: Date?,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
         let message = StartTimerMessage(
@@ -101,7 +105,8 @@ final class DefaultTimerSyncService: TimerSyncService {
             totalDuration: totalDuration,
             intervalDuration: intervalDuration,
             exerciseName: exerciseName,
-            displayOnly: true  // Watch should not log workout
+            displayOnly: true,  // Watch should not log workout
+            scheduledStartTime: scheduledStartTime
         )
 
         connectivity.sendMessage(message, completion: completion)
@@ -152,6 +157,7 @@ final class SilentTimerSyncService: TimerSyncService {
         totalDuration: TimeInterval,
         intervalDuration: TimeInterval?,
         exerciseName: String,
+        scheduledStartTime: Date?,
         completion: ((Result<Void, Error>) -> Void)?
     ) {
         // No-op

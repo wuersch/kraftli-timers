@@ -16,6 +16,9 @@ final class TimerSessionState {
     private(set) var showHint = true
     private(set) var showConfetti = false
 
+    /// Whether the timer has ever started (used to distinguish first start from resume).
+    private(set) var hasEverStarted = false
+
     // MARK: - Private State
     private var hintHideTask: Task<Void, Never>?
     private var confettiHideTask: Task<Void, Never>?
@@ -25,6 +28,7 @@ final class TimerSessionState {
     /// Call when the timer starts running.
     /// Schedules the hint to hide after 5 seconds.
     func onTimerStarted(isStillRunning: @escaping () -> Bool) {
+        hasEverStarted = true
         guard showHint else { return }
 
         hintHideTask?.cancel()
