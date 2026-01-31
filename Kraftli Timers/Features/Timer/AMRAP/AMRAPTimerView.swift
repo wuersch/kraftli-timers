@@ -28,6 +28,7 @@ struct AMRAPTimerView: View {
 
     @State private var timerModel: AMRAPTimerModel
     @State private var session = TimerSessionState()
+    @State private var countdown = CountdownCoordinator()
     @State private var dragOffset: CGFloat = 0
     @State private var isHandleActive = false
     @State private var cancellables = Set<AnyCancellable>()
@@ -40,6 +41,9 @@ struct AMRAPTimerView: View {
 
     /// Service for syncing timer controls with Apple Watch (nil for standalone timers).
     private let syncService: TimerSyncService?
+
+    /// Exercise name for Watch sync message.
+    private let exerciseName: String
 
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -58,12 +62,14 @@ struct AMRAPTimerView: View {
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         confettiEnabled: Bool = true,
-        syncService: TimerSyncService? = nil
+        syncService: TimerSyncService? = nil,
+        exerciseName: String = "Workout"
     ) {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
         self.confettiEnabled = confettiEnabled
         self.syncService = syncService
+        self.exerciseName = exerciseName
     }
 
     // MARK: - Styling
@@ -89,9 +95,12 @@ struct AMRAPTimerView: View {
     // MARK: - Actions
     private func handleTap() {
         guard !isCompleted else { return }
+
+        // Ignore taps during countdown
+        guard !countdown.isCountingDown else { return }
+
         guard timerModel.isRunning else {
-            startAndScheduleHintHide()
-            syncService?.sendTimerControl(.play, completion: nil)
+            startCountdown()
             Self.lightHaptic.impactOccurred()
             return
         }
@@ -104,22 +113,52 @@ struct AMRAPTimerView: View {
     private func handleLongPress() {
         guard !isCompleted else { return }
 
+        // Ignore long press during countdown
+        guard !countdown.isCountingDown else { return }
+
         if timerModel.isRunning {
             timerModel.pause()
             session.onTimerPaused()
             syncService?.sendTimerControl(.pause, completion: nil)
             Self.mediumHaptic.impactOccurred()
         } else {
-            startAndScheduleHintHide()
-            syncService?.sendTimerControl(.play, completion: nil)
+            startCountdown()
             Self.lightHaptic.impactOccurred()
         }
     }
 
     private func handleSwipeDismiss() {
+        countdown.cancelCountdown()
         timerModel.reset()
         syncService?.sendTimerControl(.stop, completion: nil)
         dismiss()
+    }
+
+    private func startCountdown() {
+        // Skip countdown on resume - timer starts immediately
+        if session.hasEverStarted {
+            startAndScheduleHintHide()
+            syncService?.sendTimerControl(.play, completion: nil)
+            return
+        }
+
+        // Calculate absolute start time (3 seconds from now)
+        let scheduledStartTime = Date().addingTimeInterval(3.0)
+
+        // Send timer config to Watch with scheduled start time
+        syncService?.startTimerOnWatch(
+            kind: .amrap,
+            totalDuration: timerModel.totalDuration,
+            intervalDuration: nil,
+            exerciseName: exerciseName,
+            scheduledStartTime: scheduledStartTime,
+            completion: nil
+        )
+
+        // Start local countdown
+        countdown.startCountdown(scheduledStartTime: scheduledStartTime) { [self] in
+            startAndScheduleHintHide()
+        }
     }
 
     private func startAndScheduleHintHide() {
@@ -144,8 +183,8 @@ struct AMRAPTimerView: View {
     private func handleRemoteControl(_ action: TimerControlAction) {
         switch action {
         case .play:
-            if !timerModel.isRunning && !isCompleted {
-                startAndScheduleHintHide()
+            if !timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
+                startCountdown()
             }
         case .pause:
             if timerModel.isRunning {
@@ -153,6 +192,7 @@ struct AMRAPTimerView: View {
                 session.onTimerPaused()
             }
         case .stop:
+            countdown.cancelCountdown()
             timerModel.reset()
             dismiss()
         case .incrementRound:
@@ -174,52 +214,18 @@ struct AMRAPTimerView: View {
                         ProgressRing(
                             size: sizes.ring,
                             lineWidth: sizes.ringLineWidth,
-                            progress: timerModel.progress,
+                            progress: countdown.isCountingDown ? 1.0 : timerModel.progress,
                             color: accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -90
                         )
                         .accessibilityHidden(true)
 
-                        VStack(spacing: 8) {
-                            Text("ROUNDS")
-                                .font(.system(size: sizes.labelFont))
-                                .foregroundStyle(.gray)
-
-                            Text("\(timerModel.roundsCompleted)")
-                                .font(
-                                    .system(
-                                        size: sizes.countFont,
-                                        weight: .bold,
-                                        design: .rounded
-                                    )
-                                )
-                                .foregroundStyle(accentColor)
-                                .monospacedDigit()
-                                .contentTransition(.numericText())
-                                .accessibilityLabel("\(timerModel.roundsCompleted) rounds completed")
-
-                            if isCompleted {
-                                RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
-                                    .accessibilityLabel("Timer completed")
-                                    .accessibilityHint("Swipe down to close")
-                            } else if session.showHint {
-                                Text(hintText)
-                                    .font(.system(size: sizes.labelFont))
-                                    .foregroundStyle(.gray)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                                    .transition(
-                                        .opacity.combined(with: .scale(scale: 0.98))
-                                    )
-                                    .accessibilityHidden(true)
-                            } else {
-                                // Invisible spacer to prevent layout shift
-                                Text(hintText)
-                                    .font(.system(size: sizes.labelFont))
-                                    .lineLimit(1)
-                                    .hidden()
-                            }
+                        // Center content - switches between countdown and normal display
+                        if countdown.isCountingDown {
+                            countdownCenterContent(sizes: sizes)
+                        } else {
+                            normalCenterContent(sizes: sizes)
                         }
                     }
                     .accessibilityElement(children: .contain)
@@ -227,19 +233,30 @@ struct AMRAPTimerView: View {
                     .accessibilityHint(accessibilityHint)
                     .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
-                    // Total time section
-                    VStack(spacing: 8) {
-                        Text("TOTAL")
-                            .font(.system(size: sizes.labelFont))
-                            .foregroundStyle(.gray)
+                    // Bottom section - ZStack maintains consistent height
+                    ZStack {
+                        // Normal TOTAL section (always present for layout)
+                        VStack(spacing: 8) {
+                            Text("TOTAL")
+                                .font(.system(size: sizes.labelFont))
+                                .foregroundStyle(.gray)
 
-                        Text(timerModel.totalTimeRemaining.formatted)
-                            .font(
-                                .system(size: sizes.totalFont, weight: .bold, design: .rounded)
-                            )
-                            .monospacedDigit()
-                            .accessibilityLabel("Total time")
-                            .accessibilityValue(timerModel.totalTimeRemaining.formatted)
+                            Text(timerModel.totalTimeRemaining.formatted)
+                                .font(
+                                    .system(size: sizes.totalFont, weight: .bold, design: .rounded)
+                                )
+                                .monospacedDigit()
+                                .accessibilityLabel("Total time")
+                                .accessibilityValue(timerModel.totalTimeRemaining.formatted)
+                        }
+                        .opacity(countdown.isCountingDown ? 0 : 1)
+
+                        // "Get ready" text (shown during countdown)
+                        Text("Get ready")
+                            .font(.system(size: sizes.totalFont * 0.5, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, sizes.spacing * 0.4)
+                            .opacity(countdown.isCountingDown ? 1 : 0)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -253,12 +270,19 @@ struct AMRAPTimerView: View {
                 .swipeToDismiss(
                     dragOffset: $dragOffset,
                     isHandleActive: $isHandleActive,
-                    onDismiss: handleSwipeDismiss
+                    onDismiss: handleSwipeDismiss,
+                    isDisabled: countdown.isCountingDown
                 )
 
-                DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
+                // Hide handle during countdown
+                if !countdown.isCountingDown {
+                    DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
+                }
 
-                SwipeHintOverlay(isVisible: session.showHint, fontSize: sizes.labelFont)
+                // Hide swipe hint during countdown
+                if !countdown.isCountingDown {
+                    SwipeHintOverlay(isVisible: session.showHint, fontSize: sizes.labelFont)
+                }
 
                 if confettiEnabled && session.showConfetti {
                     ConfettiView()
@@ -278,6 +302,65 @@ struct AMRAPTimerView: View {
             Self.lightHaptic.prepare()
             Self.mediumHaptic.prepare()
             setupControlSubscription()
+        }
+    }
+
+    // MARK: - Countdown Center Content
+    @ViewBuilder
+    private func countdownCenterContent(sizes: TimerSizes) -> some View {
+        let displayText = countdown.countdownValue.map { $0 > 0 ? "\($0)" : "GO" } ?? ""
+        let textColor: Color = .primary
+
+        Text(displayText)
+            .font(.system(size: sizes.countFont * 1.2, weight: .bold, design: .rounded))
+            .foregroundStyle(textColor)
+            .contentTransition(.numericText())
+            .id(countdown.countdownValue)
+            .accessibilityLabel(displayText)
+    }
+
+    // MARK: - Normal Center Content
+    @ViewBuilder
+    private func normalCenterContent(sizes: TimerSizes) -> some View {
+        VStack(spacing: 8) {
+            Text("ROUNDS")
+                .font(.system(size: sizes.labelFont))
+                .foregroundStyle(.gray)
+
+            Text("\(timerModel.roundsCompleted)")
+                .font(
+                    .system(
+                        size: sizes.countFont,
+                        weight: .bold,
+                        design: .rounded
+                    )
+                )
+                .foregroundStyle(accentColor)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .accessibilityLabel("\(timerModel.roundsCompleted) rounds completed")
+
+            if isCompleted {
+                RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
+                    .accessibilityLabel("Timer completed")
+                    .accessibilityHint("Swipe down to close")
+            } else if session.showHint {
+                Text(hintText)
+                    .font(.system(size: sizes.labelFont))
+                    .foregroundStyle(.gray)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .transition(
+                        .opacity.combined(with: .scale(scale: 0.98))
+                    )
+                    .accessibilityHidden(true)
+            } else {
+                // Invisible spacer to prevent layout shift
+                Text(hintText)
+                    .font(.system(size: sizes.labelFont))
+                    .lineLimit(1)
+                    .hidden()
+            }
         }
     }
 

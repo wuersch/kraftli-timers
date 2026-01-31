@@ -13,6 +13,7 @@ import Combine
 struct WatchAMRAPTimerView: View {
     // MARK: - Properties
     @State private var timerModel: AMRAPTimerModel
+    @State private var countdown = WatchCountdownCoordinator()
     @State private var crownValue: Double = 0
     @State private var hasLoggedWorkout = false
     @State private var cancellables = Set<AnyCancellable>()
@@ -28,6 +29,9 @@ struct WatchAMRAPTimerView: View {
     /// Service for syncing timer controls with iPhone (nil for standalone timers).
     private let syncService: WatchTimerSyncService?
 
+    /// Scheduled start time from iPhone for synchronized countdown.
+    private let scheduledStartTime: Date?
+
     // MARK: - Computed Properties
     private var isCompleted: Bool {
         timerModel.totalTimeRemaining <= 0
@@ -41,6 +45,7 @@ struct WatchAMRAPTimerView: View {
         exerciseName: String = "AMRAP Workout",
         displayOnly: Bool = false,
         syncService: WatchTimerSyncService? = nil,
+        scheduledStartTime: Date? = nil,
         timerProvider: TimerProvider = FoundationTimerProvider(),
         feedbackProvider: FeedbackProvider = SilentFeedback()
     ) {
@@ -48,6 +53,7 @@ struct WatchAMRAPTimerView: View {
         self.exerciseName = exerciseName
         self.displayOnly = displayOnly
         self.syncService = syncService
+        self.scheduledStartTime = scheduledStartTime
         self.timerModel = AMRAPTimerModel(
             totalDuration: totalDuration,
             timerProvider: timerProvider,
@@ -61,79 +67,97 @@ struct WatchAMRAPTimerView: View {
             let size = min(geometry.size.width, geometry.size.height)
             let ringSize = size * 0.70
             let lineWidth = ringSize * 0.06
-            
-            ZStack { // centers children and will now fill the space
+
+            ZStack {
                 VStack(spacing: 6) {
                     // Ring with center content
                     ZStack {
+                        // Ring - stays full during countdown
                         ProgressRing(
                             size: ringSize,
                             lineWidth: lineWidth,
-                            progress: timerModel.progress,
+                            progress: countdown.isCountingDown ? 1.0 : timerModel.progress,
                             color: accentColor,
                             backgroundColor: Color.gray.opacity(0.3),
                             rotationDegrees: -90
                         )
 
-                        // Center content
-                        VStack(spacing: 2) {
-                            Text("\(timerModel.roundsCompleted)")
-                                .font(.system(size: ringSize * 0.28, weight: .bold, design: .rounded))
-                                .foregroundStyle(isCompleted ? .gray : accentColor)
-                                .monospacedDigit()
-                                .contentTransition(.numericText())
+                        // Center content - switches between countdown and normal display
+                        if countdown.isCountingDown {
+                            countdownCenterContent(ringSize: ringSize)
+                        } else {
+                            VStack(spacing: 2) {
+                                Text("\(timerModel.roundsCompleted)")
+                                    .font(.system(size: ringSize * 0.28, weight: .bold, design: .rounded))
+                                    .foregroundStyle(isCompleted ? .gray : accentColor)
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText())
 
-                            if isCompleted {
-                                Text("DONE")
-                                    .font(.system(size: ringSize * 0.10, weight: .medium))
-                                    .foregroundStyle(.green)
+                                if isCompleted {
+                                    Text("DONE")
+                                        .font(.system(size: ringSize * 0.10, weight: .medium))
+                                        .foregroundStyle(.green)
+                                }
                             }
                         }
                     }
 
-                    // Total time remaining
-                    Text(timerModel.totalTimeRemaining.formatted)
-                        .font(.system(size: ringSize * 0.16, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+                    // Bottom section - ZStack maintains consistent height
+                    ZStack {
+                        // Normal total time (always present for layout)
+                        Text(timerModel.totalTimeRemaining.formatted)
+                            .font(.system(size: ringSize * 0.16, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .opacity(countdown.isCountingDown ? 0 : 1)
+
+                        // "Get ready" text (shown during countdown)
+                        Text("Get ready")
+                            .font(.system(size: ringSize * 0.13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .opacity(countdown.isCountingDown ? 1 : 0)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .overlay(alignment: .bottom) {
-                HStack {
-                    Button {
-                        handleStop()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 32, height: 32)
-                            .background(Color.gray.opacity(0.3))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
+                // Hide controls during countdown
+                if !countdown.isCountingDown {
+                    HStack {
+                        Button {
+                            handleStop()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.primary)
+                                .frame(width: 32, height: 32)
+                                .background(Color.gray.opacity(0.3))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
 
-                    Spacer()
+                        Spacer()
 
-                    Button {
-                        handlePlayPause()
-                    } label: {
-                        Image(systemName: timerModel.isRunning ? "pause.fill" : "play.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(isCompleted ? .gray : .primary)
-                            .frame(width: 32, height: 32)
-                            .background(Color.gray.opacity(0.3))
-                            .clipShape(Circle())
+                        Button {
+                            handlePlayPause()
+                        } label: {
+                            Image(systemName: timerModel.isRunning ? "pause.fill" : "play.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(isCompleted ? .gray : .primary)
+                                .frame(width: 32, height: 32)
+                                .background(Color.gray.opacity(0.3))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(16)
                 }
-                .padding(16)
             }
         }
         .ignoresSafeArea()
         .contentShape(Rectangle())
         .onTapGesture {
-            // Tap only counts rounds when running
-            if timerModel.isRunning && !isCompleted {
+            // Tap only counts rounds when running (and not during countdown)
+            if timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
                 timerModel.incrementRoundsCompleted()
                 syncService?.sendTimerControl(.incrementRound, completion: nil)
             }
@@ -142,6 +166,7 @@ struct WatchAMRAPTimerView: View {
         .watchTimerLifecycle(timer: timerModel, onPause: { timerModel.pause() })
         .onAppear {
             setupControlSubscription()
+            startCountdownIfNeeded()
         }
         .onChange(of: isCompleted) { _, completed in
             if completed && !hasLoggedWorkout && !displayOnly {
@@ -151,9 +176,25 @@ struct WatchAMRAPTimerView: View {
         }
     }
 
+    // MARK: - Countdown Center Content
+    @ViewBuilder
+    private func countdownCenterContent(ringSize: CGFloat) -> some View {
+        let displayText = countdown.countdownValue.map { $0 > 0 ? "\($0)" : "GO" } ?? ""
+        let textColor: Color = .primary
+
+        Text(displayText)
+            .font(.system(size: ringSize * 0.35, weight: .bold, design: .rounded))
+            .foregroundStyle(textColor)
+            .contentTransition(.numericText())
+            .id(countdown.countdownValue)
+    }
+
     // MARK: - Timer Control
 
     private func handlePlayPause() {
+        // Ignore during countdown
+        guard !countdown.isCountingDown else { return }
+
         if timerModel.isRunning {
             timerModel.pause()
             syncService?.sendTimerControl(.pause, completion: nil)
@@ -164,9 +205,19 @@ struct WatchAMRAPTimerView: View {
     }
 
     private func handleStop() {
+        countdown.cancelCountdown()
         timerModel.reset()
         syncService?.sendTimerControl(.stop, completion: nil)
         dismiss()
+    }
+
+    /// Starts countdown if a scheduled start time was provided from iPhone.
+    private func startCountdownIfNeeded() {
+        guard let scheduledStartTime else { return }
+
+        countdown.startCountdown(scheduledStartTime: scheduledStartTime) { [self] in
+            timerModel.start()
+        }
     }
 
     /// Sets up subscription to receive control messages from iPhone.
@@ -183,7 +234,7 @@ struct WatchAMRAPTimerView: View {
     private func handleRemoteControl(_ action: TimerControlAction) {
         switch action {
         case .play:
-            if !timerModel.isRunning {
+            if !timerModel.isRunning && !countdown.isCountingDown {
                 timerModel.start()
             }
         case .pause:
@@ -191,6 +242,7 @@ struct WatchAMRAPTimerView: View {
                 timerModel.pause()
             }
         case .stop:
+            countdown.cancelCountdown()
             timerModel.reset()
             dismiss()
         case .incrementRound:

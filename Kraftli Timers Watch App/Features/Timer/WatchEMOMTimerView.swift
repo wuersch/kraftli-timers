@@ -12,6 +12,7 @@ import Combine
 struct WatchEMOMTimerView: View {
     // MARK: - Properties
     @State private var timerModel: EMOMTimerModel
+    @State private var countdown = WatchCountdownCoordinator()
     @State private var hasLoggedWorkout = false
     @State private var cancellables = Set<AnyCancellable>()
     @Environment(\.dismiss) private var dismiss
@@ -25,6 +26,9 @@ struct WatchEMOMTimerView: View {
 
     /// Service for syncing timer controls with iPhone (nil for standalone timers).
     private let syncService: WatchTimerSyncService?
+
+    /// Scheduled start time from iPhone for synchronized countdown.
+    private let scheduledStartTime: Date?
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
@@ -42,6 +46,7 @@ struct WatchEMOMTimerView: View {
         exerciseName: String = "EMOM Workout",
         displayOnly: Bool = false,
         syncService: WatchTimerSyncService? = nil,
+        scheduledStartTime: Date? = nil,
         timerProvider: TimerProvider = FoundationTimerProvider(),
         feedbackProvider: FeedbackProvider = SilentFeedback()
     ) {
@@ -49,6 +54,7 @@ struct WatchEMOMTimerView: View {
         self.exerciseName = exerciseName
         self.displayOnly = displayOnly
         self.syncService = syncService
+        self.scheduledStartTime = scheduledStartTime
         self.timerModel = EMOMTimerModel(
             totalDuration: totalDuration,
             intervalDuration: intervalDuration,
@@ -64,14 +70,15 @@ struct WatchEMOMTimerView: View {
             let ringSize = size * 0.7
             let outerLineWidth = ringSize * 0.035
             let innerLineWidth = ringSize * 0.06
-            
-            ZStack { // centers children and will now fill the space
+
+            ZStack {
                 VStack(spacing: 6) {
                     ZStack {
+                        // Rings - stay full during countdown
                         ProgressRing(
                             size: ringSize,
                             lineWidth: outerLineWidth,
-                            progress: timerModel.overallProgress,
+                            progress: countdown.isCountingDown ? 1.0 : timerModel.overallProgress,
                             color: Color.primary,
                             backgroundColor: Color.gray.opacity(0.3),
                             rotationDegrees: -90
@@ -79,13 +86,16 @@ struct WatchEMOMTimerView: View {
                         ProgressRing(
                             size: ringSize * 0.85,
                             lineWidth: innerLineWidth,
-                            progress: timerModel.intervalProgress,
+                            progress: countdown.isCountingDown ? 1.0 : timerModel.intervalProgress,
                             color: accentColor,
                             backgroundColor: Color.gray.opacity(0.3),
                             rotationDegrees: -90
                         )
 
-                        if isCompleted {
+                        // Center content - switches between countdown and normal display
+                        if countdown.isCountingDown {
+                            countdownCenterContent(ringSize: ringSize)
+                        } else if isCompleted {
                             Text("DONE")
                                 .font(.system(size: ringSize * 0.22, weight: .medium))
                                 .foregroundStyle(.green)
@@ -95,49 +105,65 @@ struct WatchEMOMTimerView: View {
                                 .foregroundStyle(accentColor)
                                 .monospacedDigit()
                         }
-                        
                     }
-                    // Total time remaining
-                    Text(timerModel.totalTimeRemaining.formatted)
-                        .font(.system(size: ringSize * 0.16, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+
+                    // Bottom section - ZStack maintains consistent height
+                    ZStack {
+                        // Normal total time (always present for layout)
+                        Text(timerModel.totalTimeRemaining.formatted)
+                            .font(.system(size: ringSize * 0.16, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .opacity(countdown.isCountingDown ? 0 : 1)
+
+                        // "Get ready" text (shown during countdown)
+                        Text("Get ready")
+                            .font(.system(size: ringSize * 0.13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .opacity(countdown.isCountingDown ? 1 : 0)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .overlay(alignment: .topLeading) {
-                Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
-                    .font(.system(size: ringSize * 0.11, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary).padding(16)
+                // Hide interval counter during countdown
+                if !countdown.isCountingDown {
+                    Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
+                        .font(.system(size: ringSize * 0.11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary).padding(16)
+                }
             }
             .overlay(alignment: .bottom) {
-                HStack {
-                    Button {
-                        handleStop()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 32, height: 32)
-                            .background(Color.gray.opacity(0.3))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
+                // Hide controls during countdown
+                if !countdown.isCountingDown {
+                    HStack {
+                        Button {
+                            handleStop()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.primary)
+                                .frame(width: 32, height: 32)
+                                .background(Color.gray.opacity(0.3))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
 
-                    Spacer()
+                        Spacer()
 
-                    Button {
-                        handlePlayPause()
-                    } label: {
-                        Image(systemName: timerModel.isRunning ? "pause.fill" : "play.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(isCompleted ? .gray : .primary)
-                            .frame(width: 32, height: 32)
-                            .background(Color.gray.opacity(0.3))
-                            .clipShape(Circle())
+                        Button {
+                            handlePlayPause()
+                        } label: {
+                            Image(systemName: timerModel.isRunning ? "pause.fill" : "play.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(isCompleted ? .gray : .primary)
+                                .frame(width: 32, height: 32)
+                                .background(Color.gray.opacity(0.3))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(16)
                 }
-                .padding(16)
             }
         }
         .ignoresSafeArea()
@@ -145,6 +171,7 @@ struct WatchEMOMTimerView: View {
         .watchTimerLifecycle(timer: timerModel, onPause: { timerModel.pause() })
         .onAppear {
             setupControlSubscription()
+            startCountdownIfNeeded()
         }
         .onChange(of: isCompleted) { _, completed in
             if completed && !hasLoggedWorkout && !displayOnly {
@@ -154,9 +181,25 @@ struct WatchEMOMTimerView: View {
         }
     }
 
+    // MARK: - Countdown Center Content
+    @ViewBuilder
+    private func countdownCenterContent(ringSize: CGFloat) -> some View {
+        let displayText = countdown.countdownValue.map { $0 > 0 ? "\($0)" : "GO" } ?? ""
+        let textColor: Color = .primary
+
+        Text(displayText)
+            .font(.system(size: ringSize * 0.35, weight: .bold, design: .rounded))
+            .foregroundStyle(textColor)
+            .contentTransition(.numericText())
+            .id(countdown.countdownValue)
+    }
+
     // MARK: - Timer Control
 
     private func handlePlayPause() {
+        // Ignore during countdown
+        guard !countdown.isCountingDown else { return }
+
         if timerModel.isRunning {
             timerModel.pause()
             syncService?.sendTimerControl(.pause, completion: nil)
@@ -167,9 +210,19 @@ struct WatchEMOMTimerView: View {
     }
 
     private func handleStop() {
+        countdown.cancelCountdown()
         timerModel.reset()
         syncService?.sendTimerControl(.stop, completion: nil)
         dismiss()
+    }
+
+    /// Starts countdown if a scheduled start time was provided from iPhone.
+    private func startCountdownIfNeeded() {
+        guard let scheduledStartTime else { return }
+
+        countdown.startCountdown(scheduledStartTime: scheduledStartTime) { [self] in
+            timerModel.start()
+        }
     }
 
     /// Sets up subscription to receive control messages from iPhone.
@@ -186,7 +239,7 @@ struct WatchEMOMTimerView: View {
     private func handleRemoteControl(_ action: TimerControlAction) {
         switch action {
         case .play:
-            if !timerModel.isRunning {
+            if !timerModel.isRunning && !countdown.isCountingDown {
                 timerModel.start()
             }
         case .pause:
@@ -194,6 +247,7 @@ struct WatchEMOMTimerView: View {
                 timerModel.pause()
             }
         case .stop:
+            countdown.cancelCountdown()
             timerModel.reset()
             dismiss()
         case .incrementRound:

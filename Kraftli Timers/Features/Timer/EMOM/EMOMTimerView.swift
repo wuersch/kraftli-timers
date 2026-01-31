@@ -30,6 +30,7 @@ struct EMOMTimerView: View {
 
     @State private var timerModel: EMOMTimerModel
     @State private var session = TimerSessionState()
+    @State private var countdown = CountdownCoordinator()
     @State private var dragOffset: CGFloat = 0
     @State private var isHandleActive = false
     @State private var cancellables = Set<AnyCancellable>()
@@ -45,6 +46,12 @@ struct EMOMTimerView: View {
 
     /// Service for syncing timer controls with Apple Watch (nil for standalone timers).
     private let syncService: TimerSyncService?
+
+    /// Exercise name for Watch sync message.
+    private let exerciseName: String
+
+    /// Interval duration for Watch sync message (EMOM-specific).
+    private let syncIntervalDuration: TimeInterval?
 
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -65,13 +72,17 @@ struct EMOMTimerView: View {
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         confettiEnabled: Bool = true,
         showRepsInCenter: Bool = false,
-        syncService: TimerSyncService? = nil
+        syncService: TimerSyncService? = nil,
+        exerciseName: String = "Workout",
+        syncIntervalDuration: TimeInterval? = nil
     ) {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
         self.confettiEnabled = confettiEnabled
         self.showRepsInCenter = showRepsInCenter
         self.syncService = syncService
+        self.exerciseName = exerciseName
+        self.syncIntervalDuration = syncIntervalDuration
     }
 
     // MARK: - Styling
@@ -130,21 +141,51 @@ struct EMOMTimerView: View {
     private func handleTap() {
         guard !isCompleted else { return }
 
+        // Ignore taps during countdown
+        guard !countdown.isCountingDown else { return }
+
         if timerModel.isRunning {
             timerModel.pause()
             session.onTimerPaused()
             syncService?.sendTimerControl(.pause, completion: nil)
         } else {
-            startAndScheduleHintHide()
-            syncService?.sendTimerControl(.play, completion: nil)
+            startCountdown()
         }
         Self.lightHaptic.impactOccurred()
     }
 
     private func handleSwipeDismiss() {
+        countdown.cancelCountdown()
         timerModel.reset()
         syncService?.sendTimerControl(.stop, completion: nil)
         dismiss()
+    }
+
+    private func startCountdown() {
+        // Skip countdown on resume - timer starts immediately
+        if session.hasEverStarted {
+            startAndScheduleHintHide()
+            syncService?.sendTimerControl(.play, completion: nil)
+            return
+        }
+
+        // Calculate absolute start time (3 seconds from now)
+        let scheduledStartTime = Date().addingTimeInterval(3.0)
+
+        // Send timer config to Watch with scheduled start time
+        syncService?.startTimerOnWatch(
+            kind: .emom,
+            totalDuration: timerModel.totalDuration,
+            intervalDuration: syncIntervalDuration,
+            exerciseName: exerciseName,
+            scheduledStartTime: scheduledStartTime,
+            completion: nil
+        )
+
+        // Start local countdown
+        countdown.startCountdown(scheduledStartTime: scheduledStartTime) { [self] in
+            startAndScheduleHintHide()
+        }
     }
 
     private func startAndScheduleHintHide() {
@@ -169,8 +210,8 @@ struct EMOMTimerView: View {
     private func handleRemoteControl(_ action: TimerControlAction) {
         switch action {
         case .play:
-            if !timerModel.isRunning && !isCompleted {
-                startAndScheduleHintHide()
+            if !timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
+                startCountdown()
             }
         case .pause:
             if timerModel.isRunning {
@@ -178,6 +219,7 @@ struct EMOMTimerView: View {
                 session.onTimerPaused()
             }
         case .stop:
+            countdown.cancelCountdown()
             timerModel.reset()
             dismiss()
         case .incrementRound:
@@ -193,10 +235,11 @@ struct EMOMTimerView: View {
             ZStack {
                 VStack(spacing: sizes.spacing) {
                     ZStack {
+                        // Rings - stay full during countdown
                         ProgressRing(
                             size: sizes.innerRing,
                             lineWidth: sizes.innerLineWidth,
-                            progress: timerModel.intervalProgress,
+                            progress: countdown.isCountingDown ? 1.0 : timerModel.intervalProgress,
                             color: accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -89.5
@@ -206,98 +249,18 @@ struct EMOMTimerView: View {
                         ProgressRing(
                             size: sizes.outerRing,
                             lineWidth: sizes.outerLineWidth,
-                            progress: timerModel.overallProgress,
+                            progress: countdown.isCountingDown ? 1.0 : timerModel.overallProgress,
                             color: .primary,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -90.5
                         )
                         .accessibilityHidden(true)
 
-                        VStack(spacing: 8) {
-                            Text(showRepsInCenter ? "REPS" : "INTERVAL")
-                                .font(.system(size: sizes.labelFont))
-                                .foregroundStyle(.gray)
-
-                            if showRepsInCenter {
-                                // Reps-focused mode: show reps count prominently
-                                Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
-                                    .font(
-                                        .system(
-                                            size: sizes.intervalFont,
-                                            weight: .semibold,
-                                            design: .rounded
-                                        )
-                                    )
-                                    .foregroundStyle(isCompleted ? .green : .primary)
-                                    .monospacedDigit()
-                                    .accessibilityElement(children: .ignore)
-                                    .accessibilityLabel("Reps completed")
-                                    .accessibilityValue(
-                                        "\(timerModel.completedIntervals) of \(timerModel.totalIntervals)"
-                                    )
-
-                                // Third element for vertical balance
-                                if isCompleted {
-                                    Text("DONE")
-                                        .font(.system(size: sizes.pillFont, weight: .semibold))
-                                        .foregroundStyle(.green)
-                                        .accessibilityLabel("Timer completed")
-                                } else if session.showHint {
-                                    Text(hintText)
-                                        .font(.system(size: sizes.labelFont))
-                                        .foregroundStyle(.gray)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.9)
-                                        .transition(
-                                            .opacity.combined(with: .scale(scale: 0.98))
-                                        )
-                                        .accessibilityHidden(true)
-                                } else {
-                                    // Small interval countdown as secondary info
-                                    Text(timerModel.intervalTimeRemaining.formatted)
-                                        .font(.system(size: sizes.labelFont, weight: .medium, design: .rounded))
-                                        .foregroundStyle(accentColor)
-                                        .monospacedDigit()
-                                        .accessibilityLabel("Interval time remaining")
-                                        .accessibilityValue(timerModel.intervalTimeRemaining.formatted)
-                                }
-                            } else {
-                                // Interval-focused mode: show countdown
-                                Text(timerModel.intervalTimeRemaining.formatted)
-                                    .font(
-                                        .system(
-                                            size: sizes.intervalFont,
-                                            weight: .semibold,
-                                            design: .rounded
-                                        )
-                                    )
-                                    .foregroundStyle(isCompleted ? Color.gray.opacity(0.2) : accentColor)
-                                    .monospacedDigit()
-                                    .accessibilityElement(children: .ignore)
-                                    .accessibilityLabel("Interval time")
-                                    .accessibilityValue(
-                                        timerModel.intervalTimeRemaining.formatted
-                                    )
-
-                                if isCompleted {
-                                    RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
-                                        .accessibilityLabel("Timer completed")
-                                        .accessibilityHint("Swipe down to close")
-                                } else if session.showHint {
-                                    Text(hintText)
-                                        .font(.system(size: sizes.labelFont))
-                                        .foregroundStyle(.gray)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.9)
-                                        .transition(
-                                            .opacity.combined(with: .scale(scale: 0.98))
-                                        )
-                                        .accessibilityHidden(true)
-                                } else {
-                                    RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor, fontSize: sizes.pillFont)
-                                        .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
-                                }
-                            }
+                        // Center content - switches between countdown and normal display
+                        if countdown.isCountingDown {
+                            countdownCenterContent(sizes: sizes)
+                        } else {
+                            normalCenterContent(sizes: sizes)
                         }
                     }
                     .accessibilityElement(children: .contain)
@@ -305,21 +268,33 @@ struct EMOMTimerView: View {
                     .accessibilityHint(isCompleted ? "Swipe down to close" : "\(hintText), swipe down to close")
                     .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
-                    VStack(spacing: 8) {
-                        Text("TOTAL")
-                            .font(.system(size: sizes.labelFont))
-                            .foregroundStyle(.gray)
+                    // Bottom section - ZStack maintains consistent height
+                    ZStack {
+                        // Normal TOTAL section (always present for layout)
+                        VStack(spacing: 8) {
+                            Text("TOTAL")
+                                .font(.system(size: sizes.labelFont))
+                                .foregroundStyle(.gray)
 
-                        Text(timerModel.totalTimeRemaining.formatted)
-                            .font(
-                                .system(size: sizes.totalFont, weight: .bold, design: .rounded)
-                            )
-                            .monospacedDigit()
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel("Total time")
-                            .accessibilityValue(
-                                timerModel.totalTimeRemaining.formatted
-                            )
+                            Text(timerModel.totalTimeRemaining.formatted)
+                                .font(
+                                    .system(size: sizes.totalFont, weight: .bold, design: .rounded)
+                                )
+                                .monospacedDigit()
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("Total time")
+                                .accessibilityValue(
+                                    timerModel.totalTimeRemaining.formatted
+                                )
+                        }
+                        .opacity(countdown.isCountingDown ? 0 : 1)
+
+                        // "Get ready" text (shown during countdown)
+                        Text("Get ready")
+                            .font(.system(size: sizes.totalFont * 0.5, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, sizes.spacing * 0.4)
+                            .opacity(countdown.isCountingDown ? 1 : 0)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -330,12 +305,19 @@ struct EMOMTimerView: View {
                 .swipeToDismiss(
                     dragOffset: $dragOffset,
                     isHandleActive: $isHandleActive,
-                    onDismiss: handleSwipeDismiss
+                    onDismiss: handleSwipeDismiss,
+                    isDisabled: countdown.isCountingDown
                 )
 
-                DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
+                // Hide handle during countdown
+                if !countdown.isCountingDown {
+                    DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
+                }
 
-                SwipeHintOverlay(isVisible: session.showHint, fontSize: sizes.labelFont)
+                // Hide swipe hint during countdown
+                if !countdown.isCountingDown {
+                    SwipeHintOverlay(isVisible: session.showHint, fontSize: sizes.labelFont)
+                }
 
                 if confettiEnabled && session.showConfetti {
                     ConfettiView()
@@ -354,6 +336,111 @@ struct EMOMTimerView: View {
         .onAppear {
             Self.lightHaptic.prepare()
             setupControlSubscription()
+        }
+    }
+
+    // MARK: - Countdown Center Content
+    @ViewBuilder
+    private func countdownCenterContent(sizes: TimerSizes) -> some View {
+        let displayText = countdown.countdownValue.map { $0 > 0 ? "\($0)" : "GO" } ?? ""
+        let textColor: Color = .primary
+
+        Text(displayText)
+            .font(.system(size: sizes.intervalFont * 1.5, weight: .bold, design: .rounded))
+            .foregroundStyle(textColor)
+            .contentTransition(.numericText())
+            .id(countdown.countdownValue)
+            .accessibilityLabel(displayText)
+    }
+
+    // MARK: - Normal Center Content
+    @ViewBuilder
+    private func normalCenterContent(sizes: TimerSizes) -> some View {
+        VStack(spacing: 8) {
+            Text(showRepsInCenter ? "REPS" : "INTERVAL")
+                .font(.system(size: sizes.labelFont))
+                .foregroundStyle(.gray)
+
+            if showRepsInCenter {
+                // Reps-focused mode: show reps count prominently
+                Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
+                    .font(
+                        .system(
+                            size: sizes.intervalFont,
+                            weight: .semibold,
+                            design: .rounded
+                        )
+                    )
+                    .foregroundStyle(isCompleted ? .green : .primary)
+                    .monospacedDigit()
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Reps completed")
+                    .accessibilityValue(
+                        "\(timerModel.completedIntervals) of \(timerModel.totalIntervals)"
+                    )
+
+                // Third element for vertical balance
+                if isCompleted {
+                    Text("DONE")
+                        .font(.system(size: sizes.pillFont, weight: .semibold))
+                        .foregroundStyle(.green)
+                        .accessibilityLabel("Timer completed")
+                } else if session.showHint {
+                    Text(hintText)
+                        .font(.system(size: sizes.labelFont))
+                        .foregroundStyle(.gray)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
+                        .transition(
+                            .opacity.combined(with: .scale(scale: 0.98))
+                        )
+                        .accessibilityHidden(true)
+                } else {
+                    // Small interval countdown as secondary info
+                    Text(timerModel.intervalTimeRemaining.formatted)
+                        .font(.system(size: sizes.labelFont, weight: .medium, design: .rounded))
+                        .foregroundStyle(accentColor)
+                        .monospacedDigit()
+                        .accessibilityLabel("Interval time remaining")
+                        .accessibilityValue(timerModel.intervalTimeRemaining.formatted)
+                }
+            } else {
+                // Interval-focused mode: show countdown
+                Text(timerModel.intervalTimeRemaining.formatted)
+                    .font(
+                        .system(
+                            size: sizes.intervalFont,
+                            weight: .semibold,
+                            design: .rounded
+                        )
+                    )
+                    .foregroundStyle(isCompleted ? Color.gray.opacity(0.2) : accentColor)
+                    .monospacedDigit()
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Interval time")
+                    .accessibilityValue(
+                        timerModel.intervalTimeRemaining.formatted
+                    )
+
+                if isCompleted {
+                    RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
+                        .accessibilityLabel("Timer completed")
+                        .accessibilityHint("Swipe down to close")
+                } else if session.showHint {
+                    Text(hintText)
+                        .font(.system(size: sizes.labelFont))
+                        .foregroundStyle(.gray)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
+                        .transition(
+                            .opacity.combined(with: .scale(scale: 0.98))
+                        )
+                        .accessibilityHidden(true)
+                } else {
+                    RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor, fontSize: sizes.pillFont)
+                        .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
+                }
+            }
         }
     }
 }
