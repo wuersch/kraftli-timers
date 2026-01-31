@@ -27,7 +27,7 @@ enum TimePeriod: String, CaseIterable, Identifiable {
     // MARK: - UI-facing labels
     var displayName: String {
         switch self {
-        case .week: return "Week"
+        case .week: return "7 Days"
         case .month: return "Month"
         case .sixMonths: return "6 Months"
         case .year: return "Year"
