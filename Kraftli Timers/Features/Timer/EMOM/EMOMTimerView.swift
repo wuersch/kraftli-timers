@@ -103,9 +103,9 @@ struct EMOMTimerView: View {
     // MARK: - Helpers
     private func makeRepsText(accent: Color) -> AttributedString {
         var attr = AttributedString("\(timerModel.completedIntervals)/\(timerModel.totalIntervals) REPS")
-        attr.foregroundColor = accent
+        attr.foregroundColor = .primary
         if let repsRange = attr.range(of: " REPS") {
-            attr[repsRange].foregroundColor = .primary
+            attr[repsRange].foregroundColor = accent
         }
         return attr
     }
@@ -228,7 +228,7 @@ struct EMOMTimerView: View {
                                             design: .rounded
                                         )
                                     )
-                                    .foregroundStyle(isCompleted ? .green : accentColor)
+                                    .foregroundStyle(isCompleted ? .green : .primary)
                                     .monospacedDigit()
                                     .accessibilityElement(children: .ignore)
                                     .accessibilityLabel("Reps completed")
@@ -256,7 +256,7 @@ struct EMOMTimerView: View {
                                     // Small interval countdown as secondary info
                                     Text(timerModel.intervalTimeRemaining.formatted)
                                         .font(.system(size: sizes.labelFont, weight: .medium, design: .rounded))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(accentColor)
                                         .monospacedDigit()
                                         .accessibilityLabel("Interval time remaining")
                                         .accessibilityValue(timerModel.intervalTimeRemaining.formatted)

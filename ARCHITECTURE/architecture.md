@@ -175,7 +175,7 @@ See [ADR-001: Settings Pattern](decisions/ADR-001-settings-pattern.md) for full 
 | `MuscleGroupTag` | Type-safe muscle group pill |
 | `DifficultyIndicator` | Difficulty dot or pill |
 | `ExerciseCardView` | Expandable exercise card |
-| `ConfettiView` | Celebratory animation |
+| `ConfettiView` | Celebratory particle animation (CAEmitterLayer) |
 | `SummaryCard` | Stats summary card |
 | `ExerciseStatsCard` | Per-exercise stats display |
 | `ActivityChart` | Bar chart for workout minutes |

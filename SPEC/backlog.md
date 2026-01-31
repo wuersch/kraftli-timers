@@ -158,12 +158,20 @@ Deferred settings features for future consideration:
 ### Haptic Feedback Toggle
 - Enable/disable haptic feedback on button presses and interval changes
 
+### Sound Selection
+- Choose interval beep sound from multiple options
+- Options could include:
+  - **Subtle** - softer tone for quiet environments (early morning, sleeping kids)
+  - **Clear** - piercing 880Hz beep for noisy gyms
+  - **System** - original system sound (quieter, uses ringer volume)
+- Preview sounds before selecting
+- Balances "audible in loud environments" vs "non-intrusive at home"
+
 ---
 
 ## Other Ideas
 
 - Rest periods between intervals
-- Custom audio cues
 - Tabata timer mode
 - Simple timer mode
 - Adaptive presets (automatic progression based on feedback)
