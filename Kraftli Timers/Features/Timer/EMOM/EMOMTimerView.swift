@@ -34,6 +34,7 @@ struct EMOMTimerView: View {
     @State private var dragOffset: CGFloat = 0
     @State private var isHandleActive = false
     @State private var cancellables = Set<AnyCancellable>()
+    @State private var isPulsing = false
 
     /// Called when the workout completes (timer reaches zero). Used for logging.
     private let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
@@ -292,9 +293,18 @@ struct EMOMTimerView: View {
                         // "Get ready" text (shown during countdown)
                         Text("Get ready")
                             .font(.system(size: sizes.totalFont * 0.5, weight: .medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
+                            .scaleEffect(isPulsing ? 1.05 : 1.0)
+                            .opacity(isPulsing ? 1.0 : 0.6)
+                            .animation(
+                                .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                                value: isPulsing
+                            )
                             .padding(.top, sizes.spacing * 0.4)
                             .opacity(countdown.isCountingDown ? 1 : 0)
+                            .onChange(of: countdown.isCountingDown) { _, isCountingDown in
+                                isPulsing = isCountingDown
+                            }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
