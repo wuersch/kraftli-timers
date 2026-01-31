@@ -50,3 +50,6 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Build: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 17 Pro" build`
 - Run tests: `swift test`
 - Run in simulator: Xcode
+
+## XcodeBuildMCP
+When using XcodeBuildMCP tools, use `projectPath` (not `workspacePath`) since this is a `.xcodeproj`, not a `.xcworkspace`.

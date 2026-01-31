@@ -10,6 +10,7 @@ import os
 
 final class SystemSoundFeedback: FeedbackProvider {
     private var completionPlayer: AVAudioPlayer?
+    private var intervalPlayer: AVAudioPlayer?
 
     init() {
         // Configure audio session
@@ -22,6 +23,19 @@ final class SystemSoundFeedback: FeedbackProvider {
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             Logger.audio.error("Audio session configuration failed: \(error.localizedDescription)")
+        }
+
+        // Preload interval beep sound
+        if let url = Bundle.main.url(forResource: "beep", withExtension: "wav") {
+            do {
+                intervalPlayer = try AVAudioPlayer(contentsOf: url)
+                intervalPlayer?.volume = 1.0
+                intervalPlayer?.prepareToPlay()
+            } catch {
+                Logger.audio.error("Failed to load interval beep: \(error.localizedDescription)")
+            }
+        } else {
+            Logger.audio.warning("Interval beep file not found in bundle")
         }
 
         // Preload completion sound
@@ -41,7 +55,8 @@ final class SystemSoundFeedback: FeedbackProvider {
     }
 
     func onIntervalComplete() {
-        AudioServicesPlaySystemSound(1057)  // Begin
+        intervalPlayer?.currentTime = 0
+        intervalPlayer?.play()
     }
 
     func onWarning() {
