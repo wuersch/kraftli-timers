@@ -151,24 +151,11 @@ Deferred settings features for future consideration:
 
 ---
 
-## Watch → iPhone Timer Triggering
+## ~~Watch → iPhone Timer Triggering~~
 
-**Priority**: Medium (next session after HealthKit integration)
-
-Allow Watch-started timers to also start the iPhone timer (if app is running).
-
-### Current Behavior
-- iPhone → Watch: Sends message to start mirrored timer on Watch
-- Watch → iPhone: Does not trigger iPhone timer (intentional for watch-only workouts)
-
-### Proposed Change
-- Watch sends "start timer" message to iPhone when workout begins
-- iPhone starts mirrored timer if app is running and reachable
-- Enables: larger display, iPhone-based summary screens, consistent experience
-
-### Consideration
-- iPhone app might not be running — fail silently, Watch continues independently
-- Maintains watch-only workout support (phone at home scenario)
+> **Merged into HealthKit Integration** — See [Scenario D in healthkit-workoutkit-integration.md](healthkit-workoutkit-integration.md#scenario-d-both-devices-watch-leads).
+>
+> With mirrored workout sessions (watchOS 10+), this feature becomes a natural part of the HealthKit integration rather than a separate effort. iPhone automatically receives workout state when Watch starts a session.
 
 ---
 
