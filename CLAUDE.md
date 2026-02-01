@@ -46,6 +46,10 @@ Learning project: educational value matters as much as working code. Explain Swi
 5. Branch for each feature: `feature/name` or `fix/name`
 6. Present options with tradeoffs when multiple approaches exist
 
+## Git Safety
+- Always inspect stash contents before dropping (`git stash show -p`)
+- Xcode modifies `project.pbxproj` unexpectedly; don't assume uncommitted changes are insignificant
+
 ## Commands
 - Build: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 17 Pro" build`
 - Run tests: `swift test`
