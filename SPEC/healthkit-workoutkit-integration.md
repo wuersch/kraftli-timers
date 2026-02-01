@@ -29,11 +29,13 @@ This means: if you delete a workout in Kraftli Timers, we can also remove it fro
 
 ## 1.2 What is HealthKit vs WorkoutKit?
 
-**HealthKit** is Apple's central health database on your iPhone. Think of it as a journal where all your health apps can write entries (steps, workouts, sleep, etc.) and read each other's data (with your permission). HealthKit stores data but doesn't run workouts.
+**HealthKit** is Apple's central health database on your iPhone. Think of it as a journal where all your health apps can write entries (steps, workouts, sleep, etc.) and read each other's data (with your permission). HealthKit also provides the APIs to *run* workout sessions on Apple Watch (`HKWorkoutSession`), which keeps sensors active and the screen awake.
 
-**WorkoutKit** is a watchOS framework that *runs* workouts on Apple Watch. It keeps the screen awake, enables reliable haptic feedback, and streams live sensor data (heart rate, calories). When a WorkoutKit session ends, it automatically saves the workout to HealthKit.
+**WorkoutKit** is a separate framework for *composing structured workouts* (intervals, goals, alerts) that sync to Apple's built-in Workout app. Users then start these workouts from the Workout app on their Watch. WorkoutKit is **not** what we use for real-time session control.
 
-**In simple terms**: WorkoutKit is the athlete, HealthKit is the record book.
+**In simple terms**: HealthKit runs and records workouts. WorkoutKit composes workout plans for Apple's Workout app.
+
+> **For Kraftli Timers**: We use **HealthKit** (`HKWorkoutSession`, `HKLiveWorkoutBuilder`) directly, not WorkoutKit. This gives us full control over the workout lifecycle while our timer runs.
 
 ## 1.3 Three Workout Scenarios
 
@@ -46,7 +48,7 @@ The app supports three ways to work out, each with different capabilities:
 **What happens**:
 - Timer runs on iPhone as normal
 - When workout completes, iPhone writes a workout record to HealthKit
-- Duration is recorded; calories are either omitted or rough-estimated by us
+- Duration is recorded; no calorie data (Watch sensors not involved)
 - No heart rate data (Watch sensors not involved)
 
 **User experience**: Workout appears in Health app with duration only. No heart rate chart, no calories.
@@ -60,7 +62,7 @@ The app supports three ways to work out, each with different capabilities:
 **Setup**: User starts timer directly on Apple Watch. iPhone might be at home or in another room.
 
 **What happens**:
-- Watch starts a workout session (WorkoutKit/HKWorkoutSession)
+- Watch starts a workout session (`HKWorkoutSession`)
 - Heart rate sensor activates, calories are tracked in real-time
 - Timer runs independently on Watch
 - When workout completes, Watch saves to HealthKit
@@ -72,53 +74,66 @@ The app supports three ways to work out, each with different capabilities:
 
 ### Scenario C: Both Devices (iPhone Leads)
 
-**Setup**: User starts timer on iPhone. Watch app is open and reachable.
+**Setup**: User starts timer on iPhone. Watch app is installed.
 
 **What happens**:
-- iPhone detects Watch is reachable
-- iPhone sends "start workout session" message to Watch
-- Watch starts workout session (sensors activate)
-- iPhone starts timer and sends "start mirrored timer" to Watch
+- iPhone calls `healthStore.startWatchApp(toHandle: configuration)`
+- watchOS automatically launches/wakes our Watch app
+- Watch receives the configuration and starts `HKWorkoutSession` (sensors activate)
+- Watch enables **mirrored session** so iPhone can track state
+- iPhone starts timer and sends "start mirrored timer" via WatchConnectivity
 - Both devices show the timer; Watch collects heart rate
 - When timer ends, Watch saves workout to HealthKit
 - Our WorkoutLog stores a reference to the HealthKit entry
 
 **User experience**: Timer visible on both screens. Workout includes heart rate and accurate calories.
 
+> **Key insight**: The system handles launching the Watch app automatically — no explicit WatchConnectivity message needed to start the workout session. This is the same mechanism Apple Fitness uses.
+
 ---
 
-### Scenario D: Both Devices (Watch Leads) — Future
+### Scenario D: Both Devices (Watch Leads)
 
-> This scenario is planned for a future update.
-
-**Setup**: User starts timer on Watch. iPhone app is running.
+**Setup**: User starts timer on Watch. iPhone app may or may not be running.
 
 **What happens**:
-- Watch sends "start timer" message to iPhone
-- iPhone starts mirrored timer
-- Otherwise same as Scenario C
+- Watch starts `HKWorkoutSession` (sensors activate)
+- Watch calls `startMirroringToCompanionDevice()` to enable mirrored session
+- If iPhone app is running: iPhone receives mirrored session automatically via `setMirroringStartHandler`
+- Watch sends timer context (preset ID, interval) via WatchConnectivity or `sendToRemoteWorkoutSession(data:)`
+- iPhone starts mirrored timer display (if running)
+- Both devices show the timer; Watch collects heart rate
+- When timer ends, Watch saves workout to HealthKit
 
-**User experience**: Same as C, but initiated from Watch.
+**User experience**: Start on Watch, optionally see timer on iPhone too. Full heart rate and calories regardless of iPhone state.
+
+> **Key insight**: With mirrored sessions, iPhone automatically knows when Watch starts a workout — no explicit "start" message needed. We only send timer-specific context (which preset, current interval).
 
 ## 1.4 How the App Decides Which Mode to Use
 
 When the user taps "Start" on iPhone:
 
 ```
-Is Watch app reachable?
+Is Watch paired and Watch app installed?
 ├─ YES → Scenario C (both devices, full metrics)
-└─ NO  → Scenario A (iPhone only, estimated calories)
+│        iPhone calls startWatchApp() — system launches Watch app automatically
+└─ NO  → Scenario A (iPhone only, duration only)
 ```
 
 The decision is made once at workout start and doesn't change mid-workout. This keeps things predictable — if Watch becomes unreachable during a workout, we don't try to reconnect.
 
+> **Note**: We check for Watch app installation, not "reachability". The `startWatchApp(toHandle:)` API handles waking the Watch even if it's not currently active.
+
 When the user taps "Start" on Watch:
 
 ```
-Always → Scenario B (Watch session with full metrics)
+Is iPhone app running and reachable?
+├─ YES → Scenario D (both devices, Watch leads, full metrics)
+│        iPhone receives mirrored session automatically
+└─ NO  → Scenario B (Watch only, full metrics)
 ```
 
-Watch workouts always use full sensor capabilities since the Watch has the hardware.
+Watch workouts always use full sensor capabilities since the Watch has the hardware. The difference is whether iPhone also displays the timer.
 
 ## 1.5 Permission Prompts
 
@@ -211,7 +226,9 @@ Phase 1 focuses on reliably getting workout data into Health. Live display and s
 │  │ (EMOM/AMRAP) │    │ onCountdownComplete │    │Service (new)│ │
 │  └──────────────┘    └───────────────────┘    └──────────────┘ │
 │         │                                            │          │
-│         │ WatchConnectivity                          │          │
+│         │                              startWatchApp │          │
+│         │ WatchConnectivity              (system)    │          │
+│         │ (timer sync only)                          │          │
 │         ▼                                            ▼          │
 │  ┌──────────────┐                            ┌──────────────┐   │
 │  │WatchConnectivity│                          │  HealthKit   │   │
@@ -219,16 +236,23 @@ Phase 1 focuses on reliably getting workout data into Health. Live display and s
 │  └──────────────┘                            └──────────────┘   │
 └─────────┬───────────────────────────────────────────┬───────────┘
           │                                           │
-          │ Messages                                  │ Sync
+          │ Timer messages                            │ Mirrored session
           ▼                                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Apple Watch                               │
-│  ┌──────────────┐    ┌───────────────────┐    ┌──────────────┐ │
-│  │ Timer View   │───▶│WatchCountdown     │───▶│WorkoutSession│ │
-│  │              │    │   Coordinator     │    │Manager (new) │ │
-│  └──────────────┘    └───────────────────┘    └──────────────┘ │
-│                                                      │          │
-│                                                      ▼          │
+│                                                                  │
+│  ┌──────────────┐    Receives HKWorkoutConfiguration via        │
+│  │   App        │    WKApplicationDelegate.handle(_:)           │
+│  │  Delegate    │─────────────────────────────────────────┐     │
+│  └──────────────┘                                         │     │
+│         │                                                 ▼     │
+│         ▼                                         ┌──────────┐  │
+│  ┌──────────────┐    ┌───────────────────┐       │Workout   │  │
+│  │ Timer View   │───▶│WatchCountdown     │──────▶│Session   │  │
+│  │              │    │   Coordinator     │       │Manager   │  │
+│  └──────────────┘    └───────────────────┘       └──────────┘  │
+│                                                        │        │
+│                                                        ▼        │
 │                                               ┌──────────────┐  │
 │                                               │  HealthKit   │  │
 │                                               │   (System)   │  │
@@ -236,30 +260,87 @@ Phase 1 focuses on reliably getting workout data into Health. Live display and s
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+**Key points:**
+- This diagram shows the iPhone-initiated flow (Scenario C). For Watch-initiated (Scenario D), the Watch creates its own configuration without `startWatchApp`.
+- Workout session start uses `HKHealthStore.startWatchApp(toHandle:)` — a HealthKit API, not WatchConnectivity
+- watchOS automatically launches the Watch app and delivers the configuration to `WKApplicationDelegate`
+- WatchConnectivity is still used for timer synchronization (pause, resume, skip, interval changes)
+- Mirrored sessions (watchOS 10+) keep both devices in sync for workout state
+
 ## 2.2 Data Flow: Scenario C (Both Devices)
 
 ```
 1. User taps Start on iPhone
-2. iPhone checks WCSession.isReachable
-3. iPhone sends WatchMessage.startWorkoutSession(presetId, scheduledStartTime)
-4. Watch receives message, starts HKWorkoutSession/WorkoutKit session
-5. Watch sends acknowledgment
-6. iPhone starts CountdownCoordinator
-7. iPhone sends WatchMessage.startTimer(presetId, scheduledStartTime)
-8. Both devices count down and start timers in sync
-9. Watch collects HR samples throughout workout
-10. User completes workout (or timer ends)
-11. iPhone sends WatchMessage.endWorkoutSession
-12. Watch ends HKWorkoutSession → automatically saves to HealthKit
-13. Watch sends WatchMessage.workoutSessionEnded(hkWorkoutUUID)
-14. iPhone stores hkWorkoutUUID in WorkoutLog
+2. iPhone creates HKWorkoutConfiguration (activityType: .highIntensityIntervalTraining)
+3. iPhone calls healthStore.startWatchApp(toHandle: configuration)
+4. watchOS launches/wakes our Watch app automatically
+5. Watch's WKApplicationDelegate.handle(_:) receives the configuration
+6. Watch starts HKWorkoutSession with the configuration
+7. Watch calls session.startMirroringToCompanionDevice() (enables mirrored session)
+8. iPhone receives mirrored session via healthStore.setMirroringStartHandler
+9. iPhone starts CountdownCoordinator (can proceed once mirrored session is received in step 8)
+10. iPhone sends WatchMessage.startTimer(presetId, scheduledStartTime) via WatchConnectivity
+11. Both devices count down and start timers in sync
+12. Watch collects HR samples throughout workout (via HKLiveWorkoutBuilder)
+13. User completes workout (or timer ends)
+14. iPhone sends WatchMessage.endWorkoutSession via WatchConnectivity
+15. Watch ends HKWorkoutSession → builder.finishWorkout() saves to HealthKit
+16. Watch sends WatchMessage.workoutSessionEnded(hkWorkoutUUID) via WatchConnectivity
+17. iPhone stores hkWorkoutUUID in WorkoutLog
+
+**Alternative: User ends workout on Watch**
+
+If the user taps "End" on Watch instead of iPhone completing the timer:
+- Watch ends `HKWorkoutSession` → `builder.finishWorkout()` saves to HealthKit
+- Watch sends `WatchMessage.workoutSessionEnded(hkWorkoutUUID)` to iPhone
+- iPhone receives the UUID and stores it in `WorkoutLog`
+- iPhone stops timer display (if still running)
 ```
+
+**What uses HealthKit APIs (system-managed):**
+- Steps 3-8: Workout session start and mirroring
+
+**What uses WatchConnectivity (our code):**
+- Steps 10, 14, 16: Timer sync and workout end coordination
+
+## 2.2b Data Flow: Scenario D (Watch Leads)
+
+```
+1. User taps Start on Watch
+2. Watch creates HKWorkoutConfiguration (activityType: .highIntensityIntervalTraining)
+3. Watch starts HKWorkoutSession with the configuration
+4. Watch calls session.startMirroringToCompanionDevice() (enables mirrored session)
+5. Watch starts WatchCountdownCoordinator (timer begins)
+6. Watch sends WatchMessage.timerStarted(presetId, scheduledStartTime) via WatchConnectivity
+7. IF iPhone app is running and reachable:
+   - iPhone receives mirrored session via healthStore.setMirroringStartHandler
+   - iPhone receives timer message and starts mirrored CountdownCoordinator
+   - Both devices show the timer in sync
+8. Watch collects HR samples throughout workout (via HKLiveWorkoutBuilder)
+9. User completes workout (or timer ends)
+10. Watch ends HKWorkoutSession → builder.finishWorkout() saves to HealthKit
+11. Watch sends WatchMessage.workoutSessionEnded(hkWorkoutUUID) via WatchConnectivity
+12. IF iPhone received the workout:
+    - iPhone stores hkWorkoutUUID in WorkoutLog
+```
+
+**Key differences from Scenario C:**
+- No `startWatchApp(toHandle:)` — Watch initiates directly
+- No `WKApplicationDelegate.handle(_:)` — Watch creates its own configuration
+- iPhone involvement is opportunistic — workout succeeds regardless of iPhone state
+- Timer context sent Watch → iPhone (reverse of Scenario C)
+
+**What uses HealthKit APIs (system-managed):**
+- Steps 3-4: Workout session start and mirroring
+
+**What uses WatchConnectivity (our code):**
+- Steps 6, 11: Timer sync and workout completion notification
 
 ## 2.3 Existing Integration Points
 
 ### CountdownCoordinator (iOS)
 
-Already has `onCountdownComplete` hook — perfect for triggering "start workout session" on Watch.
+Already has `onCountdownComplete` hook — we'll use this to trigger `startWatchApp(toHandle:)`.
 
 ```swift
 // Current hook in CountdownCoordinator.swift:44
@@ -268,29 +349,39 @@ var onCountdownComplete: (() -> Void)?
 
 ### WatchConnectivityService
 
-Already supports bidirectional messaging. Need to add new message types:
+Already supports bidirectional messaging. **Important clarification**: WatchConnectivity is **not** used to start workout sessions — that's handled by `HKHealthStore.startWatchApp(toHandle:)`.
+
+WatchConnectivity is used for:
+- Timer synchronization (start, pause, resume, stop, interval changes)
+- Sending `hkWorkoutUUID` back to iPhone after workout ends
+- Any custom app data during the workout
 
 ```swift
+// Target state after implementation:
 enum WatchMessage {
-    // Existing
+    // Timer synchronization (iPhone ↔ Watch)
     case startTimer(presetId: UUID, scheduledStartTime: Date)
     case pauseTimer
     case resumeTimer
     case stopTimer
 
-    // New for HealthKit
-    case startWorkoutSession(presetId: UUID, scheduledStartTime: Date)
-    case endWorkoutSession
-    case workoutSessionEnded(hkWorkoutUUID: UUID?)
-    case workoutSessionFailed(error: String)
+    // Watch-initiated timer (Watch → iPhone, Scenario D)
+    case timerStarted(presetId: UUID, scheduledStartTime: Date)
+
+    // Workout session coordination
+    case endWorkoutSession                          // iPhone → Watch
+    case workoutSessionEnded(hkWorkoutUUID: UUID?)  // Watch → iPhone
+    case workoutSessionFailed(error: String)        // Watch → iPhone
 }
 ```
+
+> **Note**: `startTimer` (iPhone → Watch) vs `timerStarted` (Watch → iPhone) — different directions, same data.
 
 ### WKExtendedRuntimeSession (Watch)
 
 Currently used for keeping Watch app alive during workouts. **Question**: Can `HKWorkoutSession` replace this, or do we need both?
 
-**Answer**: `HKWorkoutSession` provides similar extended runtime privileges during active workouts. We can likely replace `WKExtendedRuntimeSession` with `HKWorkoutSession` for workout scenarios, but should verify behavior when workout is paused.
+**Answer**: `HKWorkoutSession` provides similar extended runtime privileges during active workouts. We can replace `WKExtendedRuntimeSession` with `HKWorkoutSession` for workout scenarios. The workout session keeps the app alive as long as the session is running.
 
 ### WorkoutLog Model
 
@@ -306,11 +397,14 @@ var healthKitWorkoutUUID: UUID?
 ### iPhone: HealthKitService
 
 ```swift
-/// Manages HealthKit authorization and workout writing on iPhone.
+/// Manages HealthKit authorization, workout writing, and Watch app launching on iPhone.
 final class HealthKitService {
     static let shared = HealthKitService()
 
     private let healthStore = HKHealthStore()
+
+    /// Mirrored session from Watch (set via setMirroringStartHandler)
+    private(set) var mirroredSession: HKWorkoutSession?
 
     /// Request authorization for workout types we need
     func requestAuthorization() async throws
@@ -324,8 +418,33 @@ final class HealthKitService {
         metadata: [String: Any]?
     ) async throws -> HKWorkout
 
+    /// Start a workout on Apple Watch from iPhone (Scenario C)
+    /// This launches our Watch app and sends the configuration.
+    func startWorkoutOnWatch(activityType: HKWorkoutActivityType) async throws {
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = activityType
+        configuration.locationType = .indoor  // Most HIIT workouts are indoor
+
+        try await healthStore.startWatchApp(toHandle: configuration)
+    }
+
+    /// Set up handler to receive mirrored session from Watch
+    func setupMirroringHandler() {
+        healthStore.setMirroringStartHandler { [weak self] session in
+            self?.mirroredSession = session
+            // Now iPhone has a reference to the Watch's workout session
+        }
+    }
+
     /// Check if HealthKit is available
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
+
+    /// Check if Watch app can be started.
+    /// Note: Actual Watch app installation is verified by startWatchApp(toHandle:) at runtime.
+    /// This property only checks HealthKit availability as a prerequisite.
+    var canStartWatchApp: Bool {
+        HKHealthStore.isHealthDataAvailable()
+    }
 }
 ```
 
@@ -339,7 +458,7 @@ final class WorkoutSessionManager {
     private var builder: HKLiveWorkoutBuilder?
 
     /// Start a workout session (called when iPhone requests or Watch initiates)
-    func startSession(activityType: HKWorkoutActivityType) async throws
+    func startSession(configuration: HKWorkoutConfiguration) async throws
 
     /// End the session and save to HealthKit
     func endSession() async throws -> UUID?  // Returns HKWorkout UUID
@@ -356,7 +475,184 @@ final class WorkoutSessionManager {
 }
 ```
 
-## 2.5 Implementation Phases
+### Watch: App Delegate for Receiving Workout Configurations
+
+When iPhone calls `startWatchApp(toHandle:)`, watchOS automatically launches our Watch app and delivers the `HKWorkoutConfiguration` to our app delegate. This is how the system "wakes" the Watch app without explicit WatchConnectivity messaging.
+
+**Setup in the Watch app's main entry point:**
+
+```swift
+// Kraftli_Timers_WatchApp.swift
+import SwiftUI
+import HealthKit
+
+@main
+struct Kraftli_Timers_Watch_AppApp: App {
+    // Wire up the app delegate to receive workout configurations
+    @WKApplicationDelegateAdaptor private var appDelegate: WorkoutAppDelegate
+
+    // ... existing code ...
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environment(appDelegate.workoutSessionManager)  // Make available to views
+        }
+    }
+}
+```
+
+**The app delegate that receives the configuration:**
+
+```swift
+// WorkoutAppDelegate.swift
+import WatchKit
+import HealthKit
+
+final class WorkoutAppDelegate: NSObject, WKApplicationDelegate {
+    let workoutSessionManager = WorkoutSessionManager()
+
+    /// Called by watchOS when iPhone sends a workout configuration via startWatchApp(toHandle:)
+    /// This is the entry point for Scenario C (iPhone-initiated workouts)
+    func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
+        Task {
+            do {
+                try await workoutSessionManager.startSession(configuration: workoutConfiguration)
+            } catch {
+                // Handle error — workout can't start
+                print("Failed to start workout session: \(error)")
+            }
+        }
+    }
+
+    /// Called when app needs to recover from a crash during an active workout
+    func handleActiveWorkoutRecovery() {
+        Task {
+            do {
+                try await workoutSessionManager.recoverActiveSession()
+            } catch {
+                print("Failed to recover workout session: \(error)")
+            }
+        }
+    }
+}
+```
+
+**How this works:**
+
+1. iPhone calls `healthStore.startWatchApp(toHandle: configuration)`
+2. watchOS wakes/launches our Watch app (even if it wasn't running)
+3. watchOS instantiates our `WorkoutAppDelegate` (via `@WKApplicationDelegateAdaptor`)
+4. watchOS calls `handle(_ workoutConfiguration:)` with the configuration iPhone sent
+5. Our code starts the `HKWorkoutSession` with that configuration
+
+> **Important**: The app delegate class must be marked as the adaptor in the `@main` App struct. Without this, watchOS has no way to deliver the configuration.
+
+### App Store Category Requirement
+
+The `startWatchApp(toHandle:)` API is restricted to apps in the **Healthcare & Fitness** category. Apps in other categories will be rejected during App Store review.
+
+This shouldn't affect Kraftli Timers since it's a fitness app, but it's worth noting.
+
+## 2.5 Xcode Project Configuration
+
+Before writing any code, the following Xcode configuration is required.
+
+### iPhone Target: Kraftli Timers
+
+**Capabilities to add** (Signing & Capabilities → + Capability):
+
+| Capability | Purpose |
+|------------|---------|
+| HealthKit | Required to write workouts and read heart rate data |
+
+**Info.plist entries** (via Info tab or direct edit):
+
+```xml
+<!-- Shown when requesting read access (heart rate for summaries) -->
+<key>NSHealthShareUsageDescription</key>
+<string>Kraftli Timers reads your heart rate data to display workout summaries.</string>
+
+<!-- Shown when requesting write access (saving workouts) -->
+<key>NSHealthUpdateUsageDescription</key>
+<string>Kraftli Timers saves your workouts to Apple Health so they appear in the Fitness app and contribute to your Activity Rings.</string>
+```
+
+### Watch Target: Kraftli Timers Watch App
+
+**Capabilities to add** (Signing & Capabilities → + Capability):
+
+| Capability | Purpose |
+|------------|---------|
+| HealthKit | Required to run workout sessions and access sensors |
+| Background Modes | Required for workout to continue when screen is off |
+
+**Background Modes settings** (within the Background Modes capability):
+
+| Mode | Enable | Purpose |
+|------|--------|---------|
+| Workout processing | ✅ Yes | Allows `HKWorkoutSession` to run in background, keeps sensors active |
+| Remote notifications | ✅ Already enabled | Existing functionality |
+| Session Type | None | Not needed when using `HKWorkoutSession` (it provides its own runtime) |
+
+**Info.plist entries**:
+
+```xml
+<!-- Shown when requesting read access -->
+<key>NSHealthShareUsageDescription</key>
+<string>Kraftli Timers reads your heart rate during workouts.</string>
+
+<!-- Shown when requesting write access -->
+<key>NSHealthUpdateUsageDescription</key>
+<string>Kraftli Timers saves your workouts to Apple Health with heart rate and calorie data.</string>
+```
+
+### What Xcode Generates
+
+When you add these capabilities, Xcode automatically:
+
+1. **Adds entitlements** to `.entitlements` files:
+   ```xml
+   <key>com.apple.developer.healthkit</key>
+   <true/>
+   ```
+
+2. **Updates Info.plist** with background modes (Watch):
+   ```xml
+   <key>WKBackgroundModes</key>
+   <array>
+       <string>workout-processing</string>
+   </array>
+   ```
+
+3. **Registers the app** with Apple's provisioning system for HealthKit access
+
+### App Store Category Requirement
+
+The app must be in the **Healthcare & Fitness** category for `startWatchApp(toHandle:)` to work. Apps in other categories will be rejected during App Store review. Kraftli Timers already qualifies as a fitness app.
+
+### Setup Workflow
+
+When ready to implement, follow this order:
+
+1. **iPhone target first**
+   - Add HealthKit capability
+   - Add privacy descriptions to Info.plist
+   - Build and verify no signing errors
+
+2. **Watch target second**
+   - Add HealthKit capability
+   - Add Background Modes capability
+   - Enable "Workout processing" checkbox
+   - Add privacy descriptions to Info.plist
+   - Build and verify no signing errors
+
+3. **Test on physical devices**
+   - Simulator doesn't fully support HealthKit
+   - Test permission prompts appear correctly
+   - Verify workouts save to Health app
+
+## 2.6 Implementation Phases
 
 ### Phase 1A: iPhone-Only Path (Foundation)
 
@@ -367,33 +663,53 @@ final class WorkoutSessionManager {
 5. Store `healthKitWorkoutUUID` in `WorkoutLog`
 6. Test: Complete workout on iPhone → appears in Health app
 
-### Phase 1B: Watch Workout Session
+### Phase 1B: Watch Workout Session (Watch-Only)
 
 1. Create `WorkoutSessionManager` on Watch
 2. Add HealthKit capability to Watch target
-3. Implement `HKWorkoutSession` lifecycle
+3. Implement `HKWorkoutSession` + `HKLiveWorkoutBuilder` lifecycle
 4. Handle Watch-only workouts (Scenario B)
 5. Test: Complete workout on Watch → appears in Health app with HR
 
 ### Phase 1C: Coordinated Sessions (Both Devices)
 
-1. Add new `WatchMessage` types for workout session control
-2. iPhone detects Watch reachability at workout start
-3. iPhone sends start/end workout session messages
-4. Watch starts `HKWorkoutSession` when requested
-5. Watch sends back `hkWorkoutUUID` when session ends
-6. iPhone stores UUID in `WorkoutLog`
-7. Test: Start on iPhone with Watch → full metrics in Health
+1. **Add `WorkoutAppDelegate`** with `WKApplicationDelegate` conformance
+2. **Wire up `@WKApplicationDelegateAdaptor`** in Watch app's `@main` struct
+3. **Implement `handle(_ workoutConfiguration:)`** to receive configs from iPhone
+4. **iPhone: Call `startWatchApp(toHandle:)`** instead of WatchConnectivity for session start
+5. **Implement mirrored sessions**: Watch calls `startMirroringToCompanionDevice()`, iPhone sets up `setMirroringStartHandler`
+6. Add `WatchMessage.endWorkoutSession` and `workoutSessionEnded` for cleanup
+7. Watch sends back `hkWorkoutUUID` when session ends
+8. iPhone stores UUID in `WorkoutLog`
+9. Test: Start on iPhone with Watch → full metrics in Health
 
-### Phase 1D: Edge Cases & Polish
+### Phase 1D: Watch-Initiated Workouts (Scenario D)
+
+Building on Phase 1C's mirrored session infrastructure:
+
+1. **Watch: Start mirrored session when timer starts**
+   - `WorkoutSessionManager` calls `startMirroringToCompanionDevice()` after starting session
+2. **Watch: Send timer context to iPhone**
+   - Add `WatchMessage.timerStarted(presetId, scheduledStartTime)`
+   - Send when Watch user taps Start
+3. **iPhone: Handle incoming timer from Watch**
+   - Receive mirrored session in `setMirroringStartHandler`
+   - Receive timer message and start `CountdownCoordinator` in mirrored mode
+   - Display timer UI (mirrored, not controlling)
+4. **iPhone: Graceful degradation**
+   - If iPhone app not running: Watch workout proceeds independently
+   - If iPhone app launches mid-workout: Can pick up mirrored session state
+5. Test: Start on Watch → iPhone shows mirrored timer (if running) → full metrics in Health
+
+### Phase 1E: Edge Cases & Polish
 
 1. Handle permission denied gracefully
-2. Handle Watch disconnect mid-workout
+2. Handle Watch disconnect mid-workout (workout continues on Watch, saves locally)
 3. Handle HealthKit save failures
-4. Add subtle UI indicators for sync status (optional)
-5. Verify `WKExtendedRuntimeSession` replacement behavior
+4. Implement `handleActiveWorkoutRecovery()` for crash recovery
+5. Remove `WKExtendedRuntimeSession` (replaced by `HKWorkoutSession`)
 
-## 2.6 Key Technical Considerations
+## 2.7 Key Technical Considerations
 
 ### HKWorkoutActivityType Mapping
 
@@ -420,6 +736,36 @@ let metadata: [String: Any] = [
     "com.kraftli.timer.intervals": preset.intervals
 ]
 ```
+
+### Mirrored Workout Sessions (watchOS 10+)
+
+Mirrored sessions allow iPhone to track the Watch workout session state without custom WatchConnectivity code. When enabled:
+
+- iPhone receives a reference to the Watch's `HKWorkoutSession`
+- Session state changes (running, paused, ended) are automatically synchronized
+- Both devices can end the workout
+- Data can be sent between devices via `sendToRemoteWorkoutSession(data:)`
+
+**Watch side (start mirroring):**
+```swift
+// After starting the workout session
+session.startMirroringToCompanionDevice()
+session.startActivity(with: Date())
+```
+
+**iPhone side (receive mirrored session):**
+```swift
+// Set up during app launch
+healthStore.setMirroringStartHandler { [weak self] mirroredSession in
+    self?.mirroredSession = mirroredSession
+    // mirroredSession.state will reflect Watch session state
+}
+```
+
+**Benefits for Kraftli Timers:**
+- iPhone can show workout status without polling
+- Either device can end the workout gracefully
+- Simplifies state synchronization
 
 ### Calorie Handling (iPhone-Only)
 
@@ -457,19 +803,135 @@ let watchTypesToWrite: Set<HKSampleType> = [
 - Verify workouts appear correctly in Health and Fitness apps
 - Check Activity Ring contribution
 
-## 2.7 Open Questions
+## 2.8 Open Questions
 
-1. **WKExtendedRuntimeSession replacement**: Need to verify if `HKWorkoutSession` alone keeps app alive during paused states, or if we need both.
+1. ~~**WKExtendedRuntimeSession replacement**~~: **Resolved.** `HKWorkoutSession` provides extended runtime during active workouts. We can remove `WKExtendedRuntimeSession` when `HKWorkoutSession` is running.
 
-2. **Workout pause behavior**: When user pauses timer, should we pause `HKWorkoutSession`? This affects how the workout appears in Health (paused time included or not).
+2. **Workout pause behavior**: When user pauses timer, should we pause `HKWorkoutSession`? This affects how the workout appears in Health (paused time included or not). **Recommendation**: Pause the session — it matches user expectation and Health shows pause segments.
 
 3. **Multiple workouts same day**: If user does 3 EMOM sessions, should they be 3 separate workouts or one combined? Current design: 3 separate (simpler, matches user expectation).
+
+4. **Mirrored session data transfer**: Should we use `sendToRemoteWorkoutSession(data:)` for timer state, or keep using WatchConnectivity? **Consideration**: Mirrored session data is more reliable for workout-critical data, but WatchConnectivity may be better for our existing timer sync code. Evaluate during Phase 1C.
+
+## 2.9 Integration with Existing Components
+
+This section addresses how HealthKit integration interacts with existing Watch-iPhone communication infrastructure.
+
+### Existing Service Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         iPhone                                   │
+│  ┌──────────────────┐         ┌─────────────────────────────┐   │
+│  │ TimerSyncService │────────▶│ WatchConnectivityService    │   │
+│  │ (protocol)       │         │ (WCSession wrapper)         │   │
+│  └──────────────────┘         └─────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        Apple Watch                               │
+│  ┌─────────────────────────────┐    ┌────────────────────────┐  │
+│  │ WatchConnectivityService    │───▶│ WatchMessageCoordinator│  │
+│  └─────────────────────────────┘    └────────────────────────┘  │
+│                                              │                   │
+│                                              ▼                   │
+│                                     ┌────────────────────────┐  │
+│                                     │ WatchTimerSyncService  │  │
+│                                     │ (protocol)             │  │
+│                                     └────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Service Responsibilities After HealthKit Integration
+
+**`TimerSyncService` (iPhone)** — Extend, don't replace:
+- Existing: `startTimerOnWatch()`, `sendTimerControl()`, `timerControlReceived`
+- Add: Methods for workout session messages (`endWorkoutSession`, handling `workoutSessionEnded`)
+- Rationale: Keep timer sync abstracted behind protocol for testability
+
+**`WatchTimerSyncService` (Watch)** — Extend, don't replace:
+- Existing: `sendTimerControl()`, `timerControlReceived`
+- Add: Methods for `timerStarted` (Scenario D), `workoutSessionEnded`
+- Rationale: Same abstraction benefits as iPhone side
+
+**`WatchMessageCoordinator` (Watch)** — Separate concerns:
+- Continues routing timer messages to `WatchTimerSyncService`
+- Does NOT handle `HKWorkoutConfiguration` — that's `WorkoutAppDelegate`'s job
+- May gain reference to `WorkoutSessionManager` to forward `endWorkoutSession` messages
+
+**`WorkoutAppDelegate` (Watch, new)** — Workout-specific entry point:
+- Receives `HKWorkoutConfiguration` from system via `handle(_:)`
+- Owns `WorkoutSessionManager` instance
+- Separate from `WatchMessageCoordinator` — different trigger mechanisms
+
+### The `displayOnly` Flag
+
+**Current behavior** (`StartTimerMessage.displayOnly`):
+- `true`: Watch displays timer but doesn't log workout (iPhone is source of truth)
+- `false`: Watch logs workout to SwiftData
+
+**With HealthKit integration**, this flag becomes **obsolete for Scenarios C and D**:
+
+| Scenario | Watch runs HKWorkoutSession? | Who logs to HealthKit? | `displayOnly` meaning |
+|----------|------------------------------|------------------------|-----------------------|
+| A (iPhone only) | No | iPhone (duration only) | N/A — Watch not involved |
+| B (Watch only) | Yes | Watch | N/A — iPhone not involved |
+| C (iPhone leads) | Yes | Watch | **Obsolete** — Watch must run session for sensors |
+| D (Watch leads) | Yes | Watch | **Obsolete** — Watch initiated |
+
+**Migration plan**:
+1. Phase 1A/1B: `displayOnly` continues working for non-HealthKit path
+2. Phase 1C: When iPhone starts workout with Watch, it uses `startWatchApp(toHandle:)` instead of `startTimerOnWatch()` — `displayOnly` not sent
+3. Phase 1E: Deprecate `displayOnly` flag; all Watch-involved workouts use HealthKit path
+
+**Alternative**: Repurpose `displayOnly` to mean "don't show workout UI on Watch, just collect sensor data." Evaluate during Phase 1C if this use case exists.
+
+### Message Flow Clarification
+
+**Scenario C (iPhone leads)** — Two communication channels:
+
+1. **HealthKit channel** (workout session):
+   - iPhone: `startWatchApp(toHandle: config)` → System launches Watch app
+   - Watch: `WorkoutAppDelegate.handle(_:)` receives config
+   - Watch: Starts `HKWorkoutSession`, calls `startMirroringToCompanionDevice()`
+   - iPhone: Receives mirrored session via `setMirroringStartHandler`
+
+2. **WatchConnectivity channel** (timer sync):
+   - iPhone: Sends `startTimer` message with preset details via `TimerSyncService`
+   - Watch: `WatchMessageCoordinator` routes to timer view
+   - Bidirectional: `pauseTimer`, `resumeTimer`, `stopTimer` via existing flow
+   - Watch → iPhone: `workoutSessionEnded(hkWorkoutUUID)` when session completes
+
+**Why two channels?** The HealthKit APIs (`startWatchApp`, mirrored sessions) handle workout session lifecycle. WatchConnectivity handles our app-specific timer state (which preset, current interval, pause/resume). Keeping them separate means:
+- Workout session can start even if WatchConnectivity message is delayed
+- Timer sync continues working if mirrored session has issues
+- Existing timer sync code requires minimal changes
+
+### Preset Sync (Unchanged)
+
+The existing preset sync mechanism (`syncPresetsToWatch()` on app backgrounding) is orthogonal to workout sessions and requires no changes. Presets sync via application context; workouts sync via real-time messages.
 
 ---
 
 ## References
 
+### Apple Documentation
 - [HealthKit Documentation](https://developer.apple.com/documentation/healthkit)
-- [WorkoutKit Documentation](https://developer.apple.com/documentation/workoutkit)
 - [HKWorkoutSession](https://developer.apple.com/documentation/healthkit/hkworkoutsession)
 - [HKLiveWorkoutBuilder](https://developer.apple.com/documentation/healthkit/hkliveworkoutbuilder)
+- [startWatchApp(with:completion:)](https://developer.apple.com/documentation/healthkit/hkhealthstore/1648358-startwatchappwithworkoutconfigur) — The key API for launching Watch workouts from iPhone
+- [WKApplicationDelegate](https://developer.apple.com/documentation/watchkit/wkapplicationdelegate) — Watch app delegate that receives workout configurations
+- [Building a multidevice workout app](https://developer.apple.com/documentation/HealthKit/building-a-multidevice-workout-app)
+
+### WWDC Sessions
+- [Build a multi-device workout app (WWDC23)](https://developer.apple.com/videos/play/wwdc2023/10023/) — Covers mirrored sessions
+- [Build custom workouts with WorkoutKit (WWDC23)](https://developer.apple.com/videos/play/wwdc2023/10016/) — WorkoutKit for Workout app integration
+- [Building Great Workout Apps (WWDC16)](https://asciiwwdc.com/2016/sessions/235) — Original `startWatchApp` introduction
+
+### Community Resources
+- [Building a Workout App for Apple Watch (Sasquatch Studio)](https://sasq.ca/blog/2025/3/2/building-a-workout-app-for-apple-watch) — Modern implementation guide
+- [From YaoYao to Tooboo: watchOS Development Pitfalls](https://fatbobman.com/en/posts/watchos-development-pitfalls-and-practical-tips/) — Practical tips including Healthcare & Fitness category requirement
+
+### Note on WorkoutKit
+WorkoutKit is for composing structured workouts that sync to Apple's Workout app. It's **not** what we use for real-time session control. For custom workout apps like Kraftli Timers, use HealthKit's `HKWorkoutSession` directly.
