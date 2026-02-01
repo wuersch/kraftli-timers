@@ -26,6 +26,7 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 | Launch Screen | ✅ | Animated splash with spinning arcs, toggleable in Settings |
 | watchOS Companion | ✅ | Standalone timers, preset editing, CloudKit sync, haptic feedback |
 | iPhone → Watch Sync | ✅ | Auto-show timer on Watch when started on iPhone |
+| Synchronized Countdown | ✅ | 3-2-1-GO countdown synced between iPhone and Watch |
 
 ## Quick Reference
 
@@ -317,6 +318,21 @@ When you start a timer on iPhone, the Watch automatically shows the same timer.
 - Watch app must be open/active to receive sync
 - Apple doesn't allow programmatic app launch on Watch
 - Timers run independently (not continuously synced)
+
+#### Synchronized Countdown
+
+When starting a timer, both iPhone and Watch display a synchronized 3-2-1-GO countdown.
+
+**How It Works**
+1. Tap to start timer on iPhone
+2. Both devices show 3-2-1-GO countdown with beeps
+3. Timer starts simultaneously on both devices
+4. "Get ready" pulsing text during countdown
+
+**Implementation**
+- `CountdownCoordinator` manages countdown sequence
+- `scheduledStartTime` enables precise synchronization
+- Countdown beeps play on each number
 
 #### Data Model
 - Shares `TimerPreset`, `Exercise`, `WorkoutLog` models with iOS

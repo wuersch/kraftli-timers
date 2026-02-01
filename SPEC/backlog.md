@@ -51,16 +51,6 @@ struct ProgramPhase: Identifiable {
 
 ---
 
-## watchOS Enhancements
-
-**Priority**: Low
-
-### Synchronized Countdown
-- When starting timer from iPhone, show 3-2-1 countdown on both devices simultaneously before timer begins
-- Requires coordinated UI design across platforms
-
----
-
 ## Workout Stats Enhancements
 
 **Priority**: Low (after Programs)
