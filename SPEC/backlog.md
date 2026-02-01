@@ -101,26 +101,18 @@ Requires Exercise Library and Programs features.
 
 **Priority**: Medium (can be implemented alongside Workout History)
 
-### Write to HealthKit
-- Record completed workouts (duration, type, estimated calories)
-- Enables rewards in health insurance apps
-- Read active calorie data to refine estimates
+> **Detailed Spec**: See [SPEC/healthkit-workoutkit-integration.md](healthkit-workoutkit-integration.md) for full UX flows, scenarios, and technical implementation plan.
 
-### Live Heart Rate Display (requires Apple Watch)
-- Show real-time heart rate on iPhone during workouts
-- Small beating heart icon with BPM
-- Streams from Watch via HealthKit workout session
-- Hidden if no Watch or heart rate unavailable
+### Phase 1 (Current Focus)
+- Record completed workouts to Apple Health (duration, type, calories)
+- Capture heart rate during workout via Watch workout session
+- Best-effort: works with or without Watch app running
+- No live HR display in timer views (data collected in background)
 
-### Post-Workout Summary Screen
-- Appears after timer completes
-- Stats: Duration, Reps/Rounds, Heart rate (min/avg/max), Calories
-- Provides tangible feedback
-
-### Programs Integration
-- Single HealthKit session spans entire program
-- Summary only after final exercise
-- Standalone timers show summary immediately
+### Future Phases
+- Live heart rate display during workouts
+- Post-workout summary screen
+- Programs integration (single session spanning multiple exercises)
 
 ---
 
@@ -156,6 +148,27 @@ Deferred settings features for future consideration:
   - **System** - original system sound (quieter, uses ringer volume)
 - Preview sounds before selecting
 - Balances "audible in loud environments" vs "non-intrusive at home"
+
+---
+
+## Watch → iPhone Timer Triggering
+
+**Priority**: Medium (next session after HealthKit integration)
+
+Allow Watch-started timers to also start the iPhone timer (if app is running).
+
+### Current Behavior
+- iPhone → Watch: Sends message to start mirrored timer on Watch
+- Watch → iPhone: Does not trigger iPhone timer (intentional for watch-only workouts)
+
+### Proposed Change
+- Watch sends "start timer" message to iPhone when workout begins
+- iPhone starts mirrored timer if app is running and reachable
+- Enables: larger display, iPhone-based summary screens, consistent experience
+
+### Consideration
+- iPhone app might not be running — fail silently, Watch continues independently
+- Maintains watch-only workout support (phone at home scenario)
 
 ---
 
