@@ -21,3 +21,12 @@ protocol WorkoutTimer: AnyObject {
     func pause()
     func reset()
 }
+
+// MARK: - Default Implementations
+
+extension WorkoutTimer {
+    /// Whether the workout timer has completed (total time has reached zero).
+    var isCompleted: Bool {
+        totalTimeRemaining <= 0
+    }
+}

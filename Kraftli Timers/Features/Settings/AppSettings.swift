@@ -2,7 +2,7 @@
 //  AppSettings.swift
 //  Kraftli Timers
 //
-//  User preferences stored in UserDefaults via @AppStorage.
+//  User preferences stored in UserDefaults with Observable tracking.
 //  Injected into the environment for global access.
 //
 
@@ -10,8 +10,8 @@ import SwiftUI
 
 /// User preferences for app behavior.
 ///
-/// Uses `@Observable` for SwiftUI reactivity and `@AppStorage` for
-/// automatic UserDefaults persistence. Injected via `.environment(settings)`.
+/// Uses `@Observable` for SwiftUI reactivity with manual UserDefaults persistence.
+/// Injected via `.environment(settings)`.
 ///
 /// ## Usage
 /// ```swift
@@ -27,72 +27,75 @@ import SwiftUI
 final class AppSettings {
     // MARK: - Keys
 
-    private enum Keys {
-        static let audioEnabled = "audioEnabled"
-        static let completionSoundStyle = "completionSoundStyle"
-        static let confettiEnabled = "confettiEnabled"
-        static let launchScreenEnabled = "launchScreenEnabled"
-        static let smoothAnimationsEnabled = "smoothAnimationsEnabled"
-        static let emomShowRepsInCenter = "emomShowRepsInCenter"
+    private enum Key: String {
+        case audioEnabled
+        case completionSoundStyle
+        case confettiEnabled
+        case launchScreenEnabled
+        case smoothAnimationsEnabled
+        case emomShowRepsInCenter
     }
 
     // MARK: - Audio Preferences
 
     /// Whether audio feedback is enabled.
     var audioEnabled: Bool {
-        didSet { UserDefaults.standard.set(audioEnabled, forKey: Keys.audioEnabled) }
+        didSet { save(audioEnabled, for: .audioEnabled) }
     }
 
     /// The sound style played when a workout completes.
     var completionSoundStyle: CompletionSoundStyle {
-        didSet { UserDefaults.standard.set(completionSoundStyle.rawValue, forKey: Keys.completionSoundStyle) }
+        didSet { save(completionSoundStyle.rawValue, for: .completionSoundStyle) }
     }
 
     // MARK: - Visual Preferences
 
     /// Whether to show confetti animation when a workout completes.
     var confettiEnabled: Bool {
-        didSet { UserDefaults.standard.set(confettiEnabled, forKey: Keys.confettiEnabled) }
+        didSet { save(confettiEnabled, for: .confettiEnabled) }
     }
 
     /// Whether to show the animated launch screen on app start.
     var launchScreenEnabled: Bool {
-        didSet { UserDefaults.standard.set(launchScreenEnabled, forKey: Keys.launchScreenEnabled) }
+        didSet { save(launchScreenEnabled, for: .launchScreenEnabled) }
     }
 
     /// Whether to use 60 FPS display-synced updates for fluid timer animations.
     var smoothAnimationsEnabled: Bool {
-        didSet { UserDefaults.standard.set(smoothAnimationsEnabled, forKey: Keys.smoothAnimationsEnabled) }
+        didSet { save(smoothAnimationsEnabled, for: .smoothAnimationsEnabled) }
     }
 
     /// Whether to show reps count in center of EMOM timer instead of interval countdown.
     var emomShowRepsInCenter: Bool {
-        didSet { UserDefaults.standard.set(emomShowRepsInCenter, forKey: Keys.emomShowRepsInCenter) }
+        didSet { save(emomShowRepsInCenter, for: .emomShowRepsInCenter) }
     }
 
     // MARK: - Initialization
 
     init() {
-        let defaults = UserDefaults.standard
+        self.audioEnabled = Self.load(.audioEnabled, default: true)
+        self.completionSoundStyle = Self.load(.completionSoundStyle, default: .cheering)
+        self.confettiEnabled = Self.load(.confettiEnabled, default: true)
+        self.launchScreenEnabled = Self.load(.launchScreenEnabled, default: true)
+        self.smoothAnimationsEnabled = Self.load(.smoothAnimationsEnabled, default: true)
+        self.emomShowRepsInCenter = Self.load(.emomShowRepsInCenter, default: false)
+    }
 
-        // Audio enabled defaults to true
-        self.audioEnabled = defaults.object(forKey: Keys.audioEnabled) as? Bool ?? true
+    // MARK: - Persistence Helpers
 
-        // Completion sound style defaults to cheering
-        let styleRaw = defaults.string(forKey: Keys.completionSoundStyle) ?? CompletionSoundStyle.cheering.rawValue
-        self.completionSoundStyle = CompletionSoundStyle(rawValue: styleRaw) ?? .cheering
+    private func save(_ value: Any, for key: Key) {
+        UserDefaults.standard.set(value, forKey: key.rawValue)
+    }
 
-        // Confetti defaults to true
-        self.confettiEnabled = defaults.object(forKey: Keys.confettiEnabled) as? Bool ?? true
+    private static func load<T>(_ key: Key, default defaultValue: T) -> T {
+        UserDefaults.standard.object(forKey: key.rawValue) as? T ?? defaultValue
+    }
 
-        // Launch screen defaults to true
-        self.launchScreenEnabled = defaults.object(forKey: Keys.launchScreenEnabled) as? Bool ?? true
-
-        // Smooth animations defaults to true
-        self.smoothAnimationsEnabled = defaults.object(forKey: Keys.smoothAnimationsEnabled) as? Bool ?? true
-
-        // EMOM reps in center defaults to false (show interval countdown by default)
-        self.emomShowRepsInCenter = defaults.object(forKey: Keys.emomShowRepsInCenter) as? Bool ?? false
+    private static func load(_ key: Key, default defaultValue: CompletionSoundStyle) -> CompletionSoundStyle {
+        guard let raw = UserDefaults.standard.string(forKey: key.rawValue) else {
+            return defaultValue
+        }
+        return CompletionSoundStyle(rawValue: raw) ?? defaultValue
     }
 
     // MARK: - Types

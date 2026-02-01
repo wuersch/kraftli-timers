@@ -9,20 +9,6 @@ import SwiftUI
 import UIKit
 import Combine
 
-// MARK: - TimerSizes
-/// Holds all calculated sizes for responsive layout
-private struct TimerSizes {
-    let outerRing: CGFloat
-    let innerRing: CGFloat
-    let outerLineWidth: CGFloat
-    let innerLineWidth: CGFloat
-    let intervalFont: CGFloat
-    let totalFont: CGFloat
-    let labelFont: CGFloat
-    let pillFont: CGFloat
-    let spacing: CGFloat
-}
-
 // MARK: - EMOMTimerView
 struct EMOMTimerView: View {
     // MARK: - Properties
@@ -58,9 +44,7 @@ struct EMOMTimerView: View {
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
 
     // MARK: - Computed Properties
-    private var isCompleted: Bool {
-        timerModel.totalTimeRemaining <= 0
-    }
+    private var isCompleted: Bool { timerModel.isCompleted }
 
     // MARK: - Initialization
     init(
@@ -91,26 +75,6 @@ struct EMOMTimerView: View {
         timerModel.isIntervalWarning ? .orange : .blue
     }
 
-    // MARK: - Responsive Sizing
-    /// Calculates proportional sizes based on available space.
-    /// Uses the smaller of width or height*0.55 to ensure content fits in landscape.
-    /// Reference: iPhone 14 Pro width ≈ 393pt with outer ring 320pt, inner ring 280pt.
-    private func sizes(for size: CGSize) -> TimerSizes {
-        // Use height * 0.55 as the vertical constraint (rings + total section need ~55% of height)
-        let heightConstrained = size.height * 0.55
-        let effectiveWidth = min(size.width, heightConstrained, 600)
-        return TimerSizes(
-            outerRing: effectiveWidth * 0.81,      // 320/393
-            innerRing: effectiveWidth * 0.71,      // 280/393
-            outerLineWidth: effectiveWidth * 0.025, // 10/393
-            innerLineWidth: effectiveWidth * 0.05,  // 20/393
-            intervalFont: effectiveWidth * 0.14,    // 56/393
-            totalFont: effectiveWidth * 0.15,       // 60/393
-            labelFont: effectiveWidth * 0.038,      // ~15/393 (subheadline equivalent)
-            pillFont: effectiveWidth * 0.038,       // ~15/393 (subheadline equivalent)
-            spacing: effectiveWidth * 0.10          // 40/393
-        )
-    }
 
     // MARK: - Helpers
     private func makeRepsText(accent: Color) -> AttributedString {
@@ -197,49 +161,43 @@ struct EMOMTimerView: View {
 
     // MARK: - Watch Sync
 
-    /// Sets up subscription to receive control messages from Apple Watch.
     private func setupControlSubscription() {
-        syncService?.timerControlReceived
-            .receive(on: DispatchQueue.main)
-            .sink { [self] action in
-                handleRemoteControl(action)
-            }
-            .store(in: &cancellables)
-    }
-
-    /// Handles control messages received from Apple Watch.
-    private func handleRemoteControl(_ action: TimerControlAction) {
-        switch action {
-        case .play:
-            if !timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
-                startCountdown()
-            }
-        case .pause:
-            if timerModel.isRunning {
-                timerModel.pause()
-                session.onTimerPaused()
-            }
-        case .stop:
-            countdown.cancelCountdown()
-            timerModel.reset()
-            dismiss()
-        case .incrementRound:
-            break  // Not applicable to EMOM timers
-        }
+        WatchSyncHandler.setupSubscription(
+            syncService: syncService,
+            callbacks: WatchSyncCallbacks(
+                onPlay: { [self] in
+                    if !timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
+                        startCountdown()
+                    }
+                },
+                onPause: { [self] in
+                    if timerModel.isRunning {
+                        timerModel.pause()
+                        session.onTimerPaused()
+                    }
+                },
+                onStop: { [self] in
+                    countdown.cancelCountdown()
+                    timerModel.reset()
+                    dismiss()
+                }
+            ),
+            cancellables: &cancellables
+        )
     }
 
     // MARK: - Body
     var body: some View {
         GeometryReader { geometry in
-            let sizes = sizes(for: geometry.size)
+            let sizes = TimerSizes.emom(for: geometry.size)
 
             ZStack {
                 VStack(spacing: sizes.spacing) {
                     ZStack {
                         // Rings - stay full during countdown
                         ProgressRing(
-                            size: sizes.innerRing,
-                            lineWidth: sizes.innerLineWidth,
+                            size: sizes.primaryRing,
+                            lineWidth: sizes.primaryLineWidth,
                             progress: countdown.isCountingDown ? 1.0 : timerModel.intervalProgress,
                             color: accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
@@ -248,8 +206,8 @@ struct EMOMTimerView: View {
                         .accessibilityHidden(true)
 
                         ProgressRing(
-                            size: sizes.outerRing,
-                            lineWidth: sizes.outerLineWidth,
+                            size: sizes.secondaryRing!,
+                            lineWidth: sizes.secondaryLineWidth!,
                             progress: countdown.isCountingDown ? 1.0 : timerModel.overallProgress,
                             color: .primary,
                             backgroundColor: Color.gray.opacity(0.2),
@@ -269,43 +227,12 @@ struct EMOMTimerView: View {
                     .accessibilityHint(isCompleted ? "Swipe down to close" : "\(hintText), swipe down to close")
                     .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
-                    // Bottom section - ZStack maintains consistent height
-                    ZStack {
-                        // Normal TOTAL section (always present for layout)
-                        VStack(spacing: 8) {
-                            Text("TOTAL")
-                                .font(.system(size: sizes.labelFont))
-                                .foregroundStyle(.gray)
-
-                            Text(timerModel.totalTimeRemaining.formatted)
-                                .font(
-                                    .system(size: sizes.totalFont, weight: .bold, design: .rounded)
-                                )
-                                .monospacedDigit()
-                                .accessibilityElement(children: .ignore)
-                                .accessibilityLabel("Total time")
-                                .accessibilityValue(
-                                    timerModel.totalTimeRemaining.formatted
-                                )
-                        }
-                        .opacity(countdown.isCountingDown ? 0 : 1)
-
-                        // "Get ready" text (shown during countdown)
-                        Text("Get ready")
-                            .font(.system(size: sizes.totalFont * 0.5, weight: .medium))
-                            .foregroundStyle(.primary)
-                            .scaleEffect(isPulsing ? 1.05 : 1.0)
-                            .opacity(isPulsing ? 1.0 : 0.6)
-                            .animation(
-                                .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
-                                value: isPulsing
-                            )
-                            .padding(.top, sizes.spacing * 0.4)
-                            .opacity(countdown.isCountingDown ? 1 : 0)
-                            .onChange(of: countdown.isCountingDown) { _, isCountingDown in
-                                isPulsing = isCountingDown
-                            }
-                    }
+                    TimerBottomSection(
+                        totalTimeRemaining: timerModel.totalTimeRemaining,
+                        isCountingDown: countdown.isCountingDown,
+                        isPulsing: $isPulsing,
+                        sizes: sizes
+                    )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
@@ -319,21 +246,15 @@ struct EMOMTimerView: View {
                     isDisabled: countdown.isCountingDown
                 )
 
-                // Hide handle during countdown
-                if !countdown.isCountingDown {
-                    DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
-                }
-
-                // Hide swipe hint during countdown
-                if !countdown.isCountingDown {
-                    SwipeHintOverlay(isVisible: session.showHint, fontSize: sizes.labelFont)
-                }
-
-                if confettiEnabled && session.showConfetti {
-                    ConfettiView()
-                        .ignoresSafeArea(.all)
-                        .allowsHitTesting(false)
-                }
+                TimerOverlays(
+                    isCountingDown: countdown.isCountingDown,
+                    isHandleActive: isHandleActive,
+                    dragOffset: dragOffset,
+                    showHint: session.showHint,
+                    showConfetti: session.showConfetti,
+                    confettiEnabled: confettiEnabled,
+                    labelFont: sizes.labelFont
+                )
             }
         }
         .timerLifecycle(
@@ -352,15 +273,10 @@ struct EMOMTimerView: View {
     // MARK: - Countdown Center Content
     @ViewBuilder
     private func countdownCenterContent(sizes: TimerSizes) -> some View {
-        let displayText = countdown.countdownValue.map { $0 > 0 ? "\($0)" : "GO" } ?? ""
-        let textColor: Color = .primary
-
-        Text(displayText)
-            .font(.system(size: sizes.intervalFont * 1.5, weight: .bold, design: .rounded))
-            .foregroundStyle(textColor)
-            .contentTransition(.numericText())
-            .id(countdown.countdownValue)
-            .accessibilityLabel(displayText)
+        CountdownText(
+            countdownValue: countdown.countdownValue,
+            fontSize: sizes.primaryFont * 1.5
+        )
     }
 
     // MARK: - Normal Center Content
@@ -376,7 +292,7 @@ struct EMOMTimerView: View {
                 Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
                     .font(
                         .system(
-                            size: sizes.intervalFont,
+                            size: sizes.primaryFont,
                             weight: .semibold,
                             design: .rounded
                         )
@@ -419,7 +335,7 @@ struct EMOMTimerView: View {
                 Text(timerModel.intervalTimeRemaining.formatted)
                     .font(
                         .system(
-                            size: sizes.intervalFont,
+                            size: sizes.primaryFont,
                             weight: .semibold,
                             design: .rounded
                         )
