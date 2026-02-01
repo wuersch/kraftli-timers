@@ -31,6 +31,13 @@ final class SystemSoundFeedback: FeedbackProvider {
                 intervalPlayer = try AVAudioPlayer(contentsOf: url)
                 intervalPlayer?.volume = 1.0
                 intervalPlayer?.prepareToPlay()
+
+                // Prime audio hardware with silent playback to avoid first-play static
+                intervalPlayer?.volume = 0
+                intervalPlayer?.play()
+                intervalPlayer?.stop()
+                intervalPlayer?.currentTime = 0
+                intervalPlayer?.volume = 1.0
             } catch {
                 Logger.audio.error("Failed to load interval beep: \(error.localizedDescription)")
             }

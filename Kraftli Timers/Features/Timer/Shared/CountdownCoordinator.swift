@@ -161,6 +161,13 @@ final class CountdownCoordinator {
                 beepPlayer = try AVAudioPlayer(contentsOf: url)
                 beepPlayer?.volume = 1.0
                 beepPlayer?.prepareToPlay()
+
+                // Prime audio hardware with silent playback to avoid first-play static
+                beepPlayer?.volume = 0
+                beepPlayer?.play()
+                beepPlayer?.stop()
+                beepPlayer?.currentTime = 0
+                beepPlayer?.volume = 1.0
             } catch {
                 Logger.audio.error("Failed to load countdown beep: \(error.localizedDescription)")
             }
