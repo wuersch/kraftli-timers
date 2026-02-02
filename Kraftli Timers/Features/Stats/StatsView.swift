@@ -11,7 +11,6 @@ import SwiftData
 struct StatsView: View {
     // MARK: - Properties
     @Query(sort: \WorkoutLog.date, order: .reverse) private var allWorkouts: [WorkoutLog]
-    @Query private var exercises: [Exercise]
 
     @State private var selectedPeriod: TimePeriod = .week
 
@@ -31,7 +30,7 @@ struct StatsView: View {
     }
 
     private var exerciseStats: [ExerciseStats] {
-        statsService.groupedByExercise(workouts: filteredWorkouts, exercises: exercises)
+        statsService.groupedByExercise(workouts: filteredWorkouts, exercises: ExerciseRepository.all)
     }
 
     private var totalMinutes: Int {
@@ -43,7 +42,7 @@ struct StatsView: View {
     }
 
     private var muscleGroupStats: [MuscleGroupStats] {
-        statsService.groupedByMuscleGroup(workouts: filteredWorkouts, exercises: exercises)
+        statsService.groupedByMuscleGroup(workouts: filteredWorkouts, exercises: ExerciseRepository.all)
     }
 
     // MARK: - Body
@@ -187,24 +186,20 @@ struct StatsView: View {
     NavigationStack {
         StatsView()
     }
-    .modelContainer(for: [WorkoutLog.self, Exercise.self], inMemory: true)
+    .modelContainer(for: WorkoutLog.self, inMemory: true)
+    .onAppear { ExerciseRepository.load() }
 }
 
 // MARK: - Preview Container
 @MainActor
 private let previewContainer: ModelContainer = {
+    // Load exercise repository for preview
+    ExerciseRepository.load()
+
     let container = try! ModelContainer(
-        for: WorkoutLog.self, Exercise.self,
+        for: WorkoutLog.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
-
-    // Add sample data
-    let exercises = [
-        Exercise(name: "6-Count Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody),
-        Exercise(name: "Pull-ups", exerciseDescription: "", formTips: [], muscleGroup: .upperBody),
-        Exercise(name: "Squats", exerciseDescription: "", formTips: [], muscleGroup: .lowerBody)
-    ]
-    exercises.forEach { container.mainContext.insert($0) }
 
     let calendar = Calendar.current
     let today = Date()

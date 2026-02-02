@@ -43,7 +43,7 @@ struct TimerPresetRow: View {
                         .foregroundStyle(.tint)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Start \(preset.exercise?.name ?? "timer")")
+                .accessibilityLabel("Start \(preset.exerciseInfo?.name ?? "timer")")
             }
         }
         .padding(14)
@@ -61,34 +61,26 @@ struct TimerPresetRow: View {
 }
 
 #Preview("AMRAP") {
+    ExerciseRepository.load()
+    let exerciseId = ExerciseRepository.exercise(byName: "Squats")?.id
     let preset = TimerPreset(
         id: UUID(),
         kind: .amrap,
         durationInterval: 300,
-        exercise: Exercise(
-            id: UUID(),
-            name: "Squats",
-            exerciseDescription: "Lower body exercise",
-            formTips: [],
-            muscleGroup: .lowerBody
-        )
+        exerciseId: exerciseId
     )
-    TimerPresetRow(preset: preset, didTapRun: { _ in }, didTapEdit: { _ in })
+    return TimerPresetRow(preset: preset, didTapRun: { _ in }, didTapEdit: { _ in })
 }
 
 #Preview("EMOM") {
+    ExerciseRepository.load()
+    let exerciseId = ExerciseRepository.exercise(byName: "6-Count Burpees")?.id
     let preset = TimerPreset(
         id: UUID(),
         kind: .emom,
         durationInterval: 300,
         targetReps: 10,
-        exercise: Exercise(
-            id: UUID(),
-            name: "6-Count Burpees",
-            exerciseDescription: "Full body exercise",
-            formTips: [],
-            muscleGroup: .fullBody
-        )
+        exerciseId: exerciseId
     )
-    TimerPresetRow(preset: preset, didTapRun: { _ in }, didTapEdit: { _ in })
+    return TimerPresetRow(preset: preset, didTapRun: { _ in }, didTapEdit: { _ in })
 }

@@ -50,24 +50,27 @@ struct TimerPresetTests {
     }
 
     @Test func secondaryText_includesExerciseAndRepsForEMOM() {
-        let exercise = Exercise(name: "6-Count Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody)
+        // Load repository so exerciseInfo lookup works
+        ExerciseRepository.load()
+        let exerciseId = ExerciseRepository.exercise(byName: "6-Count Burpees")?.id
         let preset = TimerPreset(
             kind: .emom,
             durationInterval: 20 * 60,
             targetReps: 100,
-            exercise: exercise
+            exerciseId: exerciseId
         )
 
-        #expect(preset.secondaryText == "6-Count Burpees · 100 Reps")
+        #expect(preset.secondaryText == "6-Count Burpees\(UISeparator.dot)100 Reps")
     }
 
     @Test func secondaryText_includesOnlyExerciseForAMRAP() {
-        let exercise = Exercise(name: "Pull-ups", exerciseDescription: "", formTips: [], muscleGroup: .upperBody)
+        ExerciseRepository.load()
+        let exerciseId = ExerciseRepository.exercise(byName: "Pull-ups")?.id
         let preset = TimerPreset(
             kind: .amrap,
             durationInterval: 20 * 60,
             targetReps: nil,
-            exercise: exercise
+            exerciseId: exerciseId
         )
 
         #expect(preset.secondaryText == "Pull-ups")
@@ -78,7 +81,7 @@ struct TimerPresetTests {
             kind: .amrap,
             durationInterval: 20 * 60,
             targetReps: nil,
-            exercise: nil
+            exerciseId: nil
         )
 
         #expect(preset.secondaryText == "")

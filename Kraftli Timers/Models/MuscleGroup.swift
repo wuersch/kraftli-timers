@@ -6,7 +6,7 @@
 //
 
 /// Target muscle group for an exercise.
-enum MuscleGroup: String, Codable, CaseIterable {
+enum MuscleGroup: String, Codable, CaseIterable, Sendable {
     case fullBody
     case upperBody
     case lowerBody

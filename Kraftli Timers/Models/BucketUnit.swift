@@ -6,7 +6,7 @@
 //
 import Foundation
 
-enum BucketUnit {
+enum BucketUnit: Sendable {
     case day
     case week
     case month

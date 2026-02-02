@@ -11,7 +11,6 @@ import SwiftUI
 struct TimerPresetEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @Query private var presets: [TimerPreset]
 
     let presetToEdit: TimerPreset?
@@ -28,7 +27,7 @@ struct TimerPresetEditorView: View {
         // Initialize state from preset or use defaults
         if let preset = presetToEdit {
             _timerKind = State(initialValue: preset.kind)
-            _selectedExerciseId = State(initialValue: preset.exercise?.id)
+            _selectedExerciseId = State(initialValue: preset.exerciseId)
             _durationMinutes = State(
                 initialValue: Int(preset.durationInterval / 60)
             )
@@ -43,11 +42,11 @@ struct TimerPresetEditorView: View {
 
     // MARK: - Computed Properties
 
-    private var selectedExercise: Exercise? {
+    private var selectedExercise: ExerciseInfo? {
         guard let id = selectedExerciseId else {
-            return exercises.first
+            return ExerciseRepository.all.first
         }
-        return exercises.first { $0.id == id }
+        return ExerciseRepository.exercise(byId: id)
     }
 
     /// Maximum reps based on duration (uses shared constant for minimum interval).
@@ -185,9 +184,9 @@ struct TimerPresetEditorView: View {
                             Text(intervalDescription)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
-                            
+
                         }
-                        
+
                         HStack {
                             durationPicker
                             targetRepsPicker
@@ -226,7 +225,7 @@ struct TimerPresetEditorView: View {
             }
             .onAppear {
                 // Set default exercise if none selected
-                if selectedExerciseId == nil, let first = exercises.first {
+                if selectedExerciseId == nil, let first = ExerciseRepository.all.first {
                     selectedExerciseId = first.id
                 }
             }
@@ -244,7 +243,7 @@ struct TimerPresetEditorView: View {
             existingPreset.kindRawValue = timerKind.rawValue
             existingPreset.durationInterval = TimeInterval(durationMinutes * 60)
             existingPreset.targetReps = timerKind == .emom ? targetReps : nil
-            existingPreset.exercise = selectedExercise
+            existingPreset.exerciseId = selectedExerciseId
         } else {
             // Create new preset at end of list
             let preset = TimerPreset(
@@ -252,7 +251,7 @@ struct TimerPresetEditorView: View {
                 durationInterval: TimeInterval(durationMinutes * 60),
                 targetReps: timerKind == .emom ? targetReps : nil,
                 sortOrder: presets.count,
-                exercise: selectedExercise
+                exerciseId: selectedExerciseId
             )
             modelContext.insert(preset)
         }
@@ -262,5 +261,6 @@ struct TimerPresetEditorView: View {
 
 #Preview {
     TimerPresetEditorView()
-        .modelContainer(for: [TimerPreset.self, Exercise.self], inMemory: true)
+        .modelContainer(for: TimerPreset.self, inMemory: true)
+        .onAppear { ExerciseRepository.load() }
 }

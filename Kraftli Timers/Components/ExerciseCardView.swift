@@ -17,7 +17,7 @@ import SwiftUI
 /// - Tap the info button to expand/collapse details
 /// - When expanded, a "Select" button provides clear call-to-action
 struct ExerciseCardView: View {
-    let exercise: Exercise
+    let exercise: ExerciseInfo
     let isExpanded: Bool
     let onSelect: () -> Void
     let onToggleExpand: () -> Void
@@ -45,7 +45,6 @@ struct ExerciseCardView: View {
                 onSelect()
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(exercise.name)
         .accessibilityHint(isExpanded ? "Tap Select to choose this exercise" : "Tap to select, or tap info to see details")
@@ -77,7 +76,7 @@ struct ExerciseCardView: View {
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Description
-            Text(exercise.exerciseDescription)
+            Text(exercise.description)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -116,16 +115,18 @@ struct ExerciseCardView: View {
 // MARK: - Preview
 
 #Preview {
-    ScrollView {
+    ExerciseRepository.load()
+
+    return ScrollView {
         VStack(spacing: 16) {
             Text("Collapsed Card")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             ExerciseCardView(
-                exercise: Exercise(
+                exercise: ExerciseInfo(
                     name: "Burpees",
-                    exerciseDescription: "Explosive movement combining squat, plank, push-up, and vertical jump.",
+                    description: "Explosive movement combining squat, plank, push-up, and vertical jump.",
                     formTips: ["Keep core tight", "Land softly"],
                     muscleGroup: .fullBody,
                     difficulty: .intermediate
@@ -140,9 +141,9 @@ struct ExerciseCardView: View {
                 .foregroundStyle(.secondary)
 
             ExerciseCardView(
-                exercise: Exercise(
+                exercise: ExerciseInfo(
                     name: "Push-ups",
-                    exerciseDescription: "Classic upper body exercise pushing body up from floor. Builds chest, shoulder, and tricep strength while engaging core for stability.",
+                    description: "Classic upper body exercise pushing body up from floor. Builds chest, shoulder, and tricep strength while engaging core for stability.",
                     formTips: ["Hands shoulder-width apart", "Body forms straight line"],
                     muscleGroup: .upperBody,
                     difficulty: .beginner
@@ -157,9 +158,9 @@ struct ExerciseCardView: View {
                 .foregroundStyle(.secondary)
 
             ExerciseCardView(
-                exercise: Exercise(
+                exercise: ExerciseInfo(
                     name: "Custom Exercise",
-                    exerciseDescription: "A custom exercise with minimal configuration.",
+                    description: "A custom exercise with minimal configuration.",
                     formTips: [],
                     muscleGroup: .fullBody
                 ),

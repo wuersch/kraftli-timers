@@ -19,7 +19,12 @@ final class TimerPreset {
     var targetReps: Int?
     var sortOrder: Int = 0
 
-    // MARK: - Relationships
+    /// Exercise ID for looking up exercise details from ExerciseRepository.
+    /// This replaces the SwiftData relationship to avoid CloudKit sync issues.
+    var exerciseId: UUID?
+
+    // MARK: - Relationships (kept for migration)
+    // TODO: Remove after migration has run on all devices
     var exercise: Exercise?
 
     // MARK: - Computed Properties
@@ -31,13 +36,19 @@ final class TimerPreset {
         .seconds(durationInterval)
     }
 
+    /// Look up exercise details from the in-memory repository.
+    /// Returns nil if no exerciseId is set or exercise not found.
+    var exerciseInfo: ExerciseInfo? {
+        exerciseId.flatMap { ExerciseRepository.exercise(byId: $0) }
+    }
+
     var primaryText: String {
         "\(kind.rawValue)\(UISeparator.dot)\(durationInterval.durationText)"
     }
 
     var secondaryText: String {
         var parts: [String] = []
-        if let exerciseName = exercise?.name {
+        if let exerciseName = exerciseInfo?.name {
             parts.append(exerciseName)
         }
         if let reps = targetReps {
@@ -66,13 +77,15 @@ final class TimerPreset {
     }
 
     // MARK: - Initialization
+
+    /// Creates a new preset with an exercise ID (preferred for new code).
     init(
         id: UUID = UUID(),
         kind: TimerKind,
         durationInterval: TimeInterval,
         targetReps: Int? = nil,
         sortOrder: Int = 0,
-        exercise: Exercise? = nil
+        exerciseId: UUID? = nil
     ) {
         precondition(kind != .emom || targetReps != nil, "EMOM presets require targetReps")
         precondition(durationInterval > 0, "durationInterval must be positive")
@@ -85,7 +98,7 @@ final class TimerPreset {
         self.durationInterval = durationInterval
         self.targetReps = targetReps
         self.sortOrder = sortOrder
-        self.exercise = exercise
+        self.exerciseId = exerciseId
     }
 }
 

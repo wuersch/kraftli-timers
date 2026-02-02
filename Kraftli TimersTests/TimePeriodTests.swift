@@ -11,8 +11,8 @@ struct TimePeriodTests {
 
     // MARK: - Display Name Tests
 
-    @Test func displayName_week_returnsWeek() {
-        #expect(TimePeriod.week.displayName == "Week")
+    @Test func displayName_week_returns7Days() {
+        #expect(TimePeriod.week.displayName == "7 Days")
     }
 
     @Test func displayName_month_returnsMonth() {

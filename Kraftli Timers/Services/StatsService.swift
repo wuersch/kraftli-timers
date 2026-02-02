@@ -83,7 +83,7 @@ protocol StatsService {
     /// - Returns: Array of exercise statistics, sorted by total minutes descending.
     func groupedByExercise(
         workouts: [WorkoutLog],
-        exercises: [Exercise]
+        exercises: [ExerciseInfo]
     ) -> [ExerciseStats]
 
     /// Groups workouts by muscle group and computes aggregate statistics.
@@ -96,7 +96,7 @@ protocol StatsService {
     /// - Returns: Array of muscle group statistics, sorted by enum order (fullBody, upperBody, lowerBody, core).
     func groupedByMuscleGroup(
         workouts: [WorkoutLog],
-        exercises: [Exercise]
+        exercises: [ExerciseInfo]
     ) -> [MuscleGroupStats]
 }
 
@@ -105,9 +105,8 @@ final class DefaultStatsService: StatsService {
 
     // MARK: - Private Helpers
 
-    /// Builds a lookup dictionary mapping exercise names to Exercise objects.
-    /// Handles duplicates (from CloudKit sync) by keeping the first occurrence.
-    private func buildExerciseLookup(_ exercises: [Exercise]) -> [String: Exercise] {
+    /// Builds a lookup dictionary mapping exercise names to ExerciseInfo objects.
+    private func buildExerciseLookup(_ exercises: [ExerciseInfo]) -> [String: ExerciseInfo] {
         Dictionary(exercises.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
@@ -154,7 +153,7 @@ final class DefaultStatsService: StatsService {
     
     func groupedByExercise(
         workouts: [WorkoutLog],
-        exercises: [Exercise]
+        exercises: [ExerciseInfo]
     ) -> [ExerciseStats] {
         // Build exercise lookup by name
         let exercisesByName = buildExerciseLookup(exercises)
@@ -194,7 +193,7 @@ final class DefaultStatsService: StatsService {
 
     func groupedByMuscleGroup(
         workouts: [WorkoutLog],
-        exercises: [Exercise]
+        exercises: [ExerciseInfo]
     ) -> [MuscleGroupStats] {
         // Build exercise lookup by name
         let exercisesByName = buildExerciseLookup(exercises)

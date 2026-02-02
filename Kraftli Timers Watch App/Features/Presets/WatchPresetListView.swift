@@ -219,12 +219,12 @@ struct WatchPresetListView: View {
             activeTimer = .emom(
                 duration: preset.durationInterval,
                 intervalDuration: preset.intervalDuration,
-                exerciseName: preset.exercise?.name ?? "EMOM Workout"
+                exerciseName: preset.exerciseInfo?.name ?? "EMOM Workout"
             )
         } else {
             activeTimer = .amrap(
                 duration: preset.durationInterval,
-                exerciseName: preset.exercise?.name ?? "AMRAP Workout"
+                exerciseName: preset.exerciseInfo?.name ?? "AMRAP Workout"
             )
         }
     }
