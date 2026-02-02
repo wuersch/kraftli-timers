@@ -5,7 +5,6 @@
 //  Created by Claude on 03.01.2026.
 //
 
-import SwiftData
 import SwiftUI
 
 /// A full-screen view for browsing and selecting an exercise.
@@ -17,13 +16,12 @@ import SwiftUI
 /// - Empty state when no exercises match filters
 ///
 /// ## Data Flow
-/// 1. Exercises loaded via SwiftData `@Query`
+/// 1. Exercises loaded from `ExerciseRepository` (in-memory reference data)
 /// 2. Filtered in-memory based on user-selected criteria
 /// 3. Selection updates the bound `selectedExerciseId`
 /// 4. View dismisses automatically after selection
 struct ExerciseSelectionView: View {
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Exercise.name) private var allExercises: [Exercise]
 
     /// Binding to the selected exercise ID (updated on selection).
     @Binding var selectedExerciseId: UUID?
@@ -39,8 +37,8 @@ struct ExerciseSelectionView: View {
     /// ID of the currently expanded exercise card (only one at a time).
     @State private var expandedExerciseId: UUID? = nil
 
-    /// Cached filtered exercises, updated when filters or source data change.
-    @State private var filteredExercises: [Exercise] = []
+    /// Cached filtered exercises, updated when filters change.
+    @State private var filteredExercises: [ExerciseInfo] = []
 
     /// True if any filter is active.
     private var hasActiveFilters: Bool {
@@ -86,9 +84,6 @@ struct ExerciseSelectionView: View {
                 )
             }
             .onAppear {
-                updateFilteredExercises()
-            }
-            .onChange(of: allExercises) {
                 updateFilteredExercises()
             }
             .onChange(of: muscleGroupFilter) {
@@ -143,21 +138,23 @@ struct ExerciseSelectionView: View {
 
     // MARK: - Actions
 
-    private func selectExercise(_ exercise: Exercise) {
+    private func selectExercise(_ exercise: ExerciseInfo) {
         selectedExerciseId = exercise.id
         dismiss()
     }
 
     private func toggleExpand(_ id: UUID) {
-        if expandedExerciseId == id {
-            expandedExerciseId = nil
-        } else {
-            expandedExerciseId = id
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if expandedExerciseId == id {
+                expandedExerciseId = nil
+            } else {
+                expandedExerciseId = id
+            }
         }
     }
 
     private func updateFilteredExercises() {
-        filteredExercises = allExercises.filter { exercise in
+        filteredExercises = ExerciseRepository.all.filter { exercise in
             let matchesMuscle = muscleGroupFilter == nil
                 || exercise.muscleGroup == muscleGroupFilter
             let matchesDifficulty = difficultyFilter == nil
@@ -175,9 +172,9 @@ struct ExerciseSelectionView: View {
 
         var body: some View {
             ExerciseSelectionView(selectedExerciseId: $selectedId)
+                .onAppear { ExerciseRepository.load() }
         }
     }
 
     return PreviewWrapper()
-        .modelContainer(for: [Exercise.self], inMemory: true)
 }

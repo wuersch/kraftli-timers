@@ -25,7 +25,7 @@ struct TimerRunnerView: View {
     var body: some View {
         NavigationStack {
             timerContent
-                .navigationTitle("\(preset.exercise?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)")
+                .navigationTitle("\(preset.exerciseInfo?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)")
                 .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -53,7 +53,7 @@ struct TimerRunnerView: View {
                 confettiEnabled: settings.confettiEnabled,
                 showRepsInCenter: settings.emomShowRepsInCenter,
                 syncService: timerSyncService,
-                exerciseName: preset.exercise?.name ?? "Workout",
+                exerciseName: preset.exerciseInfo?.name ?? "Workout",
                 syncIntervalDuration: intervalDuration
             )
         case .amrap:
@@ -66,7 +66,7 @@ struct TimerRunnerView: View {
                 onWorkoutCompleted: makeLoggingClosure(),
                 confettiEnabled: settings.confettiEnabled,
                 syncService: timerSyncService,
-                exerciseName: preset.exercise?.name ?? "Workout"
+                exerciseName: preset.exerciseInfo?.name ?? "Workout"
             )
         }
     }
@@ -80,7 +80,7 @@ struct TimerRunnerView: View {
 
     /// Creates a closure that logs the completed workout to SwiftData.
     private func makeLoggingClosure() -> (WorkoutCompletionData) -> Void {
-        let exerciseName = preset.exercise?.name ?? "Unknown"
+        let exerciseName = preset.exerciseInfo?.name ?? "Unknown"
         let timerKind = preset.kind
         let context = modelContext
 
@@ -101,33 +101,27 @@ struct TimerRunnerView: View {
 }
 
 #Preview("EMOM") {
-    TimerRunnerView(
+    ExerciseRepository.load()
+    let exerciseId = ExerciseRepository.exercise(byName: "6-Count Burpees")?.id
+    return TimerRunnerView(
         preset: TimerPreset(
             kind: .emom,
             durationInterval: 20 * 60,
             targetReps: 100,
-            exercise: Exercise(
-                name: "6-Count Burpees",
-                exerciseDescription: "Full body exercise",
-                formTips: [],
-                muscleGroup: .fullBody
-            )
+            exerciseId: exerciseId
         )
     )
     .environment(AppSettings())
 }
 
 #Preview("AMRAP") {
-    TimerRunnerView(
+    ExerciseRepository.load()
+    let exerciseId = ExerciseRepository.exercise(byName: "Pull-ups")?.id
+    return TimerRunnerView(
         preset: TimerPreset(
             kind: .amrap,
             durationInterval: 15 * 60,
-            exercise: Exercise(
-                name: "Pull-ups",
-                exerciseDescription: "Upper body exercise",
-                formTips: [],
-                muscleGroup: .upperBody
-            )
+            exerciseId: exerciseId
         )
     )
     .environment(AppSettings())

@@ -293,7 +293,8 @@ extension PresetTransferData {
         self.kind = preset.kindRawValue
         self.duration = preset.durationInterval
         self.targetReps = preset.targetReps
-        self.exerciseName = preset.exercise?.name
+        // Use exerciseInfo from repository (not the old relationship)
+        self.exerciseName = preset.exerciseInfo?.name
         self.sortOrder = preset.sortOrder
     }
 }

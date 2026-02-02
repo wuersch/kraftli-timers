@@ -18,11 +18,17 @@ struct Kraftli_TimersApp: App {
     @State private var showLaunchScreen: Bool
 
     init() {
+        // Load exercise reference data from JSON (in-memory, not persisted)
+        ExerciseRepository.load()
+
         // Activate WatchConnectivity for real-time sync with Watch
         WatchConnectivityService.shared.activate()
+
         // Determine if launch screen should show (before settings is fully initialized)
         let launchEnabled = UserDefaults.standard.object(forKey: "launchScreenEnabled") as? Bool ?? true
         _showLaunchScreen = State(initialValue: launchEnabled)
+
+        // Keep Exercise.self in schema for migration (reading old relationship data)
         let schema = Schema([
             Exercise.self,
             TimerPreset.self,
@@ -37,6 +43,9 @@ struct Kraftli_TimersApp: App {
         do {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             self.modelContainer = container
+
+            // Migrate exercise relationships to exerciseId before seeding
+            Self.migrateExerciseRelationships(in: container.mainContext)
 
             // Seed default data on first launch (synchronous to avoid race with @Query)
             Self.seedDefaultDataIfNeeded(in: container.mainContext)
@@ -81,6 +90,28 @@ struct Kraftli_TimersApp: App {
         WatchConnectivityService.shared.sendPresetsToWatch(transferData)
     }
 
+    // MARK: - Migration
+
+    /// Migrates presets from exercise relationship to exerciseId.
+    /// This allows us to stop persisting exercises while keeping preset data intact.
+    private static func migrateExerciseRelationships(in context: ModelContext) {
+        let descriptor = FetchDescriptor<TimerPreset>()
+        guard let presets = try? context.fetch(descriptor) else { return }
+
+        var migrated = false
+        for preset in presets {
+            // If has relationship but no ID, migrate
+            if let exercise = preset.exercise, preset.exerciseId == nil {
+                preset.exerciseId = exercise.id
+                migrated = true
+            }
+        }
+
+        if migrated {
+            try? context.save()
+        }
+    }
+
     // MARK: - Data Seeding
 
     private static func seedDefaultDataIfNeeded(in context: ModelContext) {
@@ -96,26 +127,7 @@ struct Kraftli_TimersApp: App {
             return
         }
 
-        // Load and create exercises from JSON (skip if already exists from CloudKit sync)
-        let exerciseDataList = ExerciseLoader.loadBundled()
-        var exercisesByName: [String: Exercise] = [:]
-
-        for data in exerciseDataList {
-            // Check if exercise with this ID already exists (e.g., from CloudKit sync)
-            let exerciseId = data.id
-            var descriptor = FetchDescriptor<Exercise>(predicate: #Predicate { $0.id == exerciseId })
-            descriptor.fetchLimit = 1
-
-            if let existing = try? context.fetch(descriptor).first {
-                exercisesByName[data.name] = existing
-            } else {
-                let exercise = Exercise(from: data)
-                context.insert(exercise)
-                exercisesByName[data.name] = exercise
-            }
-        }
-
-        // Create default presets
+        // Create default presets using exerciseId (no longer creating Exercise records)
         let defaults: [(kind: TimerKind, minutes: Int, reps: Int?, exerciseName: String)] = [
             (.emom, 20, 100, "6-Count Burpees"),
             (.emom, 20, 35, "Navy Seal Burpees"),
@@ -124,12 +136,15 @@ struct Kraftli_TimersApp: App {
         ]
 
         for (index, preset) in defaults.enumerated() {
+            // Look up exercise ID from repository (exercises loaded from JSON)
+            let exerciseId = ExerciseRepository.exercise(byName: preset.exerciseName)?.id
+
             let timerPreset = TimerPreset(
                 kind: preset.kind,
                 durationInterval: TimeInterval(preset.minutes * 60),
                 targetReps: preset.reps,
                 sortOrder: index,
-                exercise: exercisesByName[preset.exerciseName]
+                exerciseId: exerciseId
             )
             context.insert(timerPreset)
         }

@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import SwiftData
 
 /// A simple scrollable list of exercises for selection.
 ///
@@ -15,8 +14,11 @@ import SwiftData
 /// updates the binding and dismisses the view.
 struct WatchExerciseListView: View {
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @Binding var selectedExerciseId: UUID?
+
+    private var exercises: [ExerciseInfo] {
+        ExerciseRepository.all
+    }
 
     var body: some View {
         Group {
@@ -24,7 +26,7 @@ struct WatchExerciseListView: View {
                 ContentUnavailableView(
                     "No Exercises",
                     systemImage: "figure.run",
-                    description: Text("Exercises sync from your iPhone.")
+                    description: Text("Exercises load from bundled data.")
                 )
             } else {
                 List {
@@ -72,9 +74,9 @@ struct WatchExerciseListView: View {
             NavigationStack {
                 WatchExerciseListView(selectedExerciseId: $selectedId)
             }
+            .onAppear { ExerciseRepository.load() }
         }
     }
 
     return PreviewWrapper()
-        .modelContainer(for: Exercise.self, inMemory: true)
 }

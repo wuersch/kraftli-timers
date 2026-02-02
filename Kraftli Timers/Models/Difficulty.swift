@@ -6,7 +6,7 @@
 //
 
 /// Exercise difficulty level.
-enum Difficulty: String, Codable, CaseIterable {
+enum Difficulty: String, Codable, CaseIterable, Sendable {
     case beginner
     case intermediate
     case advanced

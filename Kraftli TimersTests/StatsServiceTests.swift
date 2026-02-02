@@ -60,17 +60,17 @@ struct StatsServiceTests {
         #expect(filtered.isEmpty)
     }
 
-    @Test func filterByPeriod_monthFilter_includesWorkoutsInCurrentMonth() {
+    @Test func filterByPeriod_monthFilter_includesWorkoutsInLast28Days() {
         let calendar = Calendar.current
         let today = Date()
 
-        // Create workout on the first day of current month
-        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
-        let midMonth = calendar.date(byAdding: .day, value: 10, to: startOfMonth)!
+        // Create workouts within the sliding 28-day window
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: today)!
+        let twoWeeksAgo = calendar.date(byAdding: .day, value: -14, to: today)!
 
         let workouts = [
-            makeWorkout(date: startOfMonth),
-            makeWorkout(date: midMonth),
+            makeWorkout(date: twoWeeksAgo),
+            makeWorkout(date: weekAgo),
             makeWorkout(date: today)
         ]
 
@@ -275,7 +275,7 @@ struct StatsServiceTests {
 
     @Test func groupedByExercise_lookupsMuscleGroupFromExercises() {
         let exercises = [
-            Exercise(name: "Burpees", exerciseDescription: "Full body", formTips: [], muscleGroup: .fullBody)
+            ExerciseInfo(name: "Burpees", description: "Full body", formTips: [], muscleGroup: .fullBody)
         ]
         let workouts = [
             makeWorkout(date: Date(), exerciseName: "Burpees", durationMinutes: 20)
@@ -337,9 +337,9 @@ struct StatsServiceTests {
 
     @Test func groupedByMuscleGroup_aggregatesByMuscleGroup() {
         let exercises = [
-            Exercise(name: "Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody),
-            Exercise(name: "Pull-ups", exerciseDescription: "", formTips: [], muscleGroup: .upperBody),
-            Exercise(name: "Squats", exerciseDescription: "", formTips: [], muscleGroup: .lowerBody)
+            ExerciseInfo(name: "Burpees", description: "", formTips: [], muscleGroup: .fullBody),
+            ExerciseInfo(name: "Pull-ups", description: "", formTips: [], muscleGroup: .upperBody),
+            ExerciseInfo(name: "Squats", description: "", formTips: [], muscleGroup: .lowerBody)
         ]
 
         let workouts = [
@@ -362,7 +362,7 @@ struct StatsServiceTests {
 
     @Test func groupedByMuscleGroup_ignoresUnknownExercisesInWorkout() {
         let exercises = [
-            Exercise(name: "Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody)
+            ExerciseInfo(name: "Burpees", description: "", formTips: [], muscleGroup: .fullBody)
         ]
 
         let workouts = [
@@ -385,7 +385,7 @@ struct StatsServiceTests {
 
     @Test func groupedByMuscleGroup_floorsMinutes() {
         let exercises = [
-            Exercise(name: "Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody)
+            ExerciseInfo(name: "Burpees", description: "", formTips: [], muscleGroup: .fullBody)
         ]
 
         // 90 seconds = 1.5 minutes, should floor to 1 minute

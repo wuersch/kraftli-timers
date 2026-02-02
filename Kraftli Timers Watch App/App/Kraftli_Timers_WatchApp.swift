@@ -18,9 +18,13 @@ struct Kraftli_Timers_Watch_AppApp: App {
     @State private var messageCoordinator = WatchMessageCoordinator()
 
     init() {
+        // Load exercise reference data from JSON (in-memory, not persisted)
+        ExerciseRepository.load()
+
         // Activate WatchConnectivity for real-time sync with iPhone
         WatchConnectivityService.shared.activate()
 
+        // Keep Exercise.self in schema for migration (reading old relationship data)
         let schema = Schema([
             Exercise.self,
             TimerPreset.self,
@@ -35,8 +39,8 @@ struct Kraftli_Timers_Watch_AppApp: App {
         do {
             modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
 
-            // Seed exercises locally (reference data, works without CloudKit)
-            Self.seedExercisesIfNeeded(in: modelContainer.mainContext)
+            // Migrate exercise relationships to exerciseId
+            Self.migrateExerciseRelationships(in: modelContainer.mainContext)
 
             // Wire up preset sync from iPhone via WatchConnectivity
             Self.setupPresetSyncHandler(with: modelContainer.mainContext)
@@ -66,20 +70,18 @@ struct Kraftli_Timers_Watch_AppApp: App {
         let existing = (try? context.fetch(descriptor)) ?? []
         let existingById = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
 
-        // Fetch exercises for linking
-        let exerciseDescriptor = FetchDescriptor<Exercise>()
-        let exercises = (try? context.fetch(exerciseDescriptor)) ?? []
-        let exercisesByName = Dictionary(exercises.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
-
-        // Update or create presets
+        // Update or create presets using exerciseId (no longer using Exercise relationship)
         for data in received {
+            // Look up exercise ID from repository by name
+            let exerciseId = data.exerciseName.flatMap { ExerciseRepository.exercise(byName: $0)?.id }
+
             if let preset = existingById[data.id] {
                 // Update existing preset
                 preset.kindRawValue = data.kind
                 preset.durationInterval = data.duration
                 preset.targetReps = data.targetReps
                 preset.sortOrder = data.sortOrder
-                preset.exercise = data.exerciseName.flatMap { exercisesByName[$0] }
+                preset.exerciseId = exerciseId
             } else {
                 // Create new preset
                 let preset = TimerPreset(
@@ -88,7 +90,7 @@ struct Kraftli_Timers_Watch_AppApp: App {
                     durationInterval: data.duration,
                     targetReps: data.targetReps,
                     sortOrder: data.sortOrder,
-                    exercise: data.exerciseName.flatMap { exercisesByName[$0] }
+                    exerciseId: exerciseId
                 )
                 context.insert(preset)
             }
@@ -102,25 +104,26 @@ struct Kraftli_Timers_Watch_AppApp: App {
         try? context.save()
     }
 
-    // MARK: - Data Seeding
+    // MARK: - Migration
 
+    /// Migrates presets from exercise relationship to exerciseId.
     @MainActor
-    private static func seedExercisesIfNeeded(in context: ModelContext) {
-        let exerciseDataList = ExerciseLoader.loadBundled()
+    private static func migrateExerciseRelationships(in context: ModelContext) {
+        let descriptor = FetchDescriptor<TimerPreset>()
+        guard let presets = try? context.fetch(descriptor) else { return }
 
-        for data in exerciseDataList {
-            // Skip if exercise already exists (from CloudKit or previous seeding)
-            let existingId = data.id
-            let predicate = #Predicate<Exercise> { $0.id == existingId }
-            let descriptor = FetchDescriptor<Exercise>(predicate: predicate)
-
-            if (try? context.fetchCount(descriptor)) == 0 {
-                let exercise = Exercise(from: data)
-                context.insert(exercise)
+        var migrated = false
+        for preset in presets {
+            // If has relationship but no ID, migrate
+            if let exercise = preset.exercise, preset.exerciseId == nil {
+                preset.exerciseId = exercise.id
+                migrated = true
             }
         }
 
-        try? context.save()
+        if migrated {
+            try? context.save()
+        }
     }
 
     var body: some Scene {
