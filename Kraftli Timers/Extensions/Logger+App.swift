@@ -23,4 +23,10 @@ extension Logger {
 
     /// Logs related to workout logging and persistence
     static let workoutLogging = Logger(subsystem: subsystem, category: "workoutLogging")
+
+    /// Logs related to HealthKit authorization and workout saving
+    static let healthKit = Logger(subsystem: subsystem, category: "healthKit")
+
+    /// Logs related to workout session coordination (multi-device)
+    static let workoutSession = Logger(subsystem: subsystem, category: "workoutSession")
 }

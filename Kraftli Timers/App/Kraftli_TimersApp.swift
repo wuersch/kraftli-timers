@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import WatchConnectivity
+import os
 
 @main
 struct Kraftli_TimersApp: App {
@@ -17,12 +18,22 @@ struct Kraftli_TimersApp: App {
     // Capture launch screen preference once at startup (not reactive to mid-session changes)
     @State private var showLaunchScreen: Bool
 
+    /// HealthKit service for workout operations and mirrored session handling.
+    private let healthKitService: any HealthKitService = DefaultHealthKitService()
+
     init() {
         // Load exercise reference data from JSON (in-memory, not persisted)
         ExerciseRepository.load()
 
         // Activate WatchConnectivity for real-time sync with Watch
         WatchConnectivityService.shared.activate()
+
+        // Set up mirrored workout session handler (Scenario D: Watch-initiated workouts).
+        // When Watch starts a workout and mirrors to iPhone, this handler receives the session.
+        healthKitService.setupMirroringHandler { _ in
+            Logger.healthKit.info("Received mirrored workout session from Watch")
+            // TODO: Phase 1E — Display mirrored timer UI on iPhone
+        }
 
         // Determine if launch screen should show (before settings is fully initialized)
         let launchEnabled = UserDefaults.standard.object(forKey: "launchScreenEnabled") as? Bool ?? true

@@ -15,7 +15,8 @@ import Foundation
 enum WatchMessageType: String, Codable {
     case startTimer
     case timerControl
-    // Future: case startWorkoutSession, case requestHeartRate
+    case workoutSessionEnded
+    case timerStartedOnWatch
 }
 
 // MARK: - Timer Control Action
@@ -108,6 +109,64 @@ struct TimerControlMessage: WatchMessage, Equatable {
     }
 }
 
+// MARK: - WorkoutSessionEndedMessage
+
+/// Message sent from Watch to iPhone when an HKWorkoutSession ends.
+///
+/// Contains the HealthKit workout UUID so iPhone can correlate its
+/// SwiftData WorkoutLog with the Watch's HealthKit workout.
+struct WorkoutSessionEndedMessage: WatchMessage, Equatable {
+    var messageType: WatchMessageType { .workoutSessionEnded }
+
+    /// UUID of the HKWorkout saved by Watch, if available.
+    let healthKitWorkoutUUID: UUID?
+
+    init(healthKitWorkoutUUID: UUID?) {
+        self.healthKitWorkoutUUID = healthKitWorkoutUUID
+    }
+
+    // Custom Codable to exclude computed messageType
+    private enum CodingKeys: String, CodingKey {
+        case healthKitWorkoutUUID
+    }
+}
+
+// MARK: - TimerStartedOnWatchMessage
+
+/// Message sent from Watch to iPhone when a timer starts on Watch.
+///
+/// Allows iPhone to display a mirrored timer view if the app is running.
+/// If iPhone isn't running, the Watch workout proceeds independently.
+struct TimerStartedOnWatchMessage: WatchMessage, Equatable {
+    var messageType: WatchMessageType { .timerStartedOnWatch }
+
+    let timerKindRaw: String
+    let totalDuration: TimeInterval
+    let intervalDuration: TimeInterval?
+    let exerciseName: String
+
+    var timerKind: TimerKind {
+        TimerKind(rawValue: timerKindRaw) ?? .emom
+    }
+
+    init(
+        timerKind: TimerKind,
+        totalDuration: TimeInterval,
+        intervalDuration: TimeInterval? = nil,
+        exerciseName: String
+    ) {
+        self.timerKindRaw = timerKind.rawValue
+        self.totalDuration = totalDuration
+        self.intervalDuration = intervalDuration
+        self.exerciseName = exerciseName
+    }
+
+    // Custom Codable to exclude computed messageType
+    private enum CodingKeys: String, CodingKey {
+        case timerKindRaw, totalDuration, intervalDuration, exerciseName
+    }
+}
+
 // MARK: - Message Encoding/Decoding
 
 /// Encodes and decodes WatchMessage types for WatchConnectivity transport.
@@ -150,6 +209,10 @@ enum WatchMessageCoder {
             return try decoder.decode(StartTimerMessage.self, from: data)
         case .timerControl:
             return try decoder.decode(TimerControlMessage.self, from: data)
+        case .workoutSessionEnded:
+            return try decoder.decode(WorkoutSessionEndedMessage.self, from: data)
+        case .timerStartedOnWatch:
+            return try decoder.decode(TimerStartedOnWatchMessage.self, from: data)
         }
     }
 }

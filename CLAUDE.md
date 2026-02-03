@@ -55,5 +55,9 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Run tests: `swift test`
 - Run in simulator: Xcode
 
+## Xcode Project
+- Xcode automatically adds new files to the target whose folder they belong to. No manual step needed for single-target files.
+- Only manual intervention is needed when a file must belong to multiple targets (e.g., shared code between iPhone and Watch).
+
 ## XcodeBuildMCP
 When using XcodeBuildMCP tools, use `projectPath` (not `workspacePath`) since this is a `.xcodeproj`, not a `.xcworkspace`.

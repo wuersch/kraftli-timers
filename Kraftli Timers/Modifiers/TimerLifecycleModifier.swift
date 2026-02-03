@@ -12,6 +12,10 @@ struct WorkoutCompletionData {
     let durationSeconds: TimeInterval
     let repsCompleted: Int?
     let roundsCompleted: Int?
+
+    /// When true, the Watch handled the HKWorkoutSession (Scenario C/D).
+    /// iPhone should skip its own HealthKit save to avoid duplicates.
+    var watchHandledWorkout: Bool = false
 }
 
 /// A view modifier that handles common timer lifecycle events:

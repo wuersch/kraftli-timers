@@ -66,6 +66,14 @@ protocol TimerSyncService {
 
     /// Publisher that emits when a control message is received from Watch.
     var timerControlReceived: AnyPublisher<TimerControlAction, Never> { get }
+
+    /// Publisher that emits when Watch sends a workout session ended message.
+    /// The value is the HealthKit workout UUID from the Watch's HKWorkoutSession.
+    var workoutSessionEndedReceived: AnyPublisher<UUID?, Never> { get }
+
+    /// Publisher that emits when Watch starts a timer independently (Scenario D).
+    /// iPhone can use this to show a mirrored timer view if desired.
+    var timerStartedOnWatchReceived: AnyPublisher<TimerStartedOnWatchMessage, Never> { get }
 }
 
 // MARK: - Default Implementation
@@ -74,6 +82,8 @@ protocol TimerSyncService {
 final class DefaultTimerSyncService: TimerSyncService {
     private let connectivity: WatchConnectivityService
     private let timerControlSubject = PassthroughSubject<TimerControlAction, Never>()
+    private let workoutSessionEndedSubject = PassthroughSubject<UUID?, Never>()
+    private let timerStartedOnWatchSubject = PassthroughSubject<TimerStartedOnWatchMessage, Never>()
 
     init(connectivity: WatchConnectivityService = .shared) {
         self.connectivity = connectivity
@@ -90,6 +100,14 @@ final class DefaultTimerSyncService: TimerSyncService {
 
     var timerControlReceived: AnyPublisher<TimerControlAction, Never> {
         timerControlSubject.eraseToAnyPublisher()
+    }
+
+    var workoutSessionEndedReceived: AnyPublisher<UUID?, Never> {
+        workoutSessionEndedSubject.eraseToAnyPublisher()
+    }
+
+    var timerStartedOnWatchReceived: AnyPublisher<TimerStartedOnWatchMessage, Never> {
+        timerStartedOnWatchSubject.eraseToAnyPublisher()
     }
 
     func startTimerOnWatch(
@@ -132,6 +150,10 @@ final class DefaultTimerSyncService: TimerSyncService {
         switch message {
         case let controlMessage as TimerControlMessage:
             timerControlSubject.send(controlMessage.action)
+        case let endedMessage as WorkoutSessionEndedMessage:
+            workoutSessionEndedSubject.send(endedMessage.healthKitWorkoutUUID)
+        case let startedMessage as TimerStartedOnWatchMessage:
+            timerStartedOnWatchSubject.send(startedMessage)
         default:
             break
         }
@@ -149,6 +171,14 @@ final class SilentTimerSyncService: TimerSyncService {
     }
 
     var timerControlReceived: AnyPublisher<TimerControlAction, Never> {
+        Empty().eraseToAnyPublisher()
+    }
+
+    var workoutSessionEndedReceived: AnyPublisher<UUID?, Never> {
+        Empty().eraseToAnyPublisher()
+    }
+
+    var timerStartedOnWatchReceived: AnyPublisher<TimerStartedOnWatchMessage, Never> {
         Empty().eraseToAnyPublisher()
     }
 

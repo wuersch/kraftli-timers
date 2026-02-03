@@ -24,6 +24,7 @@ final class WorkoutLog {
     var durationSeconds: TimeInterval = 0
     var repsCompleted: Int?
     var roundsCompleted: Int?
+    var healthKitWorkoutUUID: UUID?
 
     // MARK: - Computed Properties
 
@@ -67,7 +68,8 @@ final class WorkoutLog {
         timerKind: TimerKind,
         durationSeconds: TimeInterval,
         repsCompleted: Int? = nil,
-        roundsCompleted: Int? = nil
+        roundsCompleted: Int? = nil,
+        healthKitWorkoutUUID: UUID? = nil
     ) {
         precondition(durationSeconds > 0, "durationSeconds must be positive")
         precondition(
@@ -86,5 +88,6 @@ final class WorkoutLog {
         self.durationSeconds = durationSeconds
         self.repsCompleted = repsCompleted
         self.roundsCompleted = roundsCompleted
+        self.healthKitWorkoutUUID = healthKitWorkoutUUID
     }
 }
