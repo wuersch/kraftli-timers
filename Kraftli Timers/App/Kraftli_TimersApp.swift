@@ -44,11 +44,8 @@ struct Kraftli_TimersApp: App {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             self.modelContainer = container
 
-            // Migrate exercise relationships to exerciseId before seeding
+            // Migrate exercise relationships to exerciseId
             Self.migrateExerciseRelationships(in: container.mainContext)
-
-            // Seed default data on first launch (synchronous to avoid race with @Query)
-            Self.seedDefaultDataIfNeeded(in: container.mainContext)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -110,48 +107,5 @@ struct Kraftli_TimersApp: App {
         if migrated {
             try? context.save()
         }
-    }
-
-    // MARK: - Data Seeding
-
-    private static func seedDefaultDataIfNeeded(in context: ModelContext) {
-        let seededKey = "defaultDataSeeded"
-
-        // Already seeded? Done.
-        guard !UserDefaults.standard.bool(forKey: seededKey) else { return }
-
-        // Upgrade safety: existing users with data shouldn't re-seed
-        let presetDescriptor = FetchDescriptor<TimerPreset>()
-        if (try? context.fetchCount(presetDescriptor)) ?? 0 > 0 {
-            UserDefaults.standard.set(true, forKey: seededKey)
-            return
-        }
-
-        // Create default presets using exerciseId (no longer creating Exercise records)
-        let defaults: [(kind: TimerKind, minutes: Int, reps: Int?, exerciseName: String)] = [
-            (.emom, 20, 100, "6-Count Burpees"),
-            (.emom, 20, 35, "Navy Seal Burpees"),
-            (.amrap, 5, nil, "Pull-ups"),
-            (.emom, 1, 6, "Push-ups")
-        ]
-
-        for (index, preset) in defaults.enumerated() {
-            // Look up exercise ID from repository (exercises loaded from JSON)
-            let exerciseId = ExerciseRepository.exercise(byName: preset.exerciseName)?.id
-
-            let timerPreset = TimerPreset(
-                kind: preset.kind,
-                durationInterval: TimeInterval(preset.minutes * 60),
-                targetReps: preset.reps,
-                sortOrder: index,
-                exerciseId: exerciseId
-            )
-            context.insert(timerPreset)
-        }
-
-        try? context.save()
-
-        // Mark seeding complete
-        UserDefaults.standard.set(true, forKey: seededKey)
     }
 }
