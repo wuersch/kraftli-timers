@@ -11,7 +11,7 @@ Quick reference for the core domain types:
 | `TimerPreset` | Saved timer configuration: id, kind, duration, exercise, reps (EMOM), sortOrder |
 | `TimerKind` | Enum: EMOM \| AMRAP |
 | `Exercise` | Exercise metadata: id, name, description, formTips, muscleGroup, difficulty |
-| `WorkoutLog` | Completed workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted |
+| `WorkoutLog` | Completed workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID |
 | `MuscleGroup` | Enum: fullBody \| upperBody \| lowerBody \| core |
 | `Difficulty` | Enum: beginner \| intermediate \| advanced |
 
@@ -20,7 +20,8 @@ Quick reference for the core domain types:
 - **SwiftData** for persistence (@Model classes, @Query for fetching)
 - **Observable** macro for runtime state management (timer models)
 - **Dependency Injection** for testability (timer providers, audio feedback)
-- **Protocol-based abstractions** for services
+- **Protocol-based abstractions** for services (protocol → default → silent mock)
+- **Two-channel Watch communication** for HealthKit (HK session channel + WatchConnectivity message channel)
 
 ## Data Models
 
@@ -80,6 +81,7 @@ final class WorkoutLog {
     var durationSeconds: TimeInterval
     var repsCompleted: Int?            // EMOM only
     var roundsCompleted: Int?          // AMRAP only
+    var healthKitWorkoutUUID: UUID?    // Correlation with Apple Health entry
 
     // Computed
     var timerKind: TimerKind
@@ -120,6 +122,8 @@ enum TimePeriod: String, CaseIterable {
 - `@State` for view-local state
 - `@Environment(\.modelContext)` for CRUD operations
 - `@Environment(AppSettings.self)` for user preferences
+- `@Environment(WorkoutSessionManager.self)` for shared workout session (Watch)
+- `@WKApplicationDelegateAdaptor` for receiving workout configs from iPhone (Watch)
 - `@MainActor` isolation for thread safety
 
 ## Settings Architecture
@@ -127,6 +131,12 @@ enum TimePeriod: String, CaseIterable {
 User preferences are managed via `AppSettings`, an `@Observable` class with `@AppStorage` properties.
 
 See [ADR-001: Settings Pattern](decisions/ADR-001-settings-pattern.md) for full decision rationale and implementation details.
+
+## HealthKit Architecture
+
+Workouts are saved to Apple Health using a two-channel approach: HealthKit session channel for workout lifecycle and WatchConnectivity for timer UI sync. A shared `WorkoutSessionManager` on Watch ensures only one `HKWorkoutSession` runs at a time.
+
+See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md) for the full architecture decision.
 
 ## Key Components
 
@@ -164,6 +174,7 @@ See [ADR-001: Settings Pattern](decisions/ADR-001-settings-pattern.md) for full 
 | `NeutralSoundFeedback` | Neutral audio (system beeps) |
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
+| `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |
 | `AppSettings` | User preferences (@Observable + @AppStorage) |
 
 ### UI Components
@@ -205,6 +216,8 @@ See [ADR-001: Settings Pattern](decisions/ADR-001-settings-pattern.md) for full 
 | Service | Purpose |
 |---------|---------|
 | `TimerSyncService` | WatchConnectivity for iPhone → Watch timer sync |
+| `WorkoutSessionManager` | HKWorkoutSession/HKLiveWorkoutBuilder lifecycle (@Observable) |
+| `WorkoutAppDelegate` | WKApplicationDelegate: receives workout configs from iPhone |
 
 ## Utilities
 

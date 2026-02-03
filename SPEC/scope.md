@@ -27,6 +27,7 @@ Native iOS app for high-intensity interval training. Minimalistic, distraction-f
 | watchOS Companion | ✅ | Standalone timers, preset editing, CloudKit sync, haptic feedback |
 | iPhone → Watch Sync | ✅ | Auto-show timer on Watch when started on iPhone |
 | Synchronized Countdown | ✅ | 3-2-1-GO countdown synced between iPhone and Watch |
+| HealthKit Integration | ✅ | Workouts saved to Apple Health with heart rate/calories via Watch |
 
 ## Quick Reference
 
@@ -198,8 +199,9 @@ final class WorkoutLog {
     var exerciseName: String
     var timerKindRawValue: String
     var durationSeconds: TimeInterval
-    var repsCompleted: Int?      // EMOM only
-    var roundsCompleted: Int?    // AMRAP only
+    var repsCompleted: Int?              // EMOM only
+    var roundsCompleted: Int?            // AMRAP only
+    var healthKitWorkoutUUID: UUID?      // Correlation with Apple Health
 }
 ```
 
@@ -338,6 +340,39 @@ When starting a timer, both iPhone and Watch display a synchronized 3-2-1-GO cou
 - Shares `TimerPreset`, `Exercise`, `WorkoutLog` models with iOS
 - CloudKit sync for persistent data
 - WatchConnectivity for real-time timer sync
+
+---
+
+### HealthKit Integration
+
+Workouts are saved to Apple Health, with Watch providing heart rate and calorie data when available.
+
+#### Workout Scenarios
+
+| Scenario | Description | HealthKit Source |
+|----------|-------------|-----------------|
+| A: iPhone only | Timer on iPhone, no Watch | iPhone saves duration only |
+| B: Watch only | Timer started on Watch directly | Watch saves with heart rate + calories |
+| C: iPhone leads | Timer started on iPhone, Watch follows | Watch runs HKWorkoutSession, iPhone skips HK save |
+| D: Watch leads | Timer started on Watch, iPhone may mirror | Watch saves, iPhone receives UUID for correlation |
+
+#### Functionality
+- Workouts automatically saved to Apple Health on timer completion
+- No user-facing toggle — always attempts HealthKit (graceful failure if denied)
+- Watch collects heart rate and active energy via `HKLiveWorkoutBuilder`
+- Workout session pauses/resumes with timer pause/resume
+- iPhone-led workouts launch Watch app via `startWatchApp(toHandle:)`
+- Duplicate prevention: only one device saves to HealthKit per workout
+- SwiftData `WorkoutLog` correlated with HealthKit entry via UUID
+
+#### Data Logged
+- **iPhone only**: Activity type, start/end time, duration
+- **With Watch**: Activity type, start/end time, duration, heart rate samples, active energy burned
+
+#### Limitations
+- iPhone-only workouts have no calorie or heart rate data
+- Crash recovery is best-effort (stub implementation)
+- Scenario D does not show mirrored timer UI on iPhone (Watch workout proceeds independently)
 
 ---
 
