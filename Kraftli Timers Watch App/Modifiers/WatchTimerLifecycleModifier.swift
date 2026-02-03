@@ -2,65 +2,89 @@
 //  WatchTimerLifecycleModifier.swift
 //  Kraftli Timers Watch App
 //
-//  Manages WKExtendedRuntimeSession to keep the timer running when wrist is lowered.
-//  watchOS doesn't have isIdleTimerDisabled, so we use extended runtime sessions instead.
+//  Manages workout session pause/resume to keep the timer running when wrist is lowered.
+//  HKWorkoutSession provides extended runtime (replaces WKExtendedRuntimeSession)
+//  and also collects heart rate and calorie data via Watch sensors.
 //
 
 import SwiftUI
 import WatchKit
 
-/// A view modifier that manages an extended runtime session to keep the timer running
-/// during workouts, even when the wrist is lowered and the display dims.
-/// The session starts when the timer starts running and ends when the timer stops
-/// or the view disappears.
+/// A view modifier that pauses and resumes the workout session in sync with the timer.
+///
+/// The `HKWorkoutSession` itself is started and stopped by the timer view
+/// (on countdown completion and workout completion respectively). This modifier
+/// only handles the pause/resume lifecycle to keep session state in sync with
+/// the timer's running state.
+///
+/// When `sessionManager` is nil (e.g., HealthKit unavailable), falls back to
+/// `WKExtendedRuntimeSession` for basic keep-alive functionality.
 struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     let timer: Timer
+    let sessionManager: WorkoutSessionManager?
     let onPause: () -> Void
 
-    @State private var session: WKExtendedRuntimeSession?
+    @State private var fallbackSession: WKExtendedRuntimeSession?
 
     func body(content: Content) -> some View {
         content
             .onChange(of: timer.isRunning) { _, isRunning in
-                if isRunning {
-                    startExtendedSession()
+                if let sessionManager {
+                    // HealthKit session: pause/resume
+                    if isRunning {
+                        sessionManager.resume()
+                    } else {
+                        sessionManager.pause()
+                    }
                 } else {
-                    endExtendedSession()
+                    // Fallback: WKExtendedRuntimeSession for keep-alive
+                    if isRunning {
+                        startFallbackSession()
+                    } else {
+                        endFallbackSession()
+                    }
                 }
             }
             .onDisappear {
-                endExtendedSession()
+                endFallbackSession()
             }
     }
 
-    // MARK: - Session Management
+    // MARK: - Fallback Session (when HealthKit unavailable)
 
-    private func startExtendedSession() {
-        // Don't start a new session if one is already active
-        guard session == nil else { return }
-
+    private func startFallbackSession() {
+        guard fallbackSession == nil else { return }
         let newSession = WKExtendedRuntimeSession()
         newSession.start()
-        session = newSession
+        fallbackSession = newSession
     }
 
-    private func endExtendedSession() {
-        session?.invalidate()
-        session = nil
+    private func endFallbackSession() {
+        fallbackSession?.invalidate()
+        fallbackSession = nil
     }
 }
 
 extension View {
     /// Adds watch timer lifecycle handling to keep the timer running during workouts.
     ///
-    /// Uses `WKExtendedRuntimeSession` to keep the timer running even when the
-    /// wrist is lowered and the display dims. The session automatically ends when
-    /// the timer stops or when the view disappears.
+    /// When a `WorkoutSessionManager` is provided, pauses and resumes the
+    /// `HKWorkoutSession` in sync with the timer. When nil, falls back to
+    /// `WKExtendedRuntimeSession` for basic keep-alive.
     ///
     /// - Parameters:
     ///   - timer: The workout timer to observe for running state changes
+    ///   - sessionManager: Optional workout session manager for HealthKit integration
     ///   - onPause: Called when the timer should pause (reserved for future use)
-    func watchTimerLifecycle<T: WorkoutTimer>(timer: T, onPause: @escaping () -> Void) -> some View {
-        modifier(WatchTimerLifecycleModifier(timer: timer, onPause: onPause))
+    func watchTimerLifecycle<T: WorkoutTimer>(
+        timer: T,
+        sessionManager: WorkoutSessionManager? = nil,
+        onPause: @escaping () -> Void
+    ) -> some View {
+        modifier(WatchTimerLifecycleModifier(
+            timer: timer,
+            sessionManager: sessionManager,
+            onPause: onPause
+        ))
     }
 }

@@ -8,7 +8,9 @@
 
 import SwiftUI
 import SwiftData
+import HealthKit
 import Combine
+import os
 
 struct WatchAMRAPTimerView: View {
     // MARK: - Properties
@@ -19,6 +21,9 @@ struct WatchAMRAPTimerView: View {
     @State private var cancellables = Set<AnyCancellable>()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+
+    /// Shared workout session manager injected from WorkoutAppDelegate.
+    @Environment(WorkoutSessionManager.self) private var sessionManager
 
     private let exerciseName: String
     private let totalDuration: TimeInterval
@@ -163,15 +168,20 @@ struct WatchAMRAPTimerView: View {
             }
         }
         .toolbar(.hidden)
-        .watchTimerLifecycle(timer: timerModel, onPause: { timerModel.pause() })
+        .watchTimerLifecycle(
+            timer: timerModel,
+            sessionManager: sessionManager,
+            onPause: { timerModel.pause() }
+        )
         .onAppear {
             setupControlSubscription()
             startCountdownIfNeeded()
         }
         .onChange(of: isCompleted) { _, completed in
-            if completed && !hasLoggedWorkout && !displayOnly {
-                hasLoggedWorkout = true  // Set immediately to prevent race condition
-                logWorkout()
+            guard completed && !hasLoggedWorkout else { return }
+            hasLoggedWorkout = true
+            Task {
+                await handleWorkoutCompleted()
             }
         }
     }
@@ -198,6 +208,10 @@ struct WatchAMRAPTimerView: View {
         if timerModel.isRunning {
             timerModel.pause()
             syncService?.sendTimerControl(.pause, completion: nil)
+        } else if sessionManager.sessionState == .idle && !displayOnly {
+            // First start: create workout session
+            startTimerWithWorkoutSession()
+            syncService?.sendTimerControl(.play, completion: nil)
         } else {
             timerModel.start()
             syncService?.sendTimerControl(.play, completion: nil)
@@ -208,6 +222,15 @@ struct WatchAMRAPTimerView: View {
         countdown.cancelCountdown()
         timerModel.reset()
         syncService?.sendTimerControl(.stop, completion: nil)
+
+        // End any active HK session and reset for reuse
+        if sessionManager.sessionState != .idle {
+            Task {
+                try? await sessionManager.endSession()
+                sessionManager.resetToIdle()
+            }
+        }
+
         dismiss()
     }
 
@@ -216,7 +239,42 @@ struct WatchAMRAPTimerView: View {
         guard let scheduledStartTime else { return }
 
         countdown.startCountdown(scheduledStartTime: scheduledStartTime) { [self] in
-            timerModel.start()
+            startTimerWithWorkoutSession()
+        }
+    }
+
+    /// Starts the timer and an HKWorkoutSession if one isn't already running.
+    ///
+    /// For iPhone-led workouts (Scenario C), the `WorkoutAppDelegate` has already
+    /// started the session via `handle(_ workoutConfiguration:)`, so we skip
+    /// session creation. For standalone Watch workouts (Scenarios B and D), we
+    /// create the session here and start mirroring to iPhone.
+    private func startTimerWithWorkoutSession() {
+        timerModel.start()
+
+        // Only start a new session if one isn't already running (from delegate)
+        if sessionManager.sessionState == .idle {
+            Task {
+                do {
+                    let config = HKWorkoutConfiguration()
+                    config.activityType = .highIntensityIntervalTraining
+                    config.locationType = .indoor
+                    try await sessionManager.startSession(configuration: config)
+
+                    // Mirror to iPhone so it can track this workout (Scenario D)
+                    try await sessionManager.startMirroring()
+                } catch {
+                    Logger.workoutSession.error("Failed to start workout session: \(error.localizedDescription)")
+                }
+            }
+
+            // Notify iPhone about the timer (best-effort, Watch workout proceeds regardless)
+            let message = TimerStartedOnWatchMessage(
+                timerKind: .amrap,
+                totalDuration: totalDuration,
+                exerciseName: exerciseName
+            )
+            WatchConnectivityService.shared.sendMessage(message, completion: nil)
         }
     }
 
@@ -252,17 +310,48 @@ struct WatchAMRAPTimerView: View {
         }
     }
 
-    // MARK: - Workout Logging
+    // MARK: - Workout Session & Logging
 
-    private func logWorkout() {
-        let log = WorkoutLog(
-            exerciseName: exerciseName,
-            timerKind: .amrap,
-            durationSeconds: totalDuration,
-            roundsCompleted: timerModel.roundsCompleted
-        )
-        modelContext.insert(log)
-        try? modelContext.save()
+    /// Handles workout completion for both standalone and iPhone-led scenarios.
+    ///
+    /// - Standalone (Scenario B): Ends HK session and logs to SwiftData.
+    /// - iPhone-led (Scenario C): Ends HK session and sends UUID back to iPhone.
+    ///   iPhone handles its own SwiftData logging.
+    private func handleWorkoutCompleted() async {
+        // End HKWorkoutSession (if running) regardless of displayOnly
+        var healthKitUUID: UUID? = nil
+        if sessionManager.sessionState == .running || sessionManager.sessionState == .paused {
+            do {
+                healthKitUUID = try await sessionManager.endSession()
+            } catch {
+                Logger.workoutSession.error("Failed to end workout session: \(error.localizedDescription)")
+            }
+        }
+
+        if displayOnly {
+            // iPhone-led: send UUID back to iPhone for correlation
+            sendWorkoutSessionEnded(healthKitUUID: healthKitUUID)
+        } else {
+            // Standalone: log to SwiftData on Watch
+            let log = WorkoutLog(
+                exerciseName: exerciseName,
+                timerKind: .amrap,
+                durationSeconds: totalDuration,
+                roundsCompleted: timerModel.roundsCompleted,
+                healthKitWorkoutUUID: healthKitUUID
+            )
+            modelContext.insert(log)
+            try? modelContext.save()
+        }
+
+        Logger.healthKit.info("Watch AMRAP workout completed, HealthKit UUID: \(healthKitUUID?.uuidString ?? "none"), displayOnly: \(displayOnly)")
+    }
+
+    /// Sends the workout session ended message to iPhone with the HealthKit UUID.
+    private func sendWorkoutSessionEnded(healthKitUUID: UUID?) {
+        let message = WorkoutSessionEndedMessage(healthKitWorkoutUUID: healthKitUUID)
+        WatchConnectivityService.shared.sendMessage(message, completion: nil)
+        Logger.healthKit.info("Sent workoutSessionEnded to iPhone, UUID: \(healthKitUUID?.uuidString ?? "none")")
     }
 }
 

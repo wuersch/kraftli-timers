@@ -23,13 +23,17 @@ protocol WorkoutLoggingService {
     ///   - durationSeconds: Total workout duration in seconds.
     ///   - repsCompleted: Number of reps completed (EMOM only).
     ///   - roundsCompleted: Number of rounds completed (AMRAP only).
+    ///   - healthKitWorkoutUUID: Optional HealthKit workout UUID for correlation.
+    /// - Returns: The created WorkoutLog instance.
+    @discardableResult
     func logWorkout(
         exerciseName: String,
         timerKind: TimerKind,
         durationSeconds: TimeInterval,
         repsCompleted: Int?,
-        roundsCompleted: Int?
-    )
+        roundsCompleted: Int?,
+        healthKitWorkoutUUID: UUID?
+    ) -> WorkoutLog
 }
 
 /// Default implementation that persists workouts to SwiftData.
@@ -40,19 +44,22 @@ final class DefaultWorkoutLoggingService: WorkoutLoggingService {
         self.modelContext = modelContext
     }
 
+    @discardableResult
     func logWorkout(
         exerciseName: String,
         timerKind: TimerKind,
         durationSeconds: TimeInterval,
         repsCompleted: Int?,
-        roundsCompleted: Int?
-    ) {
+        roundsCompleted: Int?,
+        healthKitWorkoutUUID: UUID? = nil
+    ) -> WorkoutLog {
         let workoutLog = WorkoutLog(
             exerciseName: exerciseName,
             timerKind: timerKind,
             durationSeconds: durationSeconds,
             repsCompleted: repsCompleted,
-            roundsCompleted: roundsCompleted
+            roundsCompleted: roundsCompleted,
+            healthKitWorkoutUUID: healthKitWorkoutUUID
         )
 
         modelContext.insert(workoutLog)
@@ -63,18 +70,27 @@ final class DefaultWorkoutLoggingService: WorkoutLoggingService {
         } catch {
             Logger.workoutLogging.error("Failed to save workout log: \(error.localizedDescription)")
         }
+
+        return workoutLog
     }
 }
 
 /// Silent implementation for testing or when logging should be disabled.
 final class SilentWorkoutLoggingService: WorkoutLoggingService {
+    @discardableResult
     func logWorkout(
         exerciseName: String,
         timerKind: TimerKind,
         durationSeconds: TimeInterval,
         repsCompleted: Int?,
-        roundsCompleted: Int?
-    ) {
-        // No-op: intentionally does nothing
+        roundsCompleted: Int?,
+        healthKitWorkoutUUID: UUID? = nil
+    ) -> WorkoutLog {
+        // Return a placeholder — never persisted
+        WorkoutLog(
+            exerciseName: exerciseName,
+            timerKind: timerKind,
+            durationSeconds: durationSeconds
+        )
     }
 }

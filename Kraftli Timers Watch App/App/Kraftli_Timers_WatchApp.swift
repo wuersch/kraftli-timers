@@ -11,6 +11,9 @@ import WatchConnectivity
 
 @main
 struct Kraftli_Timers_Watch_AppApp: App {
+    /// Receives HKWorkoutConfiguration from iPhone and owns the shared WorkoutSessionManager.
+    @WKApplicationDelegateAdaptor private var appDelegate: WorkoutAppDelegate
+
     let modelContainer: ModelContainer
 
     /// Coordinates message handling with iPhone.
@@ -130,6 +133,7 @@ struct Kraftli_Timers_Watch_AppApp: App {
         WindowGroup {
             ContentView()
                 .environment(messageCoordinator)
+                .environment(appDelegate.workoutSessionManager)
         }
         .modelContainer(modelContainer)
     }

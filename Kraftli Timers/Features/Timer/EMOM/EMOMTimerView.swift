@@ -8,6 +8,8 @@
 import SwiftUI
 import UIKit
 import Combine
+import HealthKit
+import os
 
 // MARK: - EMOMTimerView
 struct EMOMTimerView: View {
@@ -22,6 +24,10 @@ struct EMOMTimerView: View {
     @State private var cancellables = Set<AnyCancellable>()
     @State private var isPulsing = false
 
+    /// Tracks whether Watch is handling the HKWorkoutSession (Scenario C).
+    /// When true, iPhone skips its own HealthKit save to avoid duplicates.
+    @State private var watchHandledWorkout = false
+
     /// Called when the workout completes (timer reaches zero). Used for logging.
     private let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
 
@@ -33,6 +39,9 @@ struct EMOMTimerView: View {
 
     /// Service for syncing timer controls with Apple Watch (nil for standalone timers).
     private let syncService: TimerSyncService?
+
+    /// Service for HealthKit operations (starting Watch workout sessions).
+    private let healthKitService: (any HealthKitService)?
 
     /// Exercise name for Watch sync message.
     private let exerciseName: String
@@ -58,6 +67,7 @@ struct EMOMTimerView: View {
         confettiEnabled: Bool = true,
         showRepsInCenter: Bool = false,
         syncService: TimerSyncService? = nil,
+        healthKitService: (any HealthKitService)? = nil,
         exerciseName: String = "Workout",
         syncIntervalDuration: TimeInterval? = nil
     ) {
@@ -66,6 +76,7 @@ struct EMOMTimerView: View {
         self.confettiEnabled = confettiEnabled
         self.showRepsInCenter = showRepsInCenter
         self.syncService = syncService
+        self.healthKitService = healthKitService
         self.exerciseName = exerciseName
         self.syncIntervalDuration = syncIntervalDuration
     }
@@ -146,6 +157,22 @@ struct EMOMTimerView: View {
             scheduledStartTime: scheduledStartTime,
             completion: nil
         )
+
+        // Trigger HKWorkoutSession on Watch via HealthKit (Scenario C).
+        // This sends the workout configuration through the system, which delivers
+        // it to WorkoutAppDelegate.handle(_:) on Watch.
+        if let healthKitService, syncService?.isWatchReachable == true {
+            Task {
+                do {
+                    try await healthKitService.startWorkoutOnWatch(
+                        activityType: .highIntensityIntervalTraining
+                    )
+                    watchHandledWorkout = true
+                } catch {
+                    Logger.healthKit.error("Failed to start workout on Watch: \(error.localizedDescription)")
+                }
+            }
+        }
 
         // Start local countdown
         countdown.startCountdown(scheduledStartTime: scheduledStartTime) { [self] in
@@ -262,7 +289,11 @@ struct EMOMTimerView: View {
             session: session,
             onPause: { timerModel.pause() },
             onDisappear: { timerModel.pause() },
-            onWorkoutCompleted: onWorkoutCompleted
+            onWorkoutCompleted: { data in
+                var augmented = data
+                augmented.watchHandledWorkout = watchHandledWorkout
+                onWorkoutCompleted?(augmented)
+            }
         )
         .onAppear {
             Self.lightHaptic.prepare()
