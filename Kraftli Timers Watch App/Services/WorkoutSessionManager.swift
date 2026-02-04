@@ -244,6 +244,19 @@ extension WorkoutSessionManager: HKWorkoutSessionDelegate {
             sessionState = .ended
         }
     }
+
+    nonisolated func workoutSession(
+        _ workoutSession: HKWorkoutSession,
+        didDisconnectFromRemoteDeviceWithError error: (any Error)?
+    ) {
+        Task { @MainActor in
+            if let error {
+                Logger.workoutSession.error("Workout session disconnected with error: \(error.localizedDescription)")
+            } else {
+                Logger.workoutSession.info("Workout session disconnected from remote device")
+            }
+        }
+    }
 }
 
 // MARK: - HKLiveWorkoutBuilderDelegate
