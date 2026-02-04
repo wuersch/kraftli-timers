@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import WatchConnectivity
 
 @main
 struct Kraftli_Timers_Watch_AppApp: App {
@@ -45,66 +44,35 @@ struct Kraftli_Timers_Watch_AppApp: App {
             // Migrate exercise relationships to exerciseId
             Self.migrateExerciseRelationships(in: modelContainer.mainContext)
 
-            // Wire up preset sync from iPhone via WatchConnectivity
-            Self.setupPresetSyncHandler(with: modelContainer.mainContext)
+            // Remove CloudKit duplicates (same UUID synced from multiple devices)
+            Self.deduplicatePresets(in: modelContainer.mainContext)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }
 
-    // MARK: - Preset Sync
+    // MARK: - Deduplication
 
+    /// Removes CloudKit duplicates where the same preset UUID appears more than once.
     @MainActor
-    private static func setupPresetSyncHandler(with context: ModelContext) {
-        WatchConnectivityService.shared.onPresetsReceived = { presets in
-            Task { @MainActor in
-                syncPresets(presets, in: context)
-            }
-        }
-    }
-
-    @MainActor
-    private static func syncPresets(_ received: [PresetTransferData], in context: ModelContext) {
-        // Build lookup of received presets by ID
-        let receivedById = Dictionary(uniqueKeysWithValues: received.map { ($0.id, $0) })
-
-        // Fetch existing presets
+    private static func deduplicatePresets(in context: ModelContext) {
         let descriptor = FetchDescriptor<TimerPreset>()
-        let existing = (try? context.fetch(descriptor)) ?? []
-        let existingById = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+        guard let presets = try? context.fetch(descriptor) else { return }
 
-        // Update or create presets using exerciseId (no longer using Exercise relationship)
-        for data in received {
-            // Look up exercise ID from repository by name
-            let exerciseId = data.exerciseName.flatMap { ExerciseRepository.exercise(byName: $0)?.id }
-
-            if let preset = existingById[data.id] {
-                // Update existing preset
-                preset.kindRawValue = data.kind
-                preset.durationInterval = data.duration
-                preset.targetReps = data.targetReps
-                preset.sortOrder = data.sortOrder
-                preset.exerciseId = exerciseId
+        var seen: Set<UUID> = []
+        var didDelete = false
+        for preset in presets {
+            if seen.contains(preset.id) {
+                context.delete(preset)
+                didDelete = true
             } else {
-                // Create new preset
-                let preset = TimerPreset(
-                    id: data.id,
-                    kind: TimerKind(rawValue: data.kind) ?? .emom,
-                    durationInterval: data.duration,
-                    targetReps: data.targetReps,
-                    sortOrder: data.sortOrder,
-                    exerciseId: exerciseId
-                )
-                context.insert(preset)
+                seen.insert(preset.id)
             }
         }
 
-        // Delete presets that no longer exist on iPhone
-        for preset in existing where receivedById[preset.id] == nil {
-            context.delete(preset)
+        if didDelete {
+            try? context.save()
         }
-
-        try? context.save()
     }
 
     // MARK: - Migration
