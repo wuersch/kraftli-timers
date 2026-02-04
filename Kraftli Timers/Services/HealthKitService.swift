@@ -117,20 +117,22 @@ final class DefaultHealthKitService: HealthKitService {
             throw HealthKitServiceError.notAuthorized
         }
 
-        // Build the workout
-        // Note: No energy/distance for iPhone-only workouts. Only Watch provides
+        // Build the workout using HKWorkoutBuilder (replaces deprecated HKWorkout initializer).
+        // No energy/distance for iPhone-only workouts. Only Watch provides
         // accurate calorie data via HKLiveWorkoutBuilder and Apple's algorithms.
-        let workout = HKWorkout(
-            activityType: activityType,
-            start: start,
-            end: end,
-            duration: end.timeIntervalSince(start),
-            totalEnergyBurned: nil,
-            totalDistance: nil,
-            metadata: metadata
-        )
+        let config = HKWorkoutConfiguration()
+        config.activityType = activityType
+        config.locationType = .indoor
 
-        try await healthStore.save(workout)
+        let builder = HKWorkoutBuilder(healthStore: healthStore, configuration: config, device: .local())
+        try await builder.beginCollection(at: start)
+        try await builder.endCollection(at: end)
+        if let metadata {
+            try await builder.addMetadata(metadata)
+        }
+        guard let workout = try await builder.finishWorkout() else {
+            throw HealthKitServiceError.saveFailed
+        }
         Logger.healthKit.info("Saved workout to HealthKit: \(workout.uuid)")
         return workout.uuid
     }
@@ -185,6 +187,7 @@ final class SilentHealthKitService: HealthKitService {
 enum HealthKitServiceError: Error, LocalizedError {
     case notAvailable
     case notAuthorized
+    case saveFailed
 
     var errorDescription: String? {
         switch self {
@@ -192,6 +195,8 @@ enum HealthKitServiceError: Error, LocalizedError {
             return "HealthKit is not available on this device"
         case .notAuthorized:
             return "HealthKit write access not authorized"
+        case .saveFailed:
+            return "Failed to save workout to HealthKit"
         }
     }
 }
