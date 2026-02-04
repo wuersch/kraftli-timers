@@ -98,6 +98,54 @@ struct WorkoutLoggingServiceTests {
         #expect(workouts.first?.roundsCompleted == 8)
     }
 
+    @Test @MainActor func defaultService_logWorkout_withHealthKitUUID_persistsUUID() throws {
+        let schema = Schema([WorkoutLog.self])
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = container.mainContext
+
+        let service = DefaultWorkoutLoggingService(modelContext: context)
+        let hkUUID = UUID()
+
+        service.logWorkout(
+            exerciseName: "Burpees",
+            timerKind: .emom,
+            durationSeconds: 1200,
+            repsCompleted: 100,
+            roundsCompleted: nil,
+            healthKitWorkoutUUID: hkUUID
+        )
+
+        let descriptor = FetchDescriptor<WorkoutLog>()
+        let workouts = try context.fetch(descriptor)
+
+        #expect(workouts.count == 1)
+        #expect(workouts.first?.healthKitWorkoutUUID == hkUUID)
+    }
+
+    @Test @MainActor func defaultService_logWorkout_withoutHealthKitUUID_persistsNil() throws {
+        let schema = Schema([WorkoutLog.self])
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = container.mainContext
+
+        let service = DefaultWorkoutLoggingService(modelContext: context)
+
+        service.logWorkout(
+            exerciseName: "Pull-ups",
+            timerKind: .amrap,
+            durationSeconds: 600,
+            repsCompleted: nil,
+            roundsCompleted: 5
+        )
+
+        let descriptor = FetchDescriptor<WorkoutLog>()
+        let workouts = try context.fetch(descriptor)
+
+        #expect(workouts.count == 1)
+        #expect(workouts.first?.healthKitWorkoutUUID == nil)
+    }
+
     @Test @MainActor func defaultService_logMultipleWorkouts_persistsAll() throws {
         let schema = Schema([WorkoutLog.self])
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)

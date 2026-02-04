@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **Kraftli Timers**
-Last updated: January 2026
+Last updated: February 2026
 
 ## Overview
 
@@ -19,9 +19,18 @@ If you have iCloud enabled, your data syncs across your devices (iPhone, Apple W
 
 - No personal information (name, email, etc.)
 - No location data
-- No health or fitness data beyond what you enter
 - No analytics or usage tracking
 - No advertising identifiers
+
+## Apple Health (HealthKit)
+
+When you start a workout, the app can save a workout record to Apple Health, including:
+- **Activity type, duration, and start/end time** for every completed workout
+- **Heart rate and active energy (calories)** when an Apple Watch is used during the workout
+
+All health data stays in Apple Health on your device (and your personal iCloud account if Health sync is enabled). We never receive, transmit, or store this data on any server.
+
+You control HealthKit access through **iOS Settings → Health → Kraftli Timers**. Denying access does not affect core timer functionality — workouts still run and are logged locally, they just won't appear in Apple Health.
 
 ## Your Control
 

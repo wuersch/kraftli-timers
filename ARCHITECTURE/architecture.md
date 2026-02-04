@@ -134,7 +134,27 @@ See [ADR-001: Settings Pattern](decisions/ADR-001-settings-pattern.md) for full 
 
 ## HealthKit Architecture
 
-Workouts are saved to Apple Health using a two-channel approach: HealthKit session channel for workout lifecycle and WatchConnectivity for timer UI sync. A shared `WorkoutSessionManager` on Watch ensures only one `HKWorkoutSession` runs at a time.
+Workouts are saved to Apple Health using two parallel communication channels between iPhone and Watch:
+
+**HealthKit channel** — workout session lifecycle:
+- iPhone calls `HKHealthStore.startWatchApp(toHandle:)` to launch the Watch app with an `HKWorkoutConfiguration`
+- Watch's `WorkoutAppDelegate` receives the config and starts an `HKWorkoutSession` + `HKLiveWorkoutBuilder`
+- The session keeps Watch sensors active (heart rate, calories) and the app alive in the background
+- Mirrored sessions allow either device to pause/resume
+
+**WatchConnectivity channel** — timer UI sync:
+- Reuses the existing `WatchMessage` protocol for start/pause/resume/stop commands
+- Carries round/rep increments so both devices stay in sync
+- Delivers the HealthKit workout UUID back to iPhone via `WorkoutSessionEndedMessage` for SwiftData correlation
+
+The channels are separate because `startWatchApp` is the only way to programmatically launch the Watch app, while WatchConnectivity handles the real-time UI state that HealthKit doesn't need to know about.
+
+**Duplicate prevention** — each workout is saved to HealthKit exactly once:
+- iPhone-only (no Watch): iPhone saves directly
+- Watch-only or Watch-initiated: Watch saves via `HKLiveWorkoutBuilder`
+- iPhone-initiated with Watch: Watch runs the session and saves; iPhone tracks `watchHandledWorkout` and skips its own save
+
+A shared `WorkoutSessionManager` on Watch (injected via `@Environment`) ensures only one `HKWorkoutSession` runs at a time.
 
 See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md) for the full architecture decision.
 

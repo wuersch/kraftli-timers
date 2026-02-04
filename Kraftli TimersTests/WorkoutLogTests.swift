@@ -159,6 +159,31 @@ struct WorkoutLogTests {
         #expect(workout.durationSeconds == 1200)
         #expect(workout.repsCompleted == 100)
         #expect(workout.roundsCompleted == nil)
+        #expect(workout.healthKitWorkoutUUID == nil)
+    }
+
+    @Test func init_defaultHealthKitWorkoutUUID_isNil() {
+        let workout = WorkoutLog(
+            exerciseName: "Burpees",
+            timerKind: .emom,
+            durationSeconds: 1200,
+            repsCompleted: 100
+        )
+
+        #expect(workout.healthKitWorkoutUUID == nil)
+    }
+
+    @Test func init_withHealthKitWorkoutUUID_storesUUID() {
+        let hkUUID = UUID()
+        let workout = WorkoutLog(
+            exerciseName: "Pull-ups",
+            timerKind: .amrap,
+            durationSeconds: 600,
+            roundsCompleted: 5,
+            healthKitWorkoutUUID: hkUUID
+        )
+
+        #expect(workout.healthKitWorkoutUUID == hkUUID)
     }
 
     @Test func init_emomWithReps_succeeds() {

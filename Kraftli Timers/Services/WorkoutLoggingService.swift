@@ -90,7 +90,10 @@ final class SilentWorkoutLoggingService: WorkoutLoggingService {
         WorkoutLog(
             exerciseName: exerciseName,
             timerKind: timerKind,
-            durationSeconds: durationSeconds
+            durationSeconds: durationSeconds,
+            repsCompleted: repsCompleted,
+            roundsCompleted: roundsCompleted,
+            healthKitWorkoutUUID: healthKitWorkoutUUID
         )
     }
 }
