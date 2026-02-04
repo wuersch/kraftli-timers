@@ -908,9 +908,9 @@ This section addresses how HealthKit integration interacts with existing Watch-i
 - Timer sync continues working if mirrored session has issues
 - Existing timer sync code requires minimal changes
 
-### Preset Sync (Unchanged)
+### Preset Sync (CloudKit Only)
 
-The existing preset sync mechanism (`syncPresetsToWatch()` on app backgrounding) is orthogonal to workout sessions and requires no changes. Presets sync via application context; workouts sync via real-time messages.
+Presets sync between iPhone and Watch via CloudKit/SwiftData automatic sync. WatchConnectivity is not used for preset data — it handles only real-time timer control messages (start/pause/stop). Both devices are equal peers; presets created on either device sync bidirectionally through iCloud. A deduplication pass on launch removes any duplicates caused by CloudKit merge conflicts.
 
 ---
 

@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import WatchConnectivity
 import os
 
 @main
@@ -57,12 +56,13 @@ struct Kraftli_TimersApp: App {
 
             // Migrate exercise relationships to exerciseId
             Self.migrateExerciseRelationships(in: container.mainContext)
+
+            // Remove CloudKit duplicates (same UUID synced from multiple devices)
+            Self.deduplicatePresets(in: container.mainContext)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }
-
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -79,23 +79,29 @@ struct Kraftli_TimersApp: App {
             }
         }
         .modelContainer(modelContainer)
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .background {
-                syncPresetsToWatch()
-            }
-        }
     }
 
-    // MARK: - WatchConnectivity Sync
+    // MARK: - Deduplication
 
-    private func syncPresetsToWatch() {
-        let context = modelContainer.mainContext
-        let descriptor = FetchDescriptor<TimerPreset>(sortBy: [SortDescriptor(\.sortOrder)])
-
+    /// Removes CloudKit duplicates where the same preset UUID appears more than once.
+    private static func deduplicatePresets(in context: ModelContext) {
+        let descriptor = FetchDescriptor<TimerPreset>()
         guard let presets = try? context.fetch(descriptor) else { return }
 
-        let transferData = presets.map { PresetTransferData(from: $0) }
-        WatchConnectivityService.shared.sendPresetsToWatch(transferData)
+        var seen: Set<UUID> = []
+        var didDelete = false
+        for preset in presets {
+            if seen.contains(preset.id) {
+                context.delete(preset)
+                didDelete = true
+            } else {
+                seen.insert(preset.id)
+            }
+        }
+
+        if didDelete {
+            try? context.save()
+        }
     }
 
     // MARK: - Migration
