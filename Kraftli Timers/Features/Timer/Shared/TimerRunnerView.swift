@@ -38,8 +38,8 @@ struct TimerRunnerView: View {
             timerContent
                 .navigationTitle("\(preset.exerciseInfo?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)")
                 .navigationBarTitleDisplayMode(.inline)
-                .onReceive(timerSyncService.workoutSessionEndedReceived) { watchUUID in
-                    updateLatestLogWithWatchUUID(watchUUID)
+                .onReceive(timerSyncService.workoutSessionEndedReceived) { endedMessage in
+                    updateLogWithWatchUUID(endedMessage)
                 }
         }
     }
@@ -47,6 +47,11 @@ struct TimerRunnerView: View {
     private var timerProvider: any TimerProvider {
         settings.smoothAnimationsEnabled ? DisplayLinkTimerProvider() : FoundationTimerProvider()
     }
+
+    /// Pre-generated ID for correlating iPhone's WorkoutLog with Watch's HealthKit UUID.
+    /// Generated once per TimerRunnerView instance, sent to Watch via StartTimerMessage,
+    /// echoed back in WorkoutSessionEndedMessage, and used as the WorkoutLog.id.
+    private let correlationID = UUID()
 
     @ViewBuilder
     private var timerContent: some View {
@@ -69,7 +74,8 @@ struct TimerRunnerView: View {
                 syncService: timerSyncService,
                 healthKitService: healthKitService,
                 exerciseName: preset.exerciseInfo?.name ?? "Workout",
-                syncIntervalDuration: intervalDuration
+                syncIntervalDuration: intervalDuration,
+                correlationID: correlationID
             )
         case .amrap:
             AMRAPTimerView(
@@ -82,7 +88,8 @@ struct TimerRunnerView: View {
                 confettiEnabled: settings.confettiEnabled,
                 syncService: timerSyncService,
                 healthKitService: healthKitService,
-                exerciseName: preset.exerciseInfo?.name ?? "Workout"
+                exerciseName: preset.exerciseInfo?.name ?? "Workout",
+                correlationID: correlationID
             )
         }
     }
@@ -94,25 +101,40 @@ struct TimerRunnerView: View {
         return preset.durationInterval / Double(targetReps)
     }
 
-    /// Updates the most recent WorkoutLog with the Watch's HealthKit UUID.
+    /// Updates a WorkoutLog with the Watch's HealthKit UUID.
     ///
     /// Called when Watch sends `workoutSessionEnded` after completing its HKWorkoutSession.
-    /// This correlates our SwiftData record with the Watch's HealthKit workout entry.
-    private func updateLatestLogWithWatchUUID(_ watchUUID: UUID?) {
-        guard let watchUUID else { return }
+    /// Uses the correlation ID for exact matching when available; falls back to the most
+    /// recent log without a UUID if the correlation ID is missing (backwards compatibility).
+    private func updateLogWithWatchUUID(_ endedMessage: WorkoutSessionEndedMessage) {
+        guard let watchUUID = endedMessage.healthKitWorkoutUUID else { return }
 
-        let descriptor = FetchDescriptor<WorkoutLog>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        guard let logs = try? modelContext.fetch(descriptor),
-              let latestLog = logs.first,
-              latestLog.healthKitWorkoutUUID == nil else {
-            return
+        if let correlationID = endedMessage.correlationID {
+            // Exact match by WorkoutLog ID
+            let descriptor = FetchDescriptor<WorkoutLog>(
+                predicate: #Predicate { $0.id == correlationID }
+            )
+            guard let log = try? modelContext.fetch(descriptor).first,
+                  log.healthKitWorkoutUUID == nil else {
+                return
+            }
+            log.healthKitWorkoutUUID = watchUUID
+            try? modelContext.save()
+            Logger.healthKit.info("Updated workout log \(correlationID) with Watch HealthKit UUID: \(watchUUID)")
+        } else {
+            // Fallback: match most recent log without a UUID
+            let descriptor = FetchDescriptor<WorkoutLog>(
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            guard let logs = try? modelContext.fetch(descriptor),
+                  let latestLog = logs.first,
+                  latestLog.healthKitWorkoutUUID == nil else {
+                return
+            }
+            latestLog.healthKitWorkoutUUID = watchUUID
+            try? modelContext.save()
+            Logger.healthKit.info("Updated latest workout log with Watch HealthKit UUID: \(watchUUID) (no correlation ID)")
         }
-
-        latestLog.healthKitWorkoutUUID = watchUUID
-        try? modelContext.save()
-        Logger.healthKit.info("Updated workout log with Watch HealthKit UUID: \(watchUUID)")
     }
 
     /// Creates a closure that logs the completed workout to HealthKit and SwiftData.
@@ -140,6 +162,13 @@ struct TimerRunnerView: View {
                     repsCompleted: completionData.repsCompleted,
                     roundsCompleted: completionData.roundsCompleted
                 )
+
+                // Use the pre-generated correlation ID so Watch can match its
+                // HealthKit UUID to this exact log (instead of "latest" heuristic).
+                if let correlationID = completionData.correlationID {
+                    workoutLog.id = correlationID
+                    try? context.save()
+                }
 
                 // 2. Save to HealthKit (if iPhone is handling it)
                 if completionData.watchHandledWorkout {

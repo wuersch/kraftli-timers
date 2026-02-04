@@ -146,8 +146,15 @@ Workouts are saved to Apple Health using two parallel communication channels bet
 - Reuses the existing `WatchMessage` protocol for start/pause/resume/stop commands
 - Carries round/rep increments so both devices stay in sync
 - Delivers the HealthKit workout UUID back to iPhone via `WorkoutSessionEndedMessage` for SwiftData correlation
+- Uses **dual delivery** for critical messages: `sendMessage` (immediate) + `transferUserInfo` (reliable queued), with deduplication on the receiving side
+- A **correlation ID** (UUID) flows from `TimerRunnerView` → `StartTimerMessage` → Watch → `WorkoutSessionEndedMessage` → iPhone, enabling exact `WorkoutLog` matching by ID instead of a fragile "most recent" heuristic
 
 The channels are separate because `startWatchApp` is the only way to programmatically launch the Watch app, while WatchConnectivity handles the real-time UI state that HealthKit doesn't need to know about.
+
+**Pause/resume** — mirrored HK session preferred:
+- When a mirrored `HKWorkoutSession` is available, pause/resume goes through `mirroredWorkout.pause()`/`.resume()` (HealthKit propagates state to the Watch automatically)
+- Falls back to WatchConnectivity `TimerControlMessage` only when no mirrored session exists
+- This avoids redundant state changes from both channels arriving at the Watch
 
 **Duplicate prevention** — each workout is saved to HealthKit exactly once:
 - iPhone-only (no Watch): iPhone saves directly
@@ -235,7 +242,10 @@ See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md)
 ### watchOS Services
 | Service | Purpose |
 |---------|---------|
-| `TimerSyncService` | WatchConnectivity for iPhone → Watch timer sync |
+| `TimerSyncService` | iPhone: WatchConnectivity for iPhone → Watch timer sync |
+| `WatchTimerSyncService` | Watch: WatchConnectivity for Watch → iPhone messages (protocol → default → silent) |
+| `WatchMessageCoordinator` | Watch: routes incoming WC messages to the appropriate service |
+| `WatchWorkoutCoordinator` | Watch: shared workout lifecycle logic used by both EMOM and AMRAP timer views |
 | `WorkoutSessionManager` | HKWorkoutSession/HKLiveWorkoutBuilder lifecycle (@Observable) |
 | `WorkoutAppDelegate` | WKApplicationDelegate: receives workout configs from iPhone |
 

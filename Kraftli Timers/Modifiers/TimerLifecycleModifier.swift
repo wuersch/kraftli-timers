@@ -16,6 +16,11 @@ struct WorkoutCompletionData {
     /// When true, the Watch handled the HKWorkoutSession (Scenario C/D).
     /// iPhone should skip its own HealthKit save to avoid duplicates.
     var watchHandledWorkout: Bool = false
+
+    /// Pre-generated ID for the WorkoutLog, used for correlation with Watch's
+    /// HealthKit UUID. Set when an iPhone-initiated workout sent a `StartTimerMessage`
+    /// with this ID; Watch echoes it back in `WorkoutSessionEndedMessage`.
+    var correlationID: UUID?
 }
 
 /// A view modifier that handles common timer lifecycle events:

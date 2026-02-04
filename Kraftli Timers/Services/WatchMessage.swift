@@ -61,6 +61,10 @@ struct StartTimerMessage: WatchMessage, Equatable {
     /// Watch uses this to join countdown in progress and synchronize timer start.
     let scheduledStartTime: Date?
 
+    /// ID of the iPhone's WorkoutLog so Watch can echo it back in
+    /// `WorkoutSessionEndedMessage.correlationID` for exact UUID matching.
+    let correlationID: UUID?
+
     /// Convenience accessor for the timer kind enum.
     var timerKind: TimerKind {
         TimerKind(rawValue: timerKindRaw) ?? .emom
@@ -72,7 +76,8 @@ struct StartTimerMessage: WatchMessage, Equatable {
         intervalDuration: TimeInterval? = nil,
         exerciseName: String,
         displayOnly: Bool = true,
-        scheduledStartTime: Date? = nil
+        scheduledStartTime: Date? = nil,
+        correlationID: UUID? = nil
     ) {
         self.timerKindRaw = timerKind.rawValue
         self.totalDuration = totalDuration
@@ -80,11 +85,12 @@ struct StartTimerMessage: WatchMessage, Equatable {
         self.exerciseName = exerciseName
         self.displayOnly = displayOnly
         self.scheduledStartTime = scheduledStartTime
+        self.correlationID = correlationID
     }
 
     // Custom Codable to exclude computed messageType
     private enum CodingKeys: String, CodingKey {
-        case timerKindRaw, totalDuration, intervalDuration, exerciseName, displayOnly, scheduledStartTime
+        case timerKindRaw, totalDuration, intervalDuration, exerciseName, displayOnly, scheduledStartTime, correlationID
     }
 }
 
@@ -121,13 +127,19 @@ struct WorkoutSessionEndedMessage: WatchMessage, Equatable {
     /// UUID of the HKWorkout saved by Watch, if available.
     let healthKitWorkoutUUID: UUID?
 
-    init(healthKitWorkoutUUID: UUID?) {
+    /// Correlation ID echoed from `StartTimerMessage` so iPhone can match
+    /// the UUID to the exact WorkoutLog, rather than using a fragile "latest" heuristic.
+    let correlationID: UUID?
+
+    init(healthKitWorkoutUUID: UUID?, correlationID: UUID? = nil) {
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
+        self.correlationID = correlationID
     }
 
     // Custom Codable to exclude computed messageType
     private enum CodingKeys: String, CodingKey {
         case healthKitWorkoutUUID
+        case correlationID
     }
 }
 

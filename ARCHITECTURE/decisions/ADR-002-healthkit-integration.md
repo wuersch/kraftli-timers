@@ -20,7 +20,17 @@ Use a **two-channel communication architecture** between iPhone and Watch:
 
 1. **HealthKit channel**: `HKHealthStore.startWatchApp(toHandle:)` launches the Watch app and delivers an `HKWorkoutConfiguration` to `WorkoutAppDelegate`. This channel handles workout session lifecycle.
 
-2. **WatchConnectivity channel**: `WatchMessage` protocol messages handle timer UI synchronization (start, pause, stop, round increments) and result correlation (`WorkoutSessionEndedMessage` with HealthKit UUID).
+2. **WatchConnectivity channel**: `WatchMessage` protocol messages handle timer UI synchronization (start, pause, stop, round increments) and result correlation (`WorkoutSessionEndedMessage` with HealthKit UUID and correlation ID).
+
+### Reliable Delivery & Correlation
+
+Critical messages (`WorkoutSessionEndedMessage`) use **dual delivery**: `sendMessage` for immediate delivery when iPhone is reachable, plus `transferUserInfo` for reliable queued delivery. iPhone deduplicates messages arriving via both paths (10-second time window + message equality).
+
+A **correlation ID** (UUID) is generated per workout session in `TimerRunnerView` and flows through `StartTimerMessage` → Watch → `WorkoutSessionEndedMessage` → iPhone. This enables exact `WorkoutLog` matching by primary key instead of a fragile "find the most recent log" heuristic.
+
+### Pause/Resume Strategy
+
+When a mirrored `HKWorkoutSession` is available on iPhone, pause/resume commands go through `mirroredWorkout.pause()`/`.resume()` — HealthKit propagates the state change to Watch automatically. WatchConnectivity `TimerControlMessage` is used as a fallback only when no mirrored session exists. This prevents redundant state changes from both channels.
 
 ### Shared WorkoutSessionManager
 
@@ -75,6 +85,6 @@ Both `HealthKitService` (iPhone) and `WorkoutSessionManager` (Watch) follow the 
 
 1. **Scenario D mirrored UI**: Show a read-only timer on iPhone when Watch starts a workout independently
 2. **Crash recovery**: Implement `HKHealthStore.recoverActiveWorkoutSession()` to recover orphaned sessions
-3. **Message reliability**: Add retry/acknowledgment for critical messages (UUID correlation)
+3. ~~**Message reliability**: Add retry/acknowledgment for critical messages (UUID correlation)~~ — Implemented: dual delivery (`sendMessage` + `transferUserInfo`) with deduplication, plus correlation IDs for exact matching
 4. **Live metrics display**: Show heart rate and calories on both devices during workout
 5. **Workout summaries**: Post-workout screen with heart rate zones, calories, duration breakdown

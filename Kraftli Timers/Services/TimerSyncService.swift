@@ -14,6 +14,7 @@
 #if os(iOS)
 import Foundation
 import Combine
+import os
 
 // MARK: - Protocol
 
@@ -42,6 +43,7 @@ protocol TimerSyncService {
     ///   - intervalDuration: Interval duration for EMOM timers (nil for AMRAP)
     ///   - exerciseName: Name of the exercise being performed
     ///   - scheduledStartTime: Absolute time when the timer should start (after countdown)
+    ///   - correlationID: WorkoutLog ID for Watch to echo back in `WorkoutSessionEndedMessage`
     ///   - completion: Called with the result of the send operation
     func startTimerOnWatch(
         kind: TimerKind,
@@ -49,6 +51,7 @@ protocol TimerSyncService {
         intervalDuration: TimeInterval?,
         exerciseName: String,
         scheduledStartTime: Date?,
+        correlationID: UUID?,
         completion: ((Result<Void, Error>) -> Void)?
     )
 
@@ -68,8 +71,8 @@ protocol TimerSyncService {
     var timerControlReceived: AnyPublisher<TimerControlAction, Never> { get }
 
     /// Publisher that emits when Watch sends a workout session ended message.
-    /// The value is the HealthKit workout UUID from the Watch's HKWorkoutSession.
-    var workoutSessionEndedReceived: AnyPublisher<UUID?, Never> { get }
+    /// Contains the HealthKit workout UUID and correlation ID for exact matching.
+    var workoutSessionEndedReceived: AnyPublisher<WorkoutSessionEndedMessage, Never> { get }
 
     /// Publisher that emits when Watch starts a timer independently (Scenario D).
     /// iPhone can use this to show a mirrored timer view if desired.
@@ -82,7 +85,7 @@ protocol TimerSyncService {
 final class DefaultTimerSyncService: TimerSyncService {
     private let connectivity: WatchConnectivityService
     private let timerControlSubject = PassthroughSubject<TimerControlAction, Never>()
-    private let workoutSessionEndedSubject = PassthroughSubject<UUID?, Never>()
+    private let workoutSessionEndedSubject = PassthroughSubject<WorkoutSessionEndedMessage, Never>()
     private let timerStartedOnWatchSubject = PassthroughSubject<TimerStartedOnWatchMessage, Never>()
 
     init(connectivity: WatchConnectivityService = .shared) {
@@ -102,7 +105,7 @@ final class DefaultTimerSyncService: TimerSyncService {
         timerControlSubject.eraseToAnyPublisher()
     }
 
-    var workoutSessionEndedReceived: AnyPublisher<UUID?, Never> {
+    var workoutSessionEndedReceived: AnyPublisher<WorkoutSessionEndedMessage, Never> {
         workoutSessionEndedSubject.eraseToAnyPublisher()
     }
 
@@ -116,6 +119,7 @@ final class DefaultTimerSyncService: TimerSyncService {
         intervalDuration: TimeInterval?,
         exerciseName: String,
         scheduledStartTime: Date?,
+        correlationID: UUID?,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
         let message = StartTimerMessage(
@@ -124,7 +128,8 @@ final class DefaultTimerSyncService: TimerSyncService {
             intervalDuration: intervalDuration,
             exerciseName: exerciseName,
             displayOnly: true,  // Watch should not log workout
-            scheduledStartTime: scheduledStartTime
+            scheduledStartTime: scheduledStartTime,
+            correlationID: correlationID
         )
 
         // Dual-delivery: transferUserInfo is reliable (queued by the system and
@@ -151,12 +156,29 @@ final class DefaultTimerSyncService: TimerSyncService {
         }
     }
 
+    /// Deduplication: tracks the last WorkoutSessionEndedMessage handled and when it arrived.
+    /// When dual-delivery (sendMessage + transferUserInfo) is used, the same message
+    /// may arrive twice. We skip duplicates within a short window.
+    private var lastHandledSessionEnded: WorkoutSessionEndedMessage?
+    private var lastHandledSessionEndedDate: Date?
+    private static let deduplicationWindow: TimeInterval = 10
+
     private func handleMessage(_ message: WatchMessage) {
         switch message {
         case let controlMessage as TimerControlMessage:
             timerControlSubject.send(controlMessage.action)
         case let endedMessage as WorkoutSessionEndedMessage:
-            workoutSessionEndedSubject.send(endedMessage.healthKitWorkoutUUID)
+            // Deduplicate: dual-delivery may deliver the same message twice
+            if let last = lastHandledSessionEnded,
+               let lastDate = lastHandledSessionEndedDate,
+               last == endedMessage,
+               Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
+                Logger.timerSync.debug("Skipping duplicate WorkoutSessionEndedMessage")
+                return
+            }
+            lastHandledSessionEnded = endedMessage
+            lastHandledSessionEndedDate = Date()
+            workoutSessionEndedSubject.send(endedMessage)
         case let startedMessage as TimerStartedOnWatchMessage:
             timerStartedOnWatchSubject.send(startedMessage)
         default:
@@ -179,7 +201,7 @@ final class SilentTimerSyncService: TimerSyncService {
         Empty().eraseToAnyPublisher()
     }
 
-    var workoutSessionEndedReceived: AnyPublisher<UUID?, Never> {
+    var workoutSessionEndedReceived: AnyPublisher<WorkoutSessionEndedMessage, Never> {
         Empty().eraseToAnyPublisher()
     }
 
@@ -193,6 +215,7 @@ final class SilentTimerSyncService: TimerSyncService {
         intervalDuration: TimeInterval?,
         exerciseName: String,
         scheduledStartTime: Date?,
+        correlationID: UUID?,
         completion: ((Result<Void, Error>) -> Void)?
     ) {
         // No-op
