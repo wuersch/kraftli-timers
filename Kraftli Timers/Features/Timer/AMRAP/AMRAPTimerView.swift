@@ -15,6 +15,7 @@ import os
 struct AMRAPTimerView: View {
     // MARK: - Properties
     @Environment(\.dismiss) var dismiss
+    @Environment(MirroredWorkoutObserver.self) private var mirroredWorkout: MirroredWorkoutObserver?
 
     @State private var timerModel: AMRAPTimerModel
     @State private var session = TimerSessionState()
@@ -88,7 +89,11 @@ struct AMRAPTimerView: View {
         }
 
         timerModel.incrementRoundsCompleted()
-        syncService?.sendTimerControl(.incrementRound, completion: nil)
+        syncService?.sendTimerControl(.incrementRound) { result in
+            if case .failure(let error) = result {
+                Logger.timerSync.warning("sendTimerControl(.incrementRound) failed: \(error.localizedDescription)")
+            }
+        }
         Self.lightHaptic.impactOccurred()
     }
 
@@ -101,7 +106,12 @@ struct AMRAPTimerView: View {
         if timerModel.isRunning {
             timerModel.pause()
             session.onTimerPaused()
-            syncService?.sendTimerControl(.pause, completion: nil)
+            mirroredWorkout?.pause()
+            syncService?.sendTimerControl(.pause) { result in
+                if case .failure(let error) = result {
+                    Logger.timerSync.warning("sendTimerControl(.pause) failed: \(error.localizedDescription)")
+                }
+            }
             Self.mediumHaptic.impactOccurred()
         } else {
             startCountdown()
@@ -112,7 +122,11 @@ struct AMRAPTimerView: View {
     private func handleSwipeDismiss() {
         countdown.cancelCountdown()
         timerModel.reset()
-        syncService?.sendTimerControl(.stop, completion: nil)
+        syncService?.sendTimerControl(.stop) { result in
+            if case .failure(let error) = result {
+                Logger.timerSync.warning("sendTimerControl(.stop) failed: \(error.localizedDescription)")
+            }
+        }
         dismiss()
     }
 
@@ -120,7 +134,12 @@ struct AMRAPTimerView: View {
         // Skip countdown on resume - timer starts immediately
         if session.hasEverStarted {
             startAndScheduleHintHide()
-            syncService?.sendTimerControl(.play, completion: nil)
+            mirroredWorkout?.resume()
+            syncService?.sendTimerControl(.play) { result in
+                if case .failure(let error) = result {
+                    Logger.timerSync.warning("sendTimerControl(.play) failed: \(error.localizedDescription)")
+                }
+            }
             return
         }
 
@@ -138,9 +157,9 @@ struct AMRAPTimerView: View {
         )
 
         // Trigger HKWorkoutSession on Watch via HealthKit (Scenario C).
-        // This sends the workout configuration through the system, which delivers
-        // it to WorkoutAppDelegate.handle(_:) on Watch.
-        if let healthKitService, syncService?.isWatchReachable == true {
+        // startWatchApp(toHandle:) can launch the Watch app even when it's closed,
+        // so we don't gate on reachability — that would prevent the launch.
+        if let healthKitService {
             Task {
                 do {
                     try await healthKitService.startWorkoutOnWatch(
@@ -195,6 +214,39 @@ struct AMRAPTimerView: View {
             ),
             cancellables: &cancellables
         )
+    }
+
+    // MARK: - Mirrored Session Reconciliation
+
+    /// Reconciles local timer state with the mirrored HKWorkoutSession state.
+    ///
+    /// When Watch pauses/resumes the workout, the mirrored session on iPhone
+    /// receives the state change via HealthKit (reliable, unlike sendMessage).
+    /// This method adjusts the local timer to match.
+    ///
+    /// Loop prevention: if the timer is already in the matching state, this is a no-op.
+    private func reconcileMirroredState(_ newState: MirroredWorkoutObserver.SessionState?) {
+        guard let newState else { return }
+
+        switch newState {
+        case .paused:
+            if timerModel.isRunning {
+                Logger.timerSync.info("Mirrored session paused → pausing local timer")
+                timerModel.pause()
+                session.onTimerPaused()
+                // Don't send control back — the state change came from Watch
+            }
+        case .running:
+            if !timerModel.isRunning && !isCompleted && session.hasEverStarted {
+                Logger.timerSync.info("Mirrored session running → resuming local timer")
+                startAndScheduleHintHide()
+                // Don't send control back — the state change came from Watch
+            }
+        case .ended:
+            Logger.timerSync.info("Mirrored session ended")
+        case .idle:
+            break
+        }
     }
 
     // MARK: - Body
@@ -276,6 +328,9 @@ struct AMRAPTimerView: View {
             Self.lightHaptic.prepare()
             Self.mediumHaptic.prepare()
             setupControlSubscription()
+        }
+        .onChange(of: mirroredWorkout?.sessionState) { _, newState in
+            reconcileMirroredState(newState)
         }
     }
 

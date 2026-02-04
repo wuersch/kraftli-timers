@@ -13,6 +13,7 @@ import os
 struct Kraftli_TimersApp: App {
     let modelContainer: ModelContainer
     @State private var settings = AppSettings()
+    @State private var mirroredWorkoutObserver = MirroredWorkoutObserver()
 
     // Capture launch screen preference once at startup (not reactive to mid-session changes)
     @State private var showLaunchScreen: Bool
@@ -26,13 +27,6 @@ struct Kraftli_TimersApp: App {
 
         // Activate WatchConnectivity for real-time sync with Watch
         WatchConnectivityService.shared.activate()
-
-        // Set up mirrored workout session handler (Scenario D: Watch-initiated workouts).
-        // When Watch starts a workout and mirrors to iPhone, this handler receives the session.
-        healthKitService.setupMirroringHandler { _ in
-            Logger.healthKit.info("Received mirrored workout session from Watch")
-            // TODO: Phase 1E — Display mirrored timer UI on iPhone
-        }
 
         // Determine if launch screen should show (before settings is fully initialized)
         let launchEnabled = UserDefaults.standard.object(forKey: "launchScreenEnabled") as? Bool ?? true
@@ -69,12 +63,23 @@ struct Kraftli_TimersApp: App {
             ZStack {
                 ContentView()
                     .environment(settings)
+                    .environment(mirroredWorkoutObserver)
 
                 if showLaunchScreen {
                     LaunchScreenView {
                         showLaunchScreen = false
                     }
                     .zIndex(1)
+                }
+            }
+            .onAppear {
+                // Set up mirrored workout session handler (Scenario D: Watch-initiated workouts).
+                // When Watch starts a workout and mirrors to iPhone, this handler receives
+                // the session. We store it in MirroredWorkoutObserver so iPhone can observe
+                // state changes (pause/resume/end) — even when WCSession messages are lost.
+                healthKitService.setupMirroringHandler { session in
+                    Logger.healthKit.info("Received mirrored workout session from Watch")
+                    mirroredWorkoutObserver.setSession(session)
                 }
             }
         }

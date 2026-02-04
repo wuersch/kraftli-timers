@@ -29,4 +29,7 @@ extension Logger {
 
     /// Logs related to workout session coordination (multi-device)
     static let workoutSession = Logger(subsystem: subsystem, category: "workoutSession")
+
+    /// Logs related to timer sync between iPhone and Watch
+    static let timerSync = Logger(subsystem: subsystem, category: "timerSync")
 }

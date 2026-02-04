@@ -127,6 +127,11 @@ final class DefaultTimerSyncService: TimerSyncService {
             scheduledStartTime: scheduledStartTime
         )
 
+        // Dual-delivery: transferUserInfo is reliable (queued by the system and
+        // delivered even when the Watch app is closed), while sendMessage provides
+        // immediate delivery when the Watch is already reachable.
+        // The Watch deduplicates messages that arrive via both paths.
+        connectivity.transferUserInfo(message)
         connectivity.sendMessage(message, completion: completion)
     }
 

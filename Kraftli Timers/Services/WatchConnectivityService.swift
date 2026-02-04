@@ -67,6 +67,29 @@ final class WatchConnectivityService: NSObject, ObservableObject {
         }
     }
 
+    /// Queues a message for reliable background delivery to Watch.
+    ///
+    /// Unlike `sendMessage`, this works even when the Watch app is not reachable.
+    /// The system queues the transfer and delivers it when the Watch becomes available.
+    /// Use this alongside `sendMessage` for critical messages like `StartTimerMessage`.
+    ///
+    /// - Parameter message: The message to transfer
+    func transferUserInfo(_ message: WatchMessage) {
+        guard let session = session,
+              session.activationState == .activated else {
+            Logger.watchConnectivity.warning("Cannot transfer user info: session not activated")
+            return
+        }
+
+        do {
+            let encoded = try WatchMessageCoder.encode(message)
+            session.transferUserInfo(encoded)
+            Logger.watchConnectivity.debug("Queued user info transfer: \(message.messageType.rawValue)")
+        } catch {
+            Logger.watchConnectivity.error("Failed to encode user info: \(error.localizedDescription)")
+        }
+    }
+
     /// Called when a real-time message is received from Watch.
     /// Used for timer control messages (play/pause/stop) from mirrored timers.
     var onMessageReceived: ((WatchMessage) -> Void)?
@@ -178,6 +201,10 @@ extension WatchConnectivityService: WCSessionDelegate {
         handleReceivedMessage(message)
         // Send empty reply to acknowledge receipt
         replyHandler([:])
+    }
+
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        handleReceivedMessage(userInfo)
     }
     #endif
 }
