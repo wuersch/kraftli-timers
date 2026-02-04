@@ -61,4 +61,5 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Only manual intervention is needed when a file must belong to multiple targets (e.g., shared code between iPhone and Watch).
 
 ## XcodeBuildMCP
-When using XcodeBuildMCP tools, use `projectPath` (not `workspacePath`) since this is a `.xcodeproj`, not a `.xcworkspace`.
+- When using XcodeBuildMCP tools, use `projectPath` (not `workspacePath`) since this is a `.xcodeproj`, not a `.xcworkspace`.
+- Use `xcodebuild` (via the Commands above) for compile checks and running tests. Only use XcodeBuildMCP build/run tools when you need to verify something in the running app (gestures, visuals, UI interaction).
