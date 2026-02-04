@@ -232,7 +232,7 @@ struct WatchEMOMTimerView: View {
         // End any active HK session and reset for reuse
         if sessionManager.sessionState != .idle {
             Task {
-                try? await sessionManager.endSession()
+                _ = try? await sessionManager.endSession()
                 sessionManager.resetToIdle()
             }
         }
