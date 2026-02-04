@@ -580,6 +580,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Kraftli Timers";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Kraftli Timers reads your heart rate data to display workout summaries.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Kraftli Timers saves your workouts to Apple Health so they appear in the Fitness app and contribute to your Activity Rings.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -632,6 +633,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Kraftli Timers";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Kraftli Timers reads your heart rate data to display workout summaries.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Kraftli Timers saves your workouts to Apple Health so they appear in the Fitness app and contribute to your Activity Rings.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -909,6 +911,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Kraftli-Timers-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Kraftli Timers";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Kraftli Timers reads your heart rate and calorie data during workouts to display real-time metrics.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Kraftli Timers saves your workouts to Apple Health so they appear in the Fitness app and contribute to your Activity Rings.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "ch.omnom.kraftli-timers";
@@ -947,6 +950,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Kraftli-Timers-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Kraftli Timers";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Kraftli Timers reads your heart rate and calorie data during workouts to display real-time metrics.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Kraftli Timers saves your workouts to Apple Health so they appear in the Fitness app and contribute to your Activity Rings.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "ch.omnom.kraftli-timers";
