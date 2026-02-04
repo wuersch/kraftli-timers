@@ -8,7 +8,6 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 
 // MARK: - Presentation Models
 
@@ -89,9 +88,6 @@ struct WatchPresetListView: View {
     /// Created when receiving a StartTimerMessage, nil for standalone timers.
     @State private var syncService: DefaultWatchTimerSyncService?
 
-    /// Cancellables for subscriptions.
-    @State private var cancellables = Set<AnyCancellable>()
-
     var body: some View {
         Group {
             if presets.isEmpty {
@@ -102,7 +98,17 @@ struct WatchPresetListView: View {
         }
         .navigationTitle("Timers")
         .onAppear {
-            setupStartTimerSubscription()
+            // Consume any message that arrived before the view existed (race fix)
+            if let message = messageCoordinator.pendingStartTimer {
+                messageCoordinator.pendingStartTimer = nil
+                handleStartTimer(message)
+            }
+        }
+        .onChange(of: messageCoordinator.pendingStartTimer) { _, newMessage in
+            // Handle messages arriving while the view is already visible
+            guard let message = newMessage else { return }
+            messageCoordinator.pendingStartTimer = nil
+            handleStartTimer(message)
         }
         .fullScreenCover(item: $activeTimer) { timer in
             switch timer {
@@ -234,18 +240,6 @@ struct WatchPresetListView: View {
     }
 
     // MARK: - Message Handling
-
-    /// Subscribes to timer start messages from the coordinator.
-    /// The coordinator handles message routing at the app level, ensuring
-    /// handlers are ready before any messages arrive.
-    private func setupStartTimerSubscription() {
-        messageCoordinator.startTimerReceived
-            .receive(on: DispatchQueue.main)
-            .sink { [self] message in
-                handleStartTimer(message)
-            }
-            .store(in: &cancellables)
-    }
 
     /// Handles a timer start message from iPhone.
     @MainActor

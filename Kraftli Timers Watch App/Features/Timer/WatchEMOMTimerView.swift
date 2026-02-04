@@ -182,6 +182,9 @@ struct WatchEMOMTimerView: View {
             setupControlSubscription()
             startCountdownIfNeeded()
         }
+        .onChange(of: sessionManager.sessionState) { _, newState in
+            reconcileSessionState(newState)
+        }
         .onChange(of: isCompleted) { _, completed in
             guard completed && !hasLoggedWorkout else { return }
             hasLoggedWorkout = true
@@ -212,28 +215,55 @@ struct WatchEMOMTimerView: View {
 
         if timerModel.isRunning {
             timerModel.pause()
-            syncService?.sendTimerControl(.pause, completion: nil)
+            syncService?.sendTimerControl(.pause) { result in
+                if case .failure(let error) = result {
+                    Logger.timerSync.warning("sendTimerControl(.pause) failed: \(error.localizedDescription)")
+                }
+            }
         } else if sessionManager.sessionState == .idle && !displayOnly {
             // First start: create workout session
             startTimerWithWorkoutSession()
-            syncService?.sendTimerControl(.play, completion: nil)
+            syncService?.sendTimerControl(.play) { result in
+                if case .failure(let error) = result {
+                    Logger.timerSync.warning("sendTimerControl(.play) failed: \(error.localizedDescription)")
+                }
+            }
         } else {
             // Resume
             timerModel.start()
-            syncService?.sendTimerControl(.play, completion: nil)
+            syncService?.sendTimerControl(.play) { result in
+                if case .failure(let error) = result {
+                    Logger.timerSync.warning("sendTimerControl(.play) failed: \(error.localizedDescription)")
+                }
+            }
         }
     }
 
     private func handleStop() {
+        syncService?.sendTimerControl(.stop) { result in
+            if case .failure(let error) = result {
+                Logger.timerSync.warning("sendTimerControl(.stop) failed: \(error.localizedDescription)")
+            }
+        }
+        stopAndCleanup()
+    }
+
+    /// Shared cleanup for both local and remote stop: ends the timer, tears down
+    /// the HK workout session (removing the Live Activity), and dismisses the view.
+    private func stopAndCleanup() {
         countdown.cancelCountdown()
         timerModel.reset()
-        syncService?.sendTimerControl(.stop, completion: nil)
 
         // End any active HK session and reset for reuse
         if sessionManager.sessionState != .idle {
             Task {
-                _ = try? await sessionManager.endSession()
+                let uuid = try? await sessionManager.endSession()
                 sessionManager.resetToIdle()
+
+                // Notify iPhone so it can correlate the HealthKit workout
+                if displayOnly {
+                    sendWorkoutSessionEnded(healthKitUUID: uuid)
+                }
             }
         }
 
@@ -306,11 +336,38 @@ struct WatchEMOMTimerView: View {
                 timerModel.pause()
             }
         case .stop:
-            countdown.cancelCountdown()
-            timerModel.reset()
-            dismiss()
+            stopAndCleanup()
         case .incrementRound:
             break  // Not applicable to EMOM timers
+        }
+    }
+
+    // MARK: - Mirrored Session Reconciliation
+
+    /// Reconciles local timer state with the HKWorkoutSession state.
+    ///
+    /// When iPhone pauses/resumes via the mirrored session, the state change
+    /// propagates to Watch's HKWorkoutSession delegate, updating
+    /// `sessionManager.sessionState`. This method adjusts the local timer.
+    ///
+    /// Loop prevention: the WatchTimerLifecycleModifier calls
+    /// `sessionManager.pause()`/`.resume()` when `timerModel.isRunning` changes,
+    /// which triggers the delegate, which fires this `.onChange`. But if the timer
+    /// is already in the matching state, the guard prevents any action.
+    private func reconcileSessionState(_ newState: WorkoutSessionManager.SessionState) {
+        switch newState {
+        case .paused:
+            if timerModel.isRunning {
+                Logger.timerSync.info("Session state paused → pausing local timer (remote)")
+                timerModel.pause()
+            }
+        case .running:
+            if !timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
+                Logger.timerSync.info("Session state running → resuming local timer (remote)")
+                timerModel.start()
+            }
+        case .idle, .ended:
+            break
         }
     }
 

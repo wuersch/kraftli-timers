@@ -8,7 +8,6 @@
 //
 
 import Foundation
-import Combine
 import os
 
 /// Coordinates incoming messages from iPhone and routes them appropriately.
@@ -17,12 +16,18 @@ import os
 /// are ready before any messages arrive (fixing first-launch timing issues).
 @Observable
 final class WatchMessageCoordinator {
-    /// Publisher for timer start messages from iPhone.
-    /// Subscribe to this to receive notifications when iPhone starts a timer.
-    private let startTimerSubject = PassthroughSubject<StartTimerMessage, Never>()
-    var startTimerReceived: AnyPublisher<StartTimerMessage, Never> {
-        startTimerSubject.eraseToAnyPublisher()
-    }
+    /// The most recent timer start message from iPhone, waiting to be consumed.
+    /// Set by `handleMessage` when a `StartTimerMessage` arrives, cleared by the
+    /// UI after handling. Using a stored property instead of a Combine publisher
+    /// avoids a race where messages arrive before any subscriber exists.
+    var pendingStartTimer: StartTimerMessage?
+
+    /// Deduplication: tracks the last StartTimerMessage handled and when it arrived.
+    /// When dual-delivery (sendMessage + transferUserInfo) is used, the same message
+    /// may arrive twice. We skip duplicates within a short window.
+    private var lastHandledStartTimer: StartTimerMessage?
+    private var lastHandledStartTimerDate: Date?
+    private static let deduplicationWindow: TimeInterval = 10
 
     /// The active sync service for mirrored timer control messages.
     /// Set this when a mirrored timer is presented, clear when dismissed.
@@ -50,8 +55,21 @@ final class WatchMessageCoordinator {
     private func handleMessage(_ message: WatchMessage) {
         switch message {
         case let startTimer as StartTimerMessage:
+            // Deduplicate: dual-delivery (sendMessage + transferUserInfo) may deliver
+            // the same StartTimerMessage twice. Skip if we handled an identical message
+            // within the deduplication window.
+            if let last = lastHandledStartTimer,
+               let lastDate = lastHandledStartTimerDate,
+               last == startTimer,
+               Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
+                Logger.timerSync.debug("Skipping duplicate StartTimerMessage: \(startTimer.exerciseName)")
+                return
+            }
+
+            lastHandledStartTimer = startTimer
+            lastHandledStartTimerDate = Date()
             Logger.timerSync.info("Received StartTimerMessage: \(startTimer.exerciseName)")
-            startTimerSubject.send(startTimer)
+            pendingStartTimer = startTimer
 
         case let control as TimerControlMessage:
             Logger.timerSync.debug("Received TimerControlMessage: \(String(describing: control.action))")
