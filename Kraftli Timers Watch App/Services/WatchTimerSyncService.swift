@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import os
 
 // MARK: - Protocol
 
@@ -26,6 +27,40 @@ protocol WatchTimerSyncService {
     ///   - completion: Called with the result of the send operation
     func sendTimerControl(
         _ action: TimerControlAction,
+        completion: ((Result<Void, Error>) -> Void)?
+    )
+
+    /// Sends a workout session ended message to iPhone with the HealthKit UUID.
+    ///
+    /// Uses dual delivery (`sendMessage` + `transferUserInfo`) to ensure the
+    /// UUID reaches iPhone even if it's not immediately reachable.
+    ///
+    /// - Parameters:
+    ///   - healthKitUUID: The UUID of the HKWorkout saved by Watch
+    ///   - correlationID: The WorkoutLog ID for exact matching on iPhone
+    ///   - completion: Called with the result of the immediate send attempt
+    func sendWorkoutSessionEnded(
+        healthKitUUID: UUID?,
+        correlationID: UUID?,
+        completion: ((Result<Void, Error>) -> Void)?
+    )
+
+    /// Sends a notification to iPhone that a timer started on Watch (Scenario D).
+    ///
+    /// This is best-effort — the Watch workout proceeds regardless of delivery.
+    /// Uses `sendMessage` only (no queued delivery needed).
+    ///
+    /// - Parameters:
+    ///   - kind: The type of timer (EMOM or AMRAP)
+    ///   - totalDuration: Total workout duration in seconds
+    ///   - intervalDuration: Interval duration for EMOM (nil for AMRAP)
+    ///   - exerciseName: Name of the exercise
+    ///   - completion: Called with the result of the send operation
+    func sendTimerStartedOnWatch(
+        kind: TimerKind,
+        totalDuration: TimeInterval,
+        intervalDuration: TimeInterval?,
+        exerciseName: String,
         completion: ((Result<Void, Error>) -> Void)?
     )
 
@@ -64,6 +99,41 @@ final class DefaultWatchTimerSyncService: WatchTimerSyncService {
         connectivity.sendMessage(message, completion: completion)
     }
 
+    func sendWorkoutSessionEnded(
+        healthKitUUID: UUID?,
+        correlationID: UUID?,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        let message = WorkoutSessionEndedMessage(
+            healthKitWorkoutUUID: healthKitUUID,
+            correlationID: correlationID
+        )
+        // Dual delivery: transferUserInfo is reliable (queued by the system and
+        // delivered even when iPhone is closed), while sendMessage provides
+        // immediate delivery when iPhone is already reachable.
+        // iPhone deduplicates messages that arrive via both paths.
+        connectivity.transferUserInfo(message)
+        connectivity.sendMessage(message, completion: completion)
+        Logger.healthKit.info("Sent workoutSessionEnded (dual delivery), UUID: \(healthKitUUID?.uuidString ?? "none"), correlationID: \(correlationID?.uuidString ?? "none")")
+    }
+
+    func sendTimerStartedOnWatch(
+        kind: TimerKind,
+        totalDuration: TimeInterval,
+        intervalDuration: TimeInterval?,
+        exerciseName: String,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        let message = TimerStartedOnWatchMessage(
+            timerKind: kind,
+            totalDuration: totalDuration,
+            intervalDuration: intervalDuration,
+            exerciseName: exerciseName
+        )
+        // Best-effort: sendMessage only (Watch workout proceeds regardless)
+        connectivity.sendMessage(message, completion: completion)
+    }
+
     // MARK: - Internal (for WatchMessageCoordinator)
 
     /// Handles a control message forwarded from the coordinator.
@@ -84,6 +154,24 @@ final class SilentWatchTimerSyncService: WatchTimerSyncService {
 
     func sendTimerControl(
         _ action: TimerControlAction,
+        completion: ((Result<Void, Error>) -> Void)?
+    ) {
+        // No-op for standalone timers
+    }
+
+    func sendWorkoutSessionEnded(
+        healthKitUUID: UUID?,
+        correlationID: UUID?,
+        completion: ((Result<Void, Error>) -> Void)?
+    ) {
+        // No-op for standalone timers
+    }
+
+    func sendTimerStartedOnWatch(
+        kind: TimerKind,
+        totalDuration: TimeInterval,
+        intervalDuration: TimeInterval?,
+        exerciseName: String,
         completion: ((Result<Void, Error>) -> Void)?
     ) {
         // No-op for standalone timers

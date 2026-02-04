@@ -50,6 +50,9 @@ struct EMOMTimerView: View {
     /// Interval duration for Watch sync message (EMOM-specific).
     private let syncIntervalDuration: TimeInterval?
 
+    /// Pre-generated correlation ID for Watch ↔ iPhone UUID matching.
+    private let correlationID: UUID?
+
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
 
@@ -70,7 +73,8 @@ struct EMOMTimerView: View {
         syncService: TimerSyncService? = nil,
         healthKitService: (any HealthKitService)? = nil,
         exerciseName: String = "Workout",
-        syncIntervalDuration: TimeInterval? = nil
+        syncIntervalDuration: TimeInterval? = nil,
+        correlationID: UUID? = nil
     ) {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
@@ -80,6 +84,7 @@ struct EMOMTimerView: View {
         self.healthKitService = healthKitService
         self.exerciseName = exerciseName
         self.syncIntervalDuration = syncIntervalDuration
+        self.correlationID = correlationID
     }
 
     // MARK: - Styling
@@ -124,10 +129,15 @@ struct EMOMTimerView: View {
         if timerModel.isRunning {
             timerModel.pause()
             session.onTimerPaused()
-            mirroredWorkout?.pause()
-            syncService?.sendTimerControl(.pause) { result in
-                if case .failure(let error) = result {
-                    Logger.timerSync.warning("sendTimerControl(.pause) failed: \(error.localizedDescription)")
+            // Prefer mirrored session for pause (reliable HK path).
+            // Fall back to WC message only when no mirrored session exists.
+            if mirroredWorkout != nil {
+                mirroredWorkout?.pause()
+            } else {
+                syncService?.sendTimerControl(.pause) { result in
+                    if case .failure(let error) = result {
+                        Logger.timerSync.warning("sendTimerControl(.pause) failed: \(error.localizedDescription)")
+                    }
                 }
             }
         } else {
@@ -151,10 +161,15 @@ struct EMOMTimerView: View {
         // Skip countdown on resume - timer starts immediately
         if session.hasEverStarted {
             startAndScheduleHintHide()
-            mirroredWorkout?.resume()
-            syncService?.sendTimerControl(.play) { result in
-                if case .failure(let error) = result {
-                    Logger.timerSync.warning("sendTimerControl(.play) failed: \(error.localizedDescription)")
+            // Prefer mirrored session for resume (reliable HK path).
+            // Fall back to WC message only when no mirrored session exists.
+            if mirroredWorkout != nil {
+                mirroredWorkout?.resume()
+            } else {
+                syncService?.sendTimerControl(.play) { result in
+                    if case .failure(let error) = result {
+                        Logger.timerSync.warning("sendTimerControl(.play) failed: \(error.localizedDescription)")
+                    }
                 }
             }
             return
@@ -170,6 +185,7 @@ struct EMOMTimerView: View {
             intervalDuration: syncIntervalDuration,
             exerciseName: exerciseName,
             scheduledStartTime: scheduledStartTime,
+            correlationID: correlationID,
             completion: nil
         )
 
@@ -338,6 +354,7 @@ struct EMOMTimerView: View {
             onWorkoutCompleted: { data in
                 var augmented = data
                 augmented.watchHandledWorkout = watchHandledWorkout
+                augmented.correlationID = correlationID
                 onWorkoutCompleted?(augmented)
             }
         )

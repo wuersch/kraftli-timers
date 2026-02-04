@@ -44,6 +44,9 @@ struct AMRAPTimerView: View {
     /// Exercise name for Watch sync message.
     private let exerciseName: String
 
+    /// Pre-generated correlation ID for Watch ↔ iPhone UUID matching.
+    private let correlationID: UUID?
+
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private static let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
@@ -61,7 +64,8 @@ struct AMRAPTimerView: View {
         confettiEnabled: Bool = true,
         syncService: TimerSyncService? = nil,
         healthKitService: (any HealthKitService)? = nil,
-        exerciseName: String = "Workout"
+        exerciseName: String = "Workout",
+        correlationID: UUID? = nil
     ) {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
@@ -69,6 +73,7 @@ struct AMRAPTimerView: View {
         self.syncService = syncService
         self.healthKitService = healthKitService
         self.exerciseName = exerciseName
+        self.correlationID = correlationID
     }
 
     // MARK: - Styling
@@ -106,10 +111,15 @@ struct AMRAPTimerView: View {
         if timerModel.isRunning {
             timerModel.pause()
             session.onTimerPaused()
-            mirroredWorkout?.pause()
-            syncService?.sendTimerControl(.pause) { result in
-                if case .failure(let error) = result {
-                    Logger.timerSync.warning("sendTimerControl(.pause) failed: \(error.localizedDescription)")
+            // Prefer mirrored session for pause (reliable HK path).
+            // Fall back to WC message only when no mirrored session exists.
+            if mirroredWorkout != nil {
+                mirroredWorkout?.pause()
+            } else {
+                syncService?.sendTimerControl(.pause) { result in
+                    if case .failure(let error) = result {
+                        Logger.timerSync.warning("sendTimerControl(.pause) failed: \(error.localizedDescription)")
+                    }
                 }
             }
             Self.mediumHaptic.impactOccurred()
@@ -134,10 +144,15 @@ struct AMRAPTimerView: View {
         // Skip countdown on resume - timer starts immediately
         if session.hasEverStarted {
             startAndScheduleHintHide()
-            mirroredWorkout?.resume()
-            syncService?.sendTimerControl(.play) { result in
-                if case .failure(let error) = result {
-                    Logger.timerSync.warning("sendTimerControl(.play) failed: \(error.localizedDescription)")
+            // Prefer mirrored session for resume (reliable HK path).
+            // Fall back to WC message only when no mirrored session exists.
+            if mirroredWorkout != nil {
+                mirroredWorkout?.resume()
+            } else {
+                syncService?.sendTimerControl(.play) { result in
+                    if case .failure(let error) = result {
+                        Logger.timerSync.warning("sendTimerControl(.play) failed: \(error.localizedDescription)")
+                    }
                 }
             }
             return
@@ -153,6 +168,7 @@ struct AMRAPTimerView: View {
             intervalDuration: nil,
             exerciseName: exerciseName,
             scheduledStartTime: scheduledStartTime,
+            correlationID: correlationID,
             completion: nil
         )
 
@@ -321,6 +337,7 @@ struct AMRAPTimerView: View {
             onWorkoutCompleted: { data in
                 var augmented = data
                 augmented.watchHandledWorkout = watchHandledWorkout
+                augmented.correlationID = correlationID
                 onWorkoutCompleted?(augmented)
             }
         )

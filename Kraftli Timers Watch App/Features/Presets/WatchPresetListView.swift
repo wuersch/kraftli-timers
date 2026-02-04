@@ -32,19 +32,21 @@ enum TimerPresentation: Identifiable, Equatable {
         intervalDuration: TimeInterval,
         exerciseName: String,
         displayOnly: Bool = false,
-        scheduledStartTime: Date? = nil
+        scheduledStartTime: Date? = nil,
+        correlationID: UUID? = nil
     )
     case amrap(
         duration: TimeInterval,
         exerciseName: String,
         displayOnly: Bool = false,
-        scheduledStartTime: Date? = nil
+        scheduledStartTime: Date? = nil,
+        correlationID: UUID? = nil
     )
 
     var id: String {
         switch self {
-        case .emom(let duration, let interval, _, _, _): return "emom-\(duration)-\(interval)"
-        case .amrap(let duration, _, _, _): return "amrap-\(duration)"
+        case .emom(let duration, let interval, _, _, _, _): return "emom-\(duration)-\(interval)"
+        case .amrap(let duration, _, _, _, _): return "amrap-\(duration)"
         }
     }
 
@@ -57,14 +59,16 @@ enum TimerPresentation: Identifiable, Equatable {
                 intervalDuration: message.intervalDuration ?? 60,
                 exerciseName: message.exerciseName,
                 displayOnly: message.displayOnly,
-                scheduledStartTime: message.scheduledStartTime
+                scheduledStartTime: message.scheduledStartTime,
+                correlationID: message.correlationID
             )
         case .amrap:
             return .amrap(
                 duration: message.totalDuration,
                 exerciseName: message.exerciseName,
                 displayOnly: message.displayOnly,
-                scheduledStartTime: message.scheduledStartTime
+                scheduledStartTime: message.scheduledStartTime,
+                correlationID: message.correlationID
             )
         }
     }
@@ -112,22 +116,24 @@ struct WatchPresetListView: View {
         }
         .fullScreenCover(item: $activeTimer) { timer in
             switch timer {
-            case .emom(let duration, let intervalDuration, let exerciseName, let displayOnly, let scheduledStartTime):
+            case .emom(let duration, let intervalDuration, let exerciseName, let displayOnly, let scheduledStartTime, let correlationID):
                 WatchEMOMTimerView(
                     totalDuration: duration,
                     intervalDuration: intervalDuration,
                     exerciseName: exerciseName,
                     displayOnly: displayOnly,
-                    syncService: displayOnly ? syncService : nil,
-                    scheduledStartTime: scheduledStartTime
+                    syncService: syncService ?? DefaultWatchTimerSyncService(),
+                    scheduledStartTime: scheduledStartTime,
+                    correlationID: correlationID
                 )
-            case .amrap(let duration, let exerciseName, let displayOnly, let scheduledStartTime):
+            case .amrap(let duration, let exerciseName, let displayOnly, let scheduledStartTime, let correlationID):
                 WatchAMRAPTimerView(
                     totalDuration: duration,
                     exerciseName: exerciseName,
                     displayOnly: displayOnly,
-                    syncService: displayOnly ? syncService : nil,
-                    scheduledStartTime: scheduledStartTime
+                    syncService: syncService ?? DefaultWatchTimerSyncService(),
+                    scheduledStartTime: scheduledStartTime,
+                    correlationID: correlationID
                 )
             }
         }
