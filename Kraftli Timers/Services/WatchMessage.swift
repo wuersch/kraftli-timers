@@ -120,7 +120,8 @@ struct TimerControlMessage: WatchMessage, Equatable {
 /// Message sent from Watch to iPhone when an HKWorkoutSession ends.
 ///
 /// Contains the HealthKit workout UUID so iPhone can correlate its
-/// SwiftData WorkoutLog with the Watch's HealthKit workout.
+/// SwiftData WorkoutLog with the Watch's HealthKit workout, plus
+/// workout metrics (heart rate, calories) for the summary screen.
 struct WorkoutSessionEndedMessage: WatchMessage, Equatable {
     var messageType: WatchMessageType { .workoutSessionEnded }
 
@@ -131,15 +132,38 @@ struct WorkoutSessionEndedMessage: WatchMessage, Equatable {
     /// the UUID to the exact WorkoutLog, rather than using a fragile "latest" heuristic.
     let correlationID: UUID?
 
-    init(healthKitWorkoutUUID: UUID?, correlationID: UUID? = nil) {
+    // MARK: - Workout Metrics
+
+    /// Average heart rate during the workout (beats per minute).
+    let averageHeartRate: Double?
+
+    /// Maximum heart rate during the workout (beats per minute).
+    let maxHeartRate: Double?
+
+    /// Active calories burned during the workout (kilocalories).
+    let activeCalories: Double?
+
+    init(
+        healthKitWorkoutUUID: UUID?,
+        correlationID: UUID? = nil,
+        averageHeartRate: Double? = nil,
+        maxHeartRate: Double? = nil,
+        activeCalories: Double? = nil
+    ) {
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
         self.correlationID = correlationID
+        self.averageHeartRate = averageHeartRate
+        self.maxHeartRate = maxHeartRate
+        self.activeCalories = activeCalories
     }
 
     // Custom Codable to exclude computed messageType
     private enum CodingKeys: String, CodingKey {
         case healthKitWorkoutUUID
         case correlationID
+        case averageHeartRate
+        case maxHeartRate
+        case activeCalories
     }
 }
 

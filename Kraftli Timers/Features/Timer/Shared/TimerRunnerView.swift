@@ -23,6 +23,12 @@ struct TimerRunnerView: View {
     /// Service for saving workouts to HealthKit.
     private let healthKitService: any HealthKitService
 
+    /// Data for the workout summary screen, set when Watch sends completion message.
+    @State private var summaryData: WorkoutSummaryData?
+
+    /// Tracks completion data from the timer for summary display.
+    @State private var lastCompletionData: WorkoutCompletionData?
+
     init(
         preset: TimerPreset,
         timerSyncService: TimerSyncService = DefaultTimerSyncService(),
@@ -39,7 +45,13 @@ struct TimerRunnerView: View {
                 .navigationTitle("\(preset.exerciseInfo?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)")
                 .navigationBarTitleDisplayMode(.inline)
                 .onReceive(timerSyncService.workoutSessionEndedReceived) { endedMessage in
-                    updateLogWithWatchUUID(endedMessage)
+                    handleWorkoutSessionEnded(endedMessage)
+                }
+                .fullScreenCover(item: $summaryData) { data in
+                    WorkoutSummaryView(
+                        data: data,
+                        confettiEnabled: settings.confettiEnabled
+                    )
                 }
         }
     }
@@ -101,9 +113,33 @@ struct TimerRunnerView: View {
         return preset.durationInterval / Double(targetReps)
     }
 
+    /// Handles the workout session ended message from Watch.
+    ///
+    /// Updates the WorkoutLog with the HealthKit UUID, then shows the summary
+    /// screen if health data is available and the setting is enabled.
+    private func handleWorkoutSessionEnded(_ endedMessage: WorkoutSessionEndedMessage) {
+        // First, update the log with the HealthKit UUID
+        updateLogWithWatchUUID(endedMessage)
+
+        // Then, check if we should show the summary
+        let data = WorkoutSummaryData(
+            exerciseName: preset.exerciseInfo?.name ?? "Workout",
+            timerKind: preset.kind,
+            duration: lastCompletionData?.durationSeconds ?? preset.durationInterval,
+            reps: lastCompletionData?.repsCompleted ?? preset.targetReps,
+            rounds: lastCompletionData?.roundsCompleted,
+            averageHeartRate: endedMessage.averageHeartRate,
+            maxHeartRate: endedMessage.maxHeartRate,
+            activeCalories: endedMessage.activeCalories
+        )
+
+        if data.hasHealthData && settings.workoutSummaryEnabled {
+            summaryData = data
+        }
+    }
+
     /// Updates a WorkoutLog with the Watch's HealthKit UUID.
     ///
-    /// Called when Watch sends `workoutSessionEnded` after completing its HKWorkoutSession.
     /// Uses the correlation ID for exact matching when available; falls back to the most
     /// recent log without a UUID if the correlation ID is missing (backwards compatibility).
     private func updateLogWithWatchUUID(_ endedMessage: WorkoutSessionEndedMessage) {
@@ -151,7 +187,10 @@ struct TimerRunnerView: View {
         let context = modelContext
         let healthKit = healthKitService
 
-        return { completionData in
+        return { [self] completionData in
+            // Store completion data for the workout summary
+            self.lastCompletionData = completionData
+
             Task { @MainActor in
                 // 1. Save to SwiftData first (always, regardless of HealthKit)
                 let loggingService = DefaultWorkoutLoggingService(modelContext: context)

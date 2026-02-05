@@ -37,6 +37,12 @@ final class WorkoutSessionManager: NSObject {
     /// Most recent heart rate reading (beats per minute).
     private(set) var currentHeartRate: Double?
 
+    /// Average heart rate during the workout (beats per minute).
+    private(set) var averageHeartRate: Double?
+
+    /// Maximum heart rate during the workout (beats per minute).
+    private(set) var maxHeartRate: Double?
+
     /// Accumulated active energy burned (kilocalories).
     private(set) var activeCalories: Double?
 
@@ -180,6 +186,8 @@ final class WorkoutSessionManager: NSObject {
         self.builder = nil
         sessionState = .ended
         currentHeartRate = nil
+        averageHeartRate = nil
+        maxHeartRate = nil
         activeCalories = nil
 
         return workoutUUID
@@ -281,6 +289,8 @@ extension WorkoutSessionManager: HKLiveWorkoutBuilderDelegate {
                 case HKQuantityType.quantityType(forIdentifier: .heartRate):
                     let heartRateUnit = HKUnit.count().unitDivided(by: .minute())
                     currentHeartRate = statistics.mostRecentQuantity()?.doubleValue(for: heartRateUnit)
+                    averageHeartRate = statistics.averageQuantity()?.doubleValue(for: heartRateUnit)
+                    maxHeartRate = statistics.maximumQuantity()?.doubleValue(for: heartRateUnit)
 
                 case HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned):
                     activeCalories = statistics.sumQuantity()?.doubleValue(for: .kilocalorie())
