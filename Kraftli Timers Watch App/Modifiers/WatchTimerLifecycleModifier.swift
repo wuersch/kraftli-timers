@@ -33,7 +33,8 @@ struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
                     // HealthKit session: pause/resume
                     if isRunning {
                         sessionManager.resume()
-                    } else {
+                    } else if !timer.isCompleted {
+                        // Only pause if not completed - completion ends the session directly
                         sessionManager.pause()
                     }
                 } else {
