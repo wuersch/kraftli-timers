@@ -68,7 +68,6 @@ struct ActivityChart: View {
             .frame(height: 200)
             .accessibilityLabel(accessibilityDescription)
         }
-        .padding()
         .cardStyle()
     }
     

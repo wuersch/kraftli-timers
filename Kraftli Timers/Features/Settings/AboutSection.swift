@@ -84,7 +84,7 @@ struct AboutSection: View {
                     .contentShape(Rectangle())
                 }
             }
-            .cardStyle()
+            .cardStyle(padded: false)
         }
         .sheet(isPresented: $showingAcknowledgments) {
             AcknowledgmentsView()
