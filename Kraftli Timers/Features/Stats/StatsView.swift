@@ -139,7 +139,6 @@ struct StatsView: View {
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
             }
-            .padding()
             .cardStyle()
         }
         .buttonStyle(.plain)

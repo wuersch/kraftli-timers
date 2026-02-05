@@ -35,7 +35,6 @@ struct SummaryCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
         .cardStyle()
     }
 }

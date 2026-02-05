@@ -39,7 +39,6 @@ struct ExerciseStatsCard: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
-        .padding()
         .cardStyle()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)

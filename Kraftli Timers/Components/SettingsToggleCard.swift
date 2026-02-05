@@ -42,7 +42,7 @@ struct SettingsToggleCard: View {
                 .font(.subheadline)
                 .padding()
         }
-        .cardStyle()
+        .cardStyle(padded: false)
     }
 }
 

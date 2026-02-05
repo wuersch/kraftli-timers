@@ -76,7 +76,7 @@ struct DataManagementSection: View {
                 }
                 .disabled(totalCount == 0)
             }
-            .cardStyle()
+            .cardStyle(padded: false)
         }
         .alert("Clear Workout History", isPresented: $showingClearWorkoutsAlert) {
             Button("Cancel", role: .cancel) { }

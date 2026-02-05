@@ -48,7 +48,7 @@ struct AudioSection: View {
                         .padding()
                 }
             }
-            .cardStyle()
+            .cardStyle(padded: false)
         }
     }
 }
