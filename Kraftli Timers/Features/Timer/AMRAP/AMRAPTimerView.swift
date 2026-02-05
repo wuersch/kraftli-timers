@@ -14,14 +14,11 @@ import os
 // MARK: - AMRAPTimerView
 struct AMRAPTimerView: View {
     // MARK: - Properties
-    @Environment(\.dismiss) var dismiss
     @Environment(MirroredWorkoutObserver.self) private var mirroredWorkout: MirroredWorkoutObserver?
 
     @State private var timerModel: AMRAPTimerModel
     @State private var session = TimerSessionState()
     @State private var countdown = CountdownCoordinator()
-    @State private var dragOffset: CGFloat = 0
-    @State private var isHandleActive = false
     @State private var cancellables = Set<AnyCancellable>()
     @State private var isPulsing = false
 
@@ -31,9 +28,6 @@ struct AMRAPTimerView: View {
 
     /// Called when the workout completes (timer reaches zero). Used for logging.
     private let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
-
-    /// Whether to show confetti on workout completion.
-    private let confettiEnabled: Bool
 
     /// Service for syncing timer controls with Apple Watch (nil for standalone timers).
     private let syncService: TimerSyncService?
@@ -46,6 +40,23 @@ struct AMRAPTimerView: View {
 
     /// Pre-generated correlation ID for Watch ↔ iPhone UUID matching.
     private let correlationID: UUID?
+
+    // MARK: - Bindings for Parent Coordination
+
+    /// Parent controls whether swipe is disabled (true during countdown).
+    @Binding var isSwipeDisabled: Bool
+
+    /// Parent observes hint visibility for overlay.
+    @Binding var showHint: Bool
+
+    /// Parent manages confetti display (persists across summary transition).
+    @Binding var showConfetti: Bool
+
+    /// Callback to register cleanup action for parent to call on dismiss.
+    private let onCleanupForDismiss: ((@escaping () -> Void) -> Void)?
+
+    /// Called when Watch sends a stop command - parent should dismiss.
+    private let onDismissRequested: (() -> Void)?
 
     // MARK: - Haptics
     private static let lightHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -61,19 +72,27 @@ struct AMRAPTimerView: View {
             feedbackProvider: SystemSoundFeedback()
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
-        confettiEnabled: Bool = true,
         syncService: TimerSyncService? = nil,
         healthKitService: (any HealthKitService)? = nil,
         exerciseName: String = "Workout",
-        correlationID: UUID? = nil
+        correlationID: UUID? = nil,
+        isSwipeDisabled: Binding<Bool> = .constant(false),
+        showHint: Binding<Bool> = .constant(true),
+        showConfetti: Binding<Bool> = .constant(false),
+        onCleanupForDismiss: ((@escaping () -> Void) -> Void)? = nil,
+        onDismissRequested: (() -> Void)? = nil
     ) {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
-        self.confettiEnabled = confettiEnabled
         self.syncService = syncService
         self.healthKitService = healthKitService
         self.exerciseName = exerciseName
         self.correlationID = correlationID
+        self._isSwipeDisabled = isSwipeDisabled
+        self._showHint = showHint
+        self._showConfetti = showConfetti
+        self.onCleanupForDismiss = onCleanupForDismiss
+        self.onDismissRequested = onDismissRequested
     }
 
     // MARK: - Styling
@@ -129,7 +148,8 @@ struct AMRAPTimerView: View {
         }
     }
 
-    private func handleSwipeDismiss() {
+    /// Cleanup action called by parent before dismissing.
+    private func cleanupForDismiss() {
         countdown.cancelCountdown()
         timerModel.reset()
         syncService?.sendTimerControl(.stop) { result in
@@ -137,7 +157,6 @@ struct AMRAPTimerView: View {
                 Logger.timerSync.warning("sendTimerControl(.stop) failed: \(error.localizedDescription)")
             }
         }
-        dismiss()
     }
 
     private func startCountdown() {
@@ -218,9 +237,9 @@ struct AMRAPTimerView: View {
                     }
                 },
                 onStop: { [self] in
-                    countdown.cancelCountdown()
-                    timerModel.reset()
-                    dismiss()
+                    // Watch requested stop - cleanup and tell parent to dismiss
+                    cleanupForDismiss()
+                    onDismissRequested?()
                 },
                 onIncrementRound: { [self] in
                     if timerModel.isRunning && !isCompleted {
@@ -311,22 +330,6 @@ struct AMRAPTimerView: View {
                 .onLongPressGesture(minimumDuration: 0.8) {
                     handleLongPress()
                 }
-                .swipeToDismiss(
-                    dragOffset: $dragOffset,
-                    isHandleActive: $isHandleActive,
-                    onDismiss: handleSwipeDismiss,
-                    isDisabled: countdown.isCountingDown
-                )
-
-                TimerOverlays(
-                    isCountingDown: countdown.isCountingDown,
-                    isHandleActive: isHandleActive,
-                    dragOffset: dragOffset,
-                    showHint: session.showHint,
-                    showConfetti: session.showConfetti,
-                    confettiEnabled: confettiEnabled,
-                    labelFont: sizes.labelFont
-                )
             }
         }
         .timerLifecycle(
@@ -345,9 +348,25 @@ struct AMRAPTimerView: View {
             Self.lightHaptic.prepare()
             Self.mediumHaptic.prepare()
             setupControlSubscription()
+            // Register cleanup action with parent
+            onCleanupForDismiss?(cleanupForDismiss)
         }
         .onChange(of: mirroredWorkout?.sessionState) { _, newState in
             reconcileMirroredState(newState)
+        }
+        // Sync countdown state to parent for swipe disable
+        .onChange(of: countdown.isCountingDown) { _, newValue in
+            isSwipeDisabled = newValue
+        }
+        // Sync hint visibility to parent for overlay
+        .onChange(of: session.showHint) { _, newValue in
+            showHint = newValue
+        }
+        // Sync confetti trigger to parent (parent handles display and auto-hide)
+        .onChange(of: session.showConfetti) { _, newValue in
+            if newValue {
+                showConfetti = true
+            }
         }
     }
 
