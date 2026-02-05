@@ -34,6 +34,7 @@ final class AppSettings {
         case launchScreenEnabled
         case smoothAnimationsEnabled
         case emomShowRepsInCenter
+        case workoutSummaryEnabled
     }
 
     // MARK: - Audio Preferences
@@ -70,6 +71,11 @@ final class AppSettings {
         didSet { save(emomShowRepsInCenter, for: .emomShowRepsInCenter) }
     }
 
+    /// Whether to show the workout summary screen after completing a workout with Watch.
+    var workoutSummaryEnabled: Bool {
+        didSet { save(workoutSummaryEnabled, for: .workoutSummaryEnabled) }
+    }
+
     // MARK: - Initialization
 
     init() {
@@ -79,6 +85,7 @@ final class AppSettings {
         self.launchScreenEnabled = Self.load(.launchScreenEnabled, default: true)
         self.smoothAnimationsEnabled = Self.load(.smoothAnimationsEnabled, default: true)
         self.emomShowRepsInCenter = Self.load(.emomShowRepsInCenter, default: false)
+        self.workoutSummaryEnabled = Self.load(.workoutSummaryEnabled, default: true)
     }
 
     // MARK: - Persistence Helpers

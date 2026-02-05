@@ -122,12 +122,22 @@ struct WatchWorkoutCoordinator {
         timer.reset()
 
         if sessionManager.sessionState != .idle {
+            // Capture metrics before ending session (they're cleared on end)
+            let averageHeartRate = sessionManager.averageHeartRate
+            let maxHeartRate = sessionManager.maxHeartRate
+            let activeCalories = sessionManager.activeCalories
+
             Task {
                 let uuid = try? await sessionManager.endSession()
                 sessionManager.resetToIdle()
 
                 if config.displayOnly {
-                    sendWorkoutSessionEnded(healthKitUUID: uuid)
+                    sendWorkoutSessionEnded(
+                        healthKitUUID: uuid,
+                        averageHeartRate: averageHeartRate,
+                        maxHeartRate: maxHeartRate,
+                        activeCalories: activeCalories
+                    )
                 }
             }
         }
@@ -253,6 +263,11 @@ struct WatchWorkoutCoordinator {
     /// Handles workout completion: ends HK session and either logs locally
     /// (standalone) or sends UUID to iPhone (display-only/mirrored).
     func handleWorkoutCompleted(modelContext: ModelContext) async {
+        // Capture metrics before ending session (they're cleared on end)
+        let averageHeartRate = sessionManager.averageHeartRate
+        let maxHeartRate = sessionManager.maxHeartRate
+        let activeCalories = sessionManager.activeCalories
+
         var healthKitUUID: UUID? = nil
         if sessionManager.sessionState == .running || sessionManager.sessionState == .paused {
             do {
@@ -263,22 +278,35 @@ struct WatchWorkoutCoordinator {
         }
 
         if config.displayOnly {
-            sendWorkoutSessionEnded(healthKitUUID: healthKitUUID)
+            sendWorkoutSessionEnded(
+                healthKitUUID: healthKitUUID,
+                averageHeartRate: averageHeartRate,
+                maxHeartRate: maxHeartRate,
+                activeCalories: activeCalories
+            )
         } else {
             let log = config.makeWorkoutLog(healthKitUUID)
             modelContext.insert(log)
             try? modelContext.save()
         }
 
-        Logger.healthKit.info("Watch \(config.timerKind.rawValue) workout completed, HealthKit UUID: \(healthKitUUID?.uuidString ?? "none"), displayOnly: \(config.displayOnly)")
+        Logger.healthKit.info("Watch \(config.timerKind.rawValue) workout completed, HealthKit UUID: \(healthKitUUID?.uuidString ?? "none"), displayOnly: \(config.displayOnly), avgHR: \(averageHeartRate.map { String(format: "%.0f", $0) } ?? "none")")
     }
 
     // MARK: - Private
 
-    private func sendWorkoutSessionEnded(healthKitUUID: UUID?) {
+    private func sendWorkoutSessionEnded(
+        healthKitUUID: UUID?,
+        averageHeartRate: Double?,
+        maxHeartRate: Double?,
+        activeCalories: Double?
+    ) {
         syncService.sendWorkoutSessionEnded(
             healthKitUUID: healthKitUUID,
             correlationID: config.correlationID,
+            averageHeartRate: averageHeartRate,
+            maxHeartRate: maxHeartRate,
+            activeCalories: activeCalories,
             completion: nil
         )
     }
