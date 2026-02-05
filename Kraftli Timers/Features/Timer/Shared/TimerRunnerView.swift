@@ -14,6 +14,7 @@ import os
 struct TimerRunnerView: View {
     let preset: TimerPreset
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
 
@@ -29,6 +30,29 @@ struct TimerRunnerView: View {
     /// Tracks completion data from the timer for summary display.
     @State private var lastCompletionData: WorkoutCompletionData?
 
+    // MARK: - Swipe Gesture State
+
+    /// Current vertical drag offset.
+    @State private var dragOffset: CGFloat = 0
+
+    /// Whether the drag handle is currently active (being dragged).
+    @State private var isHandleActive = false
+
+    /// Whether swipe is disabled (true during countdown).
+    @State private var isSwipeDisabled = false
+
+    /// Whether to show the swipe hint.
+    @State private var showHint = true
+
+    /// Whether to show confetti (triggered by timer completion, persists across summary transition).
+    @State private var showConfetti = false
+
+    /// Task to auto-hide confetti after 3 seconds.
+    @State private var confettiHideTask: Task<Void, Never>?
+
+    /// Cleanup action registered by timer view, called before dismissing.
+    @State private var timerCleanup: (() -> Void)?
+
     init(
         preset: TimerPreset,
         timerSyncService: TimerSyncService = DefaultTimerSyncService(),
@@ -41,19 +65,76 @@ struct TimerRunnerView: View {
 
     var body: some View {
         NavigationStack {
-            timerContent
-                .navigationTitle("\(preset.exerciseInfo?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)")
-                .navigationBarTitleDisplayMode(.inline)
-                .onReceive(timerSyncService.workoutSessionEndedReceived) { endedMessage in
-                    handleWorkoutSessionEnded(endedMessage)
+            ZStack {
+                if let data = summaryData {
+                    // Show summary inline (replaces timer content)
+                    WorkoutSummaryContent(data: data)
+                } else {
+                    timerContent
                 }
-                .fullScreenCover(item: $summaryData) { data in
-                    WorkoutSummaryView(
-                        data: data,
-                        confettiEnabled: settings.confettiEnabled
-                    )
+            }
+            .swipeToDismiss(
+                dragOffset: $dragOffset,
+                isHandleActive: $isHandleActive,
+                onDismiss: handleDismiss,
+                isDisabled: isSwipeDisabled
+            )
+            .overlay {
+                // Hide handle during countdown
+                if !isSwipeDisabled {
+                    DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
                 }
+            }
+            .overlay {
+                // Show hint: always for summary, use timer's showHint otherwise
+                SwipeHintOverlay(isVisible: shouldShowHint, fontSize: 15)
+            }
+            .overlay {
+                // Confetti persists across timer→summary transition
+                if showConfetti && settings.confettiEnabled {
+                    ConfettiView()
+                        .ignoresSafeArea(.all)
+                        .allowsHitTesting(false)
+                }
+            }
+            .onChange(of: showConfetti) { _, newValue in
+                if newValue {
+                    confettiHideTask?.cancel()
+                    confettiHideTask = Task {
+                        try? await Task.sleep(for: .seconds(3))
+                        guard !Task.isCancelled else { return }
+                        showConfetti = false
+                    }
+                }
+            }
+            .navigationTitle(navigationTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .onReceive(timerSyncService.workoutSessionEndedReceived) { endedMessage in
+                handleWorkoutSessionEnded(endedMessage)
+            }
         }
+    }
+
+    /// Whether to show the swipe hint.
+    /// Summary: always show. Timer: use timer's hint state.
+    private var shouldShowHint: Bool {
+        if summaryData != nil {
+            return true
+        }
+        return showHint
+    }
+
+    /// Handles dismiss gesture - cleans up timer if running, then dismisses.
+    private func handleDismiss() {
+        if summaryData == nil {
+            // Timer is showing - call cleanup first
+            timerCleanup?()
+        }
+        dismiss()
+    }
+
+    private var navigationTitle: String {
+        "\(preset.exerciseInfo?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)"
     }
 
     private var timerProvider: any TimerProvider {
@@ -81,13 +162,17 @@ struct TimerRunnerView: View {
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
-                confettiEnabled: settings.confettiEnabled,
                 showRepsInCenter: settings.emomShowRepsInCenter,
                 syncService: timerSyncService,
                 healthKitService: healthKitService,
                 exerciseName: preset.exerciseInfo?.name ?? "Workout",
                 syncIntervalDuration: intervalDuration,
-                correlationID: correlationID
+                correlationID: correlationID,
+                isSwipeDisabled: $isSwipeDisabled,
+                showHint: $showHint,
+                showConfetti: $showConfetti,
+                onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
+                onDismissRequested: { dismiss() }
             )
         case .amrap:
             AMRAPTimerView(
@@ -97,11 +182,15 @@ struct TimerRunnerView: View {
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
-                confettiEnabled: settings.confettiEnabled,
                 syncService: timerSyncService,
                 healthKitService: healthKitService,
                 exerciseName: preset.exerciseInfo?.name ?? "Workout",
-                correlationID: correlationID
+                correlationID: correlationID,
+                isSwipeDisabled: $isSwipeDisabled,
+                showHint: $showHint,
+                showConfetti: $showConfetti,
+                onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
+                onDismissRequested: { dismiss() }
             )
         }
     }
