@@ -166,7 +166,7 @@ struct WatchEMOMTimerView: View {
             .overlay(alignment: .topLeading) {
                 // Hide interval counter during countdown
                 if !countdown.isCountingDown {
-                    Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
+                    Text("\(timerModel.currentInterval)/\(timerModel.totalIntervals)")
                         .font(.system(size: ringSize * 0.11, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary).padding(16)
                 }
