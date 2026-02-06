@@ -149,8 +149,8 @@ struct EMOMTimerView: View {
             timerModel.pause()
             session.onTimerPaused()
             // Prefer mirrored session for pause (reliable HK path).
-            // Fall back to WC message only when no mirrored session exists.
-            if mirroredWorkout != nil {
+            // Fall back to WC message only when no active mirrored session exists.
+            if mirroredWorkout?.hasActiveSession == true {
                 mirroredWorkout?.pause()
             } else {
                 syncService?.sendTimerControl(.pause) { result in
@@ -181,8 +181,8 @@ struct EMOMTimerView: View {
         if session.hasEverStarted {
             startAndScheduleHintHide()
             // Prefer mirrored session for resume (reliable HK path).
-            // Fall back to WC message only when no mirrored session exists.
-            if mirroredWorkout != nil {
+            // Fall back to WC message only when no active mirrored session exists.
+            if mirroredWorkout?.hasActiveSession == true {
                 mirroredWorkout?.resume()
             } else {
                 syncService?.sendTimerControl(.play) { result in
