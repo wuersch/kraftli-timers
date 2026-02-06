@@ -69,7 +69,7 @@ struct StatsView: View {
     // MARK: - Stats Content
     private var statsContent: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 periodPicker
                 summarySection
                 muscleGroupSection
