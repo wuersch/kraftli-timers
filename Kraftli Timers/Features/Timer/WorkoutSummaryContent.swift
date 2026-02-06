@@ -22,7 +22,7 @@ struct WorkoutSummaryContent: View {
     let data: WorkoutSummaryData
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Spacer()
                 .frame(height: 20)
 
