@@ -114,7 +114,7 @@ struct EMOMTimerView: View {
 
     // MARK: - Helpers
     private func makeRepsText(accent: Color) -> AttributedString {
-        var attr = AttributedString("\(timerModel.completedIntervals)/\(timerModel.totalIntervals) REPS")
+        var attr = AttributedString("\(timerModel.currentInterval)/\(timerModel.totalIntervals) REPS")
         attr.foregroundColor = .primary
         if let repsRange = attr.range(of: " REPS") {
             attr[repsRange].foregroundColor = accent
@@ -405,7 +405,7 @@ struct EMOMTimerView: View {
 
             if showRepsInCenter {
                 // Reps-focused mode: show reps count prominently
-                Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
+                Text("\(timerModel.currentInterval)/\(timerModel.totalIntervals)")
                     .font(
                         .system(
                             size: sizes.primaryFont,
@@ -418,7 +418,7 @@ struct EMOMTimerView: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Reps completed")
                     .accessibilityValue(
-                        "\(timerModel.completedIntervals) of \(timerModel.totalIntervals)"
+                        "\(timerModel.currentInterval) of \(timerModel.totalIntervals)"
                     )
 
                 // Third element for vertical balance
@@ -480,7 +480,7 @@ struct EMOMTimerView: View {
                         .accessibilityHidden(true)
                 } else {
                     RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor, fontSize: sizes.pillFont)
-                        .accessibilityLabel("\(timerModel.completedIntervals) of \(timerModel.totalIntervals) repetitions completed")
+                        .accessibilityLabel("Round \(timerModel.currentInterval) of \(timerModel.totalIntervals)")
                 }
             }
         }

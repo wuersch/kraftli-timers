@@ -52,6 +52,13 @@ public class EMOMTimerModel: WorkoutTimer {
         let elapsedTime = totalDuration - totalTimeRemaining
         return Int(elapsedTime / intervalDuration)
     }
+
+    /// The interval currently in progress (1-based), for display purposes.
+    /// Starts at 1 when the workout begins, caps at `totalIntervals` when done.
+    @MainActor
+    var currentInterval: Int {
+        min(completedIntervals + 1, totalIntervals)
+    }
     
     @MainActor
     var totalIntervals: Int {
@@ -188,11 +195,11 @@ public class EMOMTimerModel: WorkoutTimer {
         // Derive interval time from total elapsed (single source of truth)
         if preciseTotalTimeRemaining > 0 {
             // Detect interval transitions (use precise timing)
-            let currentInterval = Int(totalElapsed / intervalDuration)
-            if currentInterval > lastCompletedInterval {
-                lastCompletedInterval = currentInterval
+            let elapsedIntervalCount = Int(totalElapsed / intervalDuration)
+            if elapsedIntervalCount > lastCompletedInterval {
+                lastCompletedInterval = elapsedIntervalCount
                 lastWarningTriggered = false
-                if currentInterval > 0 {
+                if elapsedIntervalCount > 0 {
                     feedbackProvider.onIntervalComplete()
                 }
             }
