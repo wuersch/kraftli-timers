@@ -45,6 +45,13 @@ final class MirroredWorkoutObserver: NSObject {
         case ended
     }
 
+    /// Whether a mirrored HKWorkoutSession is currently active.
+    /// Use this to decide whether to route pause/resume through HK mirroring
+    /// vs. the WCSession fallback.
+    var hasActiveSession: Bool {
+        session != nil
+    }
+
     // MARK: - Private State
 
     private var session: HKWorkoutSession?
