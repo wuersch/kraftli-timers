@@ -129,6 +129,13 @@ struct TimerRunnerView: View {
         if summaryData == nil {
             // Timer is showing - call cleanup first
             timerCleanup?()
+        } else {
+            // Summary is showing - timer already completed, just tell Watch to dismiss
+            timerSyncService.sendTimerControl(.stop) { result in
+                if case .failure(let error) = result {
+                    Logger.timerSync.warning("sendTimerControl(.stop) on summary dismiss failed: \(error.localizedDescription)")
+                }
+            }
         }
         dismiss()
     }
