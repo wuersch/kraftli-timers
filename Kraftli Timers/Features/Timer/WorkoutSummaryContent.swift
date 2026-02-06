@@ -23,9 +23,6 @@ struct WorkoutSummaryContent: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Spacer()
-                .frame(height: 20)
-
             header
                 .padding(.bottom, 8)
 
@@ -35,8 +32,6 @@ struct WorkoutSummaryContent: View {
 
             healthLink
                 .padding(.top, 8)
-
-            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -45,7 +40,7 @@ struct WorkoutSummaryContent: View {
 
     private var header: some View {
         VStack(spacing: 4) {
-            Text("Workout completed")
+            Text("Summary")
                 .font(.title2.weight(.semibold))
 
             Text(data.headerSubtitle)
