@@ -113,31 +113,38 @@ struct WatchEMOMTimerView: View {
             ZStack {
                 VStack(spacing: 6) {
                     ZStack {
-                        // Rings - stay full during countdown
+                        // Rings - stay full during countdown, fill green on completion
                         ProgressRing(
                             size: ringSize,
                             lineWidth: outerLineWidth,
-                            progress: countdown.isCountingDown ? 1.0 : timerModel.overallProgress,
-                            color: Color.primary,
+                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.overallProgress),
+                            color: isCompleted ? .green : Color.primary,
                             backgroundColor: Color.gray.opacity(0.3),
                             rotationDegrees: -90
                         )
                         ProgressRing(
                             size: ringSize * 0.85,
                             lineWidth: innerLineWidth,
-                            progress: countdown.isCountingDown ? 1.0 : timerModel.intervalProgress,
-                            color: accentColor,
+                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.intervalProgress),
+                            color: isCompleted ? .green : accentColor,
                             backgroundColor: Color.gray.opacity(0.3),
                             rotationDegrees: -90
                         )
+                        .animation(.easeOut(duration: 0.6), value: isCompleted)
 
                         // Center content - switches between countdown and normal display
                         if countdown.isCountingDown {
                             countdownCenterContent(ringSize: ringSize)
                         } else if isCompleted {
-                            Text("DONE")
-                                .font(.system(size: ringSize * 0.22, weight: .medium))
-                                .foregroundStyle(.green)
+                            VStack(spacing: 2) {
+                                Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
+                                    .font(.system(size: ringSize * 0.22, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.green)
+                                    .monospacedDigit()
+                                Text("DONE")
+                                    .font(.system(size: ringSize * 0.10, weight: .medium))
+                                    .foregroundStyle(.green)
+                            }
                         } else {
                             Text(timerModel.intervalTimeRemaining.formatted)
                                 .font(.system(size: ringSize * 0.22, weight: .semibold, design: .rounded))
@@ -149,8 +156,9 @@ struct WatchEMOMTimerView: View {
                     // Bottom section - ZStack maintains consistent height
                     ZStack {
                         // Normal total time (always present for layout)
-                        Text(timerModel.totalTimeRemaining.formatted)
+                        Text(isCompleted ? totalDuration.formatted : timerModel.totalTimeRemaining.formatted)
                             .font(.system(size: ringSize * 0.16, weight: .bold, design: .rounded))
+                            .foregroundStyle(isCompleted ? .green : .primary)
                             .monospacedDigit()
                             .opacity(countdown.isCountingDown ? 0 : 1)
 
@@ -167,8 +175,8 @@ struct WatchEMOMTimerView: View {
                 // Hide interval counter during countdown
                 if !countdown.isCountingDown {
                     Text("\(timerModel.currentInterval)/\(timerModel.totalIntervals)")
-                        .font(.system(size: ringSize * 0.11, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary).padding(16)
+                        .font(.system(size: ringSize * 0.12, weight: .medium, design: .rounded))
+                        .foregroundStyle(isCompleted ? .green : accentColor).padding(16)
                 }
             }
             .overlay(alignment: .bottom) {

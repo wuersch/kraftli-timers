@@ -128,7 +128,7 @@ struct WatchWorkoutCoordinator {
             let activeCalories = sessionManager.activeCalories
 
             Task {
-                let uuid = try? await sessionManager.endSession()
+                let uuid = await sessionManager.endSession()
                 sessionManager.resetToIdle()
 
                 if config.displayOnly {
@@ -270,11 +270,7 @@ struct WatchWorkoutCoordinator {
 
         var healthKitUUID: UUID? = nil
         if sessionManager.sessionState == .running || sessionManager.sessionState == .paused {
-            do {
-                healthKitUUID = try await sessionManager.endSession()
-            } catch {
-                Logger.workoutSession.error("Failed to end workout session: \(error.localizedDescription)")
-            }
+            healthKitUUID = await sessionManager.endSession()
         }
 
         if config.displayOnly {
