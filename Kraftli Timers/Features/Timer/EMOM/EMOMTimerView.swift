@@ -302,12 +302,12 @@ struct EMOMTimerView: View {
             ZStack {
                 VStack(spacing: sizes.spacing) {
                     ZStack {
-                        // Rings - stay full during countdown
+                        // Rings - stay full during countdown, fill green on completion
                         ProgressRing(
                             size: sizes.primaryRing,
                             lineWidth: sizes.primaryLineWidth,
-                            progress: countdown.isCountingDown ? 1.0 : timerModel.intervalProgress,
-                            color: accentColor,
+                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.intervalProgress),
+                            color: isCompleted ? .green : accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -89.5
                         )
@@ -316,12 +316,13 @@ struct EMOMTimerView: View {
                         ProgressRing(
                             size: sizes.secondaryRing!,
                             lineWidth: sizes.secondaryLineWidth!,
-                            progress: countdown.isCountingDown ? 1.0 : timerModel.overallProgress,
-                            color: .primary,
+                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.overallProgress),
+                            color: isCompleted ? .green : .primary,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -90.5
                         )
                         .accessibilityHidden(true)
+                        .animation(.easeOut(duration: 0.6), value: isCompleted)
 
                         // Center content - switches between countdown and normal display
                         if countdown.isCountingDown {
@@ -339,7 +340,9 @@ struct EMOMTimerView: View {
                         totalTimeRemaining: timerModel.totalTimeRemaining,
                         isCountingDown: countdown.isCountingDown,
                         isPulsing: $isPulsing,
-                        sizes: sizes
+                        sizes: sizes,
+                        isCompleted: isCompleted,
+                        totalDuration: timerModel.totalDuration
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -399,9 +402,9 @@ struct EMOMTimerView: View {
     @ViewBuilder
     private func normalCenterContent(sizes: TimerSizes) -> some View {
         VStack(spacing: 8) {
-            Text(showRepsInCenter ? "REPS" : "INTERVAL")
+            Text(showRepsInCenter ? "REPS" : (isCompleted ? "INTERVALS" : "INTERVAL"))
                 .font(.system(size: sizes.labelFont))
-                .foregroundStyle(.gray)
+                .foregroundStyle(isCompleted ? .green : .gray)
 
             if showRepsInCenter {
                 // Reps-focused mode: show reps count prominently
@@ -447,22 +450,40 @@ struct EMOMTimerView: View {
                         .accessibilityValue(timerModel.intervalTimeRemaining.formatted)
                 }
             } else {
-                // Interval-focused mode: show countdown
-                Text(timerModel.intervalTimeRemaining.formatted)
-                    .font(
-                        .system(
-                            size: sizes.primaryFont,
-                            weight: .semibold,
-                            design: .rounded
+                // Interval-focused mode: show countdown, or completed intervals when done
+                if isCompleted {
+                    Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
+                        .font(
+                            .system(
+                                size: sizes.primaryFont,
+                                weight: .semibold,
+                                design: .rounded
+                            )
                         )
-                    )
-                    .foregroundStyle(isCompleted ? Color.gray.opacity(0.2) : accentColor)
-                    .monospacedDigit()
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Interval time")
-                    .accessibilityValue(
-                        timerModel.intervalTimeRemaining.formatted
-                    )
+                        .foregroundStyle(.green)
+                        .monospacedDigit()
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Intervals completed")
+                        .accessibilityValue(
+                            "\(timerModel.completedIntervals) of \(timerModel.totalIntervals)"
+                        )
+                } else {
+                    Text(timerModel.intervalTimeRemaining.formatted)
+                        .font(
+                            .system(
+                                size: sizes.primaryFont,
+                                weight: .semibold,
+                                design: .rounded
+                            )
+                        )
+                        .foregroundStyle(accentColor)
+                        .monospacedDigit()
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Interval time")
+                        .accessibilityValue(
+                            timerModel.intervalTimeRemaining.formatted
+                        )
+                }
 
                 if isCompleted {
                     RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)

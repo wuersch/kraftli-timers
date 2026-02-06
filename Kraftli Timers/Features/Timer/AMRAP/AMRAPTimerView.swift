@@ -296,12 +296,13 @@ struct AMRAPTimerView: View {
                         ProgressRing(
                             size: sizes.primaryRing,
                             lineWidth: sizes.primaryLineWidth,
-                            progress: countdown.isCountingDown ? 1.0 : timerModel.progress,
-                            color: accentColor,
+                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.progress),
+                            color: isCompleted ? .green : accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -90
                         )
                         .accessibilityHidden(true)
+                        .animation(.easeOut(duration: 0.6), value: isCompleted)
 
                         // Center content - switches between countdown and normal display
                         if countdown.isCountingDown {
@@ -319,7 +320,9 @@ struct AMRAPTimerView: View {
                         totalTimeRemaining: timerModel.totalTimeRemaining,
                         isCountingDown: countdown.isCountingDown,
                         isPulsing: $isPulsing,
-                        sizes: sizes
+                        sizes: sizes,
+                        isCompleted: isCompleted,
+                        totalDuration: timerModel.totalDuration
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -385,7 +388,7 @@ struct AMRAPTimerView: View {
         VStack(spacing: 8) {
             Text("ROUNDS")
                 .font(.system(size: sizes.labelFont))
-                .foregroundStyle(.gray)
+                .foregroundStyle(isCompleted ? .green : .gray)
 
             Text("\(timerModel.roundsCompleted)")
                 .font(
@@ -395,7 +398,7 @@ struct AMRAPTimerView: View {
                         design: .rounded
                     )
                 )
-                .foregroundStyle(accentColor)
+                .foregroundStyle(isCompleted ? .green : accentColor)
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .accessibilityLabel("\(timerModel.roundsCompleted) rounds completed")

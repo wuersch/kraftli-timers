@@ -109,15 +109,16 @@ struct WatchAMRAPTimerView: View {
                 VStack(spacing: 6) {
                     // Ring with center content
                     ZStack {
-                        // Ring - stays full during countdown
+                        // Ring - stays full during countdown, fills green on completion
                         ProgressRing(
                             size: ringSize,
                             lineWidth: lineWidth,
-                            progress: countdown.isCountingDown ? 1.0 : timerModel.progress,
-                            color: accentColor,
+                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.progress),
+                            color: isCompleted ? .green : accentColor,
                             backgroundColor: Color.gray.opacity(0.3),
                             rotationDegrees: -90
                         )
+                        .animation(.easeOut(duration: 0.6), value: isCompleted)
 
                         // Center content - switches between countdown and normal display
                         if countdown.isCountingDown {
@@ -126,7 +127,7 @@ struct WatchAMRAPTimerView: View {
                             VStack(spacing: 2) {
                                 Text("\(timerModel.roundsCompleted)")
                                     .font(.system(size: ringSize * 0.28, weight: .bold, design: .rounded))
-                                    .foregroundStyle(isCompleted ? .gray : accentColor)
+                                    .foregroundStyle(isCompleted ? .green : accentColor)
                                     .monospacedDigit()
                                     .contentTransition(.numericText())
 
@@ -142,8 +143,9 @@ struct WatchAMRAPTimerView: View {
                     // Bottom section - ZStack maintains consistent height
                     ZStack {
                         // Normal total time (always present for layout)
-                        Text(timerModel.totalTimeRemaining.formatted)
+                        Text(isCompleted ? totalDuration.formatted : timerModel.totalTimeRemaining.formatted)
                             .font(.system(size: ringSize * 0.16, weight: .bold, design: .rounded))
+                            .foregroundStyle(isCompleted ? .green : .primary)
                             .monospacedDigit()
                             .opacity(countdown.isCountingDown ? 0 : 1)
 

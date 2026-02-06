@@ -163,34 +163,38 @@ final class WorkoutSessionManager: NSObject {
 
     /// End the workout session and save to HealthKit.
     ///
+    /// The builder is finalized *before* the session ends — Apple's API requires
+    /// a live session for the builder to flush its data. On the happy path the
+    /// sequence is: `endCollection` → `finishWorkout` → `session.end()`.
+    ///
+    /// **Simulator note:** The Watch simulator's `HKLiveWorkoutBuilder` may enter
+    /// an internal error state (state 7) during the workout due to lack of real
+    /// HealthKit infrastructure. When this happens, `endCollection` / `finishWorkout`
+    /// log errors internally but our do/catch still handles it gracefully — the
+    /// session is ended and cleanup runs via `defer`.
+    ///
     /// - Returns: UUID of the saved HealthKit workout, or nil if save failed
-    func endSession() async throws -> UUID? {
+    func endSession() async -> UUID? {
         guard let session, let builder else {
             Logger.workoutSession.warning("Cannot end session: no active session")
             return nil
         }
 
-        // End the session
-        session.end()
+        defer { cleanupSession() }
 
-        // End collection and save
-        let endDate = Date()
-        try await builder.endCollection(at: endDate)
-        let workout = try await builder.finishWorkout()
-
-        let workoutUUID = workout?.uuid
-        Logger.workoutSession.info("Workout session ended, saved UUID: \(workoutUUID?.uuidString ?? "nil")")
-
-        // Clean up
-        self.session = nil
-        self.builder = nil
-        sessionState = .ended
-        currentHeartRate = nil
-        averageHeartRate = nil
-        maxHeartRate = nil
-        activeCalories = nil
-
-        return workoutUUID
+        do {
+            let endDate = Date()
+            try await builder.endCollection(at: endDate)
+            let workout = try await builder.finishWorkout()
+            session.end()
+            let workoutUUID = workout?.uuid
+            Logger.workoutSession.info("Workout saved, UUID: \(workoutUUID?.uuidString ?? "nil")")
+            return workoutUUID
+        } catch {
+            session.end()
+            Logger.workoutSession.error("Failed to save workout: \(error.localizedDescription)")
+            return nil
+        }
     }
 
     /// Enable mirrored session so iPhone can track this workout.
@@ -216,6 +220,23 @@ final class WorkoutSessionManager: NSObject {
     /// Reset manager to idle state (for cleanup after workout is fully processed).
     func resetToIdle() {
         sessionState = .idle
+    }
+
+    // MARK: - Private Helpers
+
+    /// Resets all session state to a clean slate.
+    ///
+    /// Called from `defer` in `endSession()` to guarantee cleanup runs even
+    /// when `HKLiveWorkoutBuilder` throws, and from `didFailWithError` to
+    /// prevent subsequent `endSession()` calls from operating on a broken builder.
+    private func cleanupSession() {
+        session = nil
+        builder = nil
+        sessionState = .ended
+        currentHeartRate = nil
+        averageHeartRate = nil
+        maxHeartRate = nil
+        activeCalories = nil
     }
 }
 
@@ -249,7 +270,7 @@ extension WorkoutSessionManager: HKWorkoutSessionDelegate {
     ) {
         Task { @MainActor in
             Logger.workoutSession.error("Workout session failed: \(error.localizedDescription)")
-            sessionState = .ended
+            cleanupSession()
         }
     }
 

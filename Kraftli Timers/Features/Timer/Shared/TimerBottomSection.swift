@@ -26,20 +26,23 @@ struct TimerBottomSection: View {
     let isCountingDown: Bool
     @Binding var isPulsing: Bool
     let sizes: TimerSizes
+    var isCompleted: Bool = false
+    var totalDuration: TimeInterval = 0
 
     var body: some View {
         ZStack {
             // Normal TOTAL section (always present for layout)
             VStack(spacing: 8) {
-                Text("TOTAL")
+                Text(isCompleted ? "DURATION" : "TOTAL")
                     .font(.system(size: sizes.labelFont))
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(isCompleted ? .green : .gray)
 
-                Text(totalTimeRemaining.formatted)
+                Text(isCompleted ? totalDuration.formatted : totalTimeRemaining.formatted)
                     .font(.system(size: sizes.totalFont, weight: .bold, design: .rounded))
+                    .foregroundStyle(isCompleted ? .green : .primary)
                     .monospacedDigit()
-                    .accessibilityLabel("Total time")
-                    .accessibilityValue(totalTimeRemaining.formatted)
+                    .accessibilityLabel(isCompleted ? "Workout duration" : "Total time")
+                    .accessibilityValue(isCompleted ? totalDuration.formatted : totalTimeRemaining.formatted)
             }
             .opacity(isCountingDown ? 0 : 1)
 
@@ -78,6 +81,15 @@ struct TimerBottomSection: View {
             isCountingDown: true,
             isPulsing: .constant(true),
             sizes: TimerSizes.emom(for: CGSize(width: 393, height: 852))
+        )
+
+        TimerBottomSection(
+            totalTimeRemaining: 0,
+            isCountingDown: false,
+            isPulsing: .constant(false),
+            sizes: TimerSizes.emom(for: CGSize(width: 393, height: 852)),
+            isCompleted: true,
+            totalDuration: 1200
         )
     }
 }
