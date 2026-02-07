@@ -228,11 +228,18 @@ struct TimerRunnerView: View {
         updateLogWithWatchUUID(endedMessage)
 
         if summaryData != nil {
-            // Summary already showing — update health fields in-place
+            // Summary already showing — merge non-nil health fields in-place
+            // (Watch sends nil fields when session ends on dismiss; guard against overwriting real data)
             withAnimation(.easeInOut(duration: 0.4)) {
-                summaryData?.averageHeartRate = endedMessage.averageHeartRate
-                summaryData?.maxHeartRate = endedMessage.maxHeartRate
-                summaryData?.activeCalories = endedMessage.activeCalories
+                if let hr = endedMessage.averageHeartRate {
+                    summaryData?.averageHeartRate = hr
+                }
+                if let maxHR = endedMessage.maxHeartRate {
+                    summaryData?.maxHeartRate = maxHR
+                }
+                if let cal = endedMessage.activeCalories {
+                    summaryData?.activeCalories = cal
+                }
             }
         } else {
             // Still in delay period — store for transitionToSummary() to pick up
@@ -242,7 +249,7 @@ struct TimerRunnerView: View {
 
     /// Transitions from the timer to the summary screen.
     ///
-    /// Called after the 1.5s post-completion delay. Creates the summary data
+    /// Called after the post-completion delay. Creates the summary data
     /// from the completion data, merging in any Watch health metrics that
     /// arrived during the delay.
     private func transitionToSummary() {
@@ -325,7 +332,7 @@ struct TimerRunnerView: View {
             // Schedule auto-transition to summary after a short delay
             // (confetti plays during the delay, timer stays frozen at 0:00)
             self.summaryTransitionTask = Task { @MainActor in
-                try? await Task.sleep(for: .seconds(1.5))
+                try? await Task.sleep(for: .seconds(0.3))
                 guard !Task.isCancelled else { return }
                 self.transitionToSummary()
             }

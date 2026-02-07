@@ -108,7 +108,8 @@ struct EMOMTimerView: View {
 
     // MARK: - Styling
     private var accentColor: Color {
-        timerModel.isIntervalWarning ? .orange : .blue
+        if isCompleted { return .green }
+        return timerModel.isIntervalWarning ? .orange : .blue
     }
 
 
