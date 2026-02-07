@@ -35,6 +35,7 @@ struct WorkoutSummaryContent: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
+        .padding(.bottom, 60)
         .animation(.easeInOut(duration: 0.4), value: data.hasHealthData)
     }
 
@@ -121,7 +122,7 @@ struct WorkoutSummaryContent: View {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text("--")
                             .font(.system(size: 34, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
 
                         Text("CAL")
                             .font(.subheadline.weight(.semibold))
@@ -209,7 +210,7 @@ struct WorkoutSummaryContent: View {
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("--")
                                 .font(.system(size: 34, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.primary)
 
                             Text("BPM")
                                 .font(.subheadline.weight(.semibold))
@@ -226,7 +227,7 @@ struct WorkoutSummaryContent: View {
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("--")
                                 .font(.system(size: 34, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.primary)
 
                             Text("BPM")
                                 .font(.subheadline.weight(.semibold))
