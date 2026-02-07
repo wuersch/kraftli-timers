@@ -219,6 +219,7 @@ final class WorkoutSessionManager: NSObject {
 
     /// Reset manager to idle state (for cleanup after workout is fully processed).
     func resetToIdle() {
+        Logger.workoutSession.info("resetToIdle: \(String(describing: self.sessionState)) → .idle")
         sessionState = .idle
     }
 

@@ -167,6 +167,7 @@ struct WatchWorkoutCoordinator {
     func startTimerWithWorkoutSession(timer: some WorkoutTimer) {
         timer.start()
 
+        Logger.workoutSession.info("startTimerWithWorkoutSession: sessionState=\(String(describing: self.sessionManager.sessionState))")
         if sessionManager.sessionState == .idle {
             Task {
                 do {
@@ -287,6 +288,12 @@ struct WatchWorkoutCoordinator {
         }
 
         Logger.healthKit.info("Watch \(config.timerKind.rawValue) workout completed, HealthKit UUID: \(healthKitUUID?.uuidString ?? "none"), displayOnly: \(config.displayOnly), avgHR: \(averageHeartRate.map { String(format: "%.0f", $0) } ?? "none")")
+
+        // Reset to idle so the next timer run can start a fresh HK session.
+        // Without this, sessionState stays .ended and startSession() bails out.
+        Logger.workoutSession.info("handleWorkoutCompleted: resetting to idle (was \(String(describing: self.sessionManager.sessionState)))")
+        sessionManager.resetToIdle()
+        Logger.workoutSession.info("handleWorkoutCompleted: sessionState is now \(String(describing: self.sessionManager.sessionState))")
     }
 
     // MARK: - Private
