@@ -30,10 +30,12 @@ struct WorkoutSummaryContent: View {
             caloriesCard
             heartRateCard
 
-            healthLink
+            footer
                 .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .animation(.easeInOut(duration: 0.4), value: data.hasHealthData)
     }
 
     // MARK: - Header
@@ -93,6 +95,33 @@ struct WorkoutSummaryContent: View {
                             .font(.system(size: 34, weight: .semibold, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(.primary)
+                            .contentTransition(.numericText())
+
+                        Text("CAL")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .cardStyle()
+            .padding(.horizontal, 20)
+        } else if data.watchHandledWorkout {
+            // Placeholder while waiting for Watch data
+            HStack(spacing: 16) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.orange)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Active Calories")
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("--")
+                            .font(.system(size: 34, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.secondary)
 
                         Text("CAL")
                             .font(.subheadline.weight(.semibold))
@@ -129,6 +158,7 @@ struct WorkoutSummaryContent: View {
                                     .font(.system(size: 34, weight: .semibold, design: .rounded))
                                     .monospacedDigit()
                                     .foregroundStyle(.primary)
+                                    .contentTransition(.numericText())
 
                                 Text("BPM")
                                     .font(.subheadline.weight(.semibold))
@@ -150,6 +180,7 @@ struct WorkoutSummaryContent: View {
                                     .font(.system(size: 34, weight: .semibold, design: .rounded))
                                     .monospacedDigit()
                                     .foregroundStyle(.primary.opacity(0.7))
+                                    .contentTransition(.numericText())
 
                                 Text("BPM")
                                     .font(.subheadline.weight(.semibold))
@@ -162,22 +193,79 @@ struct WorkoutSummaryContent: View {
             }
             .cardStyle()
             .padding(.horizontal, 20)
+        } else if data.watchHandledWorkout {
+            // Placeholder while waiting for Watch data
+            HStack(spacing: 16) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.red)
+
+                HStack(alignment: .top, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Avg Heart Rate")
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("--")
+                                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.secondary)
+
+                            Text("BPM")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Max Heart Rate")
+                            .font(.subheadline)
+                            .foregroundStyle(.red.opacity(0.7))
+
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("--")
+                                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.secondary)
+
+                            Text("BPM")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .cardStyle()
+            .padding(.horizontal, 20)
         }
     }
 
-    // MARK: - Health Link
+    // MARK: - Footer
 
-    private var healthLink: some View {
-        Button {
-            openHealthApp()
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "heart.fill")
-                    .font(.subheadline)
-                Text("Open Health")
-                    .font(.subheadline.weight(.medium))
+    @ViewBuilder
+    private var footer: some View {
+        if data.hasHealthData {
+            Button {
+                openHealthApp()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "heart.fill")
+                        .font(.subheadline)
+                    Text("Open Health")
+                        .font(.subheadline.weight(.medium))
+                }
+                .foregroundStyle(.green)
             }
-            .foregroundStyle(.green)
+        } else if !data.watchHandledWorkout {
+            // No Watch was involved — show hint to connect
+            HStack(spacing: 8) {
+                Image(systemName: "applewatch")
+                    .font(.subheadline)
+                Text("Connect Apple Watch for heart rate and calories")
+                    .font(.subheadline)
+            }
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -200,6 +288,7 @@ struct WorkoutSummaryContent: View {
             duration: 20 * 60,
             reps: 100,
             rounds: nil,
+            watchHandledWorkout: true,
             averageHeartRate: 152,
             maxHeartRate: 174,
             activeCalories: 156
@@ -216,9 +305,38 @@ struct WorkoutSummaryContent: View {
             duration: 15 * 60,
             reps: nil,
             rounds: 8,
+            watchHandledWorkout: true,
             averageHeartRate: 145,
             maxHeartRate: 168,
             activeCalories: 120
+        )
+    )
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Waiting for Watch") {
+    WorkoutSummaryContent(
+        data: WorkoutSummaryData(
+            exerciseName: "6-Count Burpees",
+            timerKind: .emom,
+            duration: 20 * 60,
+            reps: 100,
+            rounds: nil,
+            watchHandledWorkout: true
+        )
+    )
+    .preferredColorScheme(.dark)
+}
+
+#Preview("No Watch") {
+    WorkoutSummaryContent(
+        data: WorkoutSummaryData(
+            exerciseName: "Pull-ups",
+            timerKind: .amrap,
+            duration: 15 * 60,
+            reps: nil,
+            rounds: 8,
+            watchHandledWorkout: false
         )
     )
     .preferredColorScheme(.dark)

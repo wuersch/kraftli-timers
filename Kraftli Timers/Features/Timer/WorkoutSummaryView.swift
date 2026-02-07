@@ -87,6 +87,7 @@ struct WorkoutSummaryView: View {
             duration: 20 * 60,
             reps: 100,
             rounds: nil,
+            watchHandledWorkout: true,
             averageHeartRate: 152,
             maxHeartRate: 174,
             activeCalories: 156
@@ -104,6 +105,7 @@ struct WorkoutSummaryView: View {
             duration: 15 * 60,
             reps: nil,
             rounds: 8,
+            watchHandledWorkout: true,
             averageHeartRate: 145,
             maxHeartRate: 168,
             activeCalories: 120

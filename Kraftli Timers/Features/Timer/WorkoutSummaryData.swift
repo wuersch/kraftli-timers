@@ -29,19 +29,22 @@ struct WorkoutSummaryData: Identifiable {
     /// Number of rounds completed (AMRAP only).
     let rounds: Int?
 
+    /// Whether the Apple Watch was involved in this workout session.
+    /// When true, placeholder cards are shown for health metrics until data arrives.
+    let watchHandledWorkout: Bool
+
     /// Average heart rate during the workout (beats per minute).
-    let averageHeartRate: Double?
+    var averageHeartRate: Double?
 
     /// Maximum heart rate during the workout (beats per minute).
-    let maxHeartRate: Double?
+    var maxHeartRate: Double?
 
     /// Active calories burned during the workout (kilocalories).
-    let activeCalories: Double?
+    var activeCalories: Double?
 
     /// Whether this summary has meaningful health data to display.
     ///
     /// Returns true if at least one health metric (HR or calories) is available.
-    /// When false, the summary screen should not be shown.
     var hasHealthData: Bool {
         averageHeartRate != nil || maxHeartRate != nil || activeCalories != nil
     }

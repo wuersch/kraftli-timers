@@ -297,12 +297,11 @@ struct AMRAPTimerView: View {
                             size: sizes.primaryRing,
                             lineWidth: sizes.primaryLineWidth,
                             progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.progress),
-                            color: isCompleted ? .green : accentColor,
+                            color: accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -90
                         )
                         .accessibilityHidden(true)
-                        .animation(.easeOut(duration: 0.6), value: isCompleted)
 
                         // Center content - switches between countdown and normal display
                         if countdown.isCountingDown {
@@ -388,7 +387,7 @@ struct AMRAPTimerView: View {
         VStack(spacing: 8) {
             Text("ROUNDS")
                 .font(.system(size: sizes.labelFont))
-                .foregroundStyle(isCompleted ? .green : .gray)
+                .foregroundStyle(.gray)
 
             Text("\(timerModel.roundsCompleted)")
                 .font(
@@ -398,16 +397,12 @@ struct AMRAPTimerView: View {
                         design: .rounded
                     )
                 )
-                .foregroundStyle(isCompleted ? .green : accentColor)
+                .foregroundStyle(accentColor)
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .accessibilityLabel("\(timerModel.roundsCompleted) rounds completed")
 
-            if isCompleted {
-                RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
-                    .accessibilityLabel("Timer completed")
-                    .accessibilityHint("Swipe down to close")
-            } else if session.showHint {
+            if session.showHint && !isCompleted {
                 Text(hintText)
                     .font(.system(size: sizes.labelFont))
                     .foregroundStyle(.gray)
@@ -428,12 +423,6 @@ struct AMRAPTimerView: View {
     }
 
     // MARK: - Helpers
-    private func makeCompletionText() -> AttributedString {
-        var attr = AttributedString("DONE")
-        attr.foregroundColor = .green
-        return attr
-    }
-
     private var hintText: String {
         if !timerModel.isRunning && timerModel.elapsedTime <= 0 {
             return "Tap to start"

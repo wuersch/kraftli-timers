@@ -45,12 +45,6 @@ struct VisualsSection: View {
                 isOn: $settings.emomShowRepsInCenter
             )
 
-            SettingsToggleCard(
-                title: "Workout Summary",
-                icon: "chart.bar.fill",
-                description: "Shows a summary screen with heart rate and calories after completing a workout with Apple Watch.",
-                isOn: $settings.workoutSummaryEnabled
-            )
         }
     }
 }
