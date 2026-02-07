@@ -35,11 +35,11 @@ struct TimerBottomSection: View {
             VStack(spacing: 8) {
                 Text(isCompleted ? "DURATION" : "TOTAL")
                     .font(.system(size: sizes.labelFont))
-                    .foregroundStyle(isCompleted ? .green : .gray)
+                    .foregroundStyle(.gray)
 
                 Text(isCompleted ? totalDuration.formatted : totalTimeRemaining.formatted)
                     .font(.system(size: sizes.totalFont, weight: .bold, design: .rounded))
-                    .foregroundStyle(isCompleted ? .green : .primary)
+                    .foregroundStyle(.primary)
                     .monospacedDigit()
                     .accessibilityLabel(isCompleted ? "Workout duration" : "Total time")
                     .accessibilityValue(isCompleted ? totalDuration.formatted : totalTimeRemaining.formatted)

@@ -122,12 +122,6 @@ struct EMOMTimerView: View {
         return attr
     }
 
-    private func makeCompletionText() -> AttributedString {
-        var attr = AttributedString("DONE")
-        attr.foregroundColor = .green
-        return attr
-    }
-
     private var hintText: String {
         if !timerModel.isRunning && timerModel.overallProgress >= 1.0 {
             return "Tap to start"
@@ -302,12 +296,12 @@ struct EMOMTimerView: View {
             ZStack {
                 VStack(spacing: sizes.spacing) {
                     ZStack {
-                        // Rings - stay full during countdown, fill green on completion
+                        // Rings - stay full during countdown, fill on completion
                         ProgressRing(
                             size: sizes.primaryRing,
                             lineWidth: sizes.primaryLineWidth,
                             progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.intervalProgress),
-                            color: isCompleted ? .green : accentColor,
+                            color: accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -89.5
                         )
@@ -317,12 +311,11 @@ struct EMOMTimerView: View {
                             size: sizes.secondaryRing!,
                             lineWidth: sizes.secondaryLineWidth!,
                             progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.overallProgress),
-                            color: isCompleted ? .green : .primary,
+                            color: .primary,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -90.5
                         )
                         .accessibilityHidden(true)
-                        .animation(.easeOut(duration: 0.6), value: isCompleted)
 
                         // Center content - switches between countdown and normal display
                         if countdown.isCountingDown {
@@ -404,7 +397,7 @@ struct EMOMTimerView: View {
         VStack(spacing: 8) {
             Text(showRepsInCenter ? "REPS" : (isCompleted ? "INTERVALS" : "INTERVAL"))
                 .font(.system(size: sizes.labelFont))
-                .foregroundStyle(isCompleted ? .green : .gray)
+                .foregroundStyle(.gray)
 
             if showRepsInCenter {
                 // Reps-focused mode: show reps count prominently
@@ -416,7 +409,7 @@ struct EMOMTimerView: View {
                             design: .rounded
                         )
                     )
-                    .foregroundStyle(isCompleted ? .green : .primary)
+                    .foregroundStyle(.primary)
                     .monospacedDigit()
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Reps completed")
@@ -425,12 +418,7 @@ struct EMOMTimerView: View {
                     )
 
                 // Third element for vertical balance
-                if isCompleted {
-                    Text("DONE")
-                        .font(.system(size: sizes.pillFont, weight: .semibold))
-                        .foregroundStyle(.green)
-                        .accessibilityLabel("Timer completed")
-                } else if session.showHint {
+                if session.showHint && !isCompleted {
                     Text(hintText)
                         .font(.system(size: sizes.labelFont))
                         .foregroundStyle(.gray)
@@ -460,7 +448,7 @@ struct EMOMTimerView: View {
                                 design: .rounded
                             )
                         )
-                        .foregroundStyle(.green)
+                        .foregroundStyle(.primary)
                         .monospacedDigit()
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("Intervals completed")
@@ -485,11 +473,7 @@ struct EMOMTimerView: View {
                         )
                 }
 
-                if isCompleted {
-                    RepsPill(text: makeCompletionText(), accentColor: .green, fontSize: sizes.pillFont)
-                        .accessibilityLabel("Timer completed")
-                        .accessibilityHint("Swipe down to close")
-                } else if session.showHint {
+                if session.showHint && !isCompleted {
                     Text(hintText)
                         .font(.system(size: sizes.labelFont))
                         .foregroundStyle(.gray)

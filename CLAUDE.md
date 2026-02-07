@@ -54,7 +54,8 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Build: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 17 Pro" build`
 - Run tests: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 17 Pro" test`
 - Run in simulator: Xcode
-- **MANDATORY: Always ask the user before running tests or builds.** Running simulators draws heavy power on Apple Silicon — parallel sim workloads can trigger a protective shutdown. Never run tests or builds without explicit permission.
+- Builds can be run freely without asking.
+- **MANDATORY: Always ask the user before running the full test suite.** Running simulators draws heavy power on Apple Silicon — parallel sim workloads can trigger a protective shutdown. Never run all tests without explicit permission.
 
 ## Xcode Project
 - Xcode automatically adds new files to the target whose folder they belong to. No manual step needed for single-target files.
