@@ -45,14 +45,7 @@ struct Kraftli_TimersApp: App {
         )
 
         do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            self.modelContainer = container
-
-            // Migrate exercise relationships to exerciseId
-            Self.migrateExerciseRelationships(in: container.mainContext)
-
-            // Remove CloudKit duplicates (same UUID synced from multiple devices)
-            Self.deduplicatePresets(in: container.mainContext)
+            self.modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -71,6 +64,12 @@ struct Kraftli_TimersApp: App {
                     }
                     .zIndex(1)
                 }
+            }
+            .task {
+                // Run data migrations after the UI is up to minimize SQLite lock time
+                // during launch. Holding a DB lock while suspended causes 0xdead10cc kills.
+                Self.migrateExerciseRelationships(in: modelContainer.mainContext)
+                Self.deduplicatePresets(in: modelContainer.mainContext)
             }
             .onAppear {
                 // Set up mirrored workout session handler (Scenario D: Watch-initiated workouts).
