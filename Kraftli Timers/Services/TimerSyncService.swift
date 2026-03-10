@@ -88,6 +88,10 @@ final class DefaultTimerSyncService: TimerSyncService {
     private let workoutSessionEndedSubject = PassthroughSubject<WorkoutSessionEndedMessage, Never>()
     private let timerStartedOnWatchSubject = PassthroughSubject<TimerStartedOnWatchMessage, Never>()
 
+    /// Tracks the correlation ID of the active timer for reliable stop delivery.
+    /// Set when `startTimerOnWatch()` is called, cleared on stop.
+    private var currentCorrelationID: UUID?
+
     init(connectivity: WatchConnectivityService = .shared) {
         self.connectivity = connectivity
         setupMessageHandling()
@@ -122,6 +126,8 @@ final class DefaultTimerSyncService: TimerSyncService {
         correlationID: UUID?,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
+        currentCorrelationID = correlationID
+
         let message = StartTimerMessage(
             timerKind: kind,
             totalDuration: totalDuration,
@@ -146,6 +152,14 @@ final class DefaultTimerSyncService: TimerSyncService {
     ) {
         let message = TimerControlMessage(action: action)
         connectivity.sendMessage(message, completion: completion)
+
+        // Dual delivery for stop: also send via transferUserInfo so it arrives
+        // even when Watch is unreachable (wrist lowered, BT dropped).
+        if action == .stop {
+            let stopMessage = StopTimerMessage(correlationID: currentCorrelationID)
+            connectivity.transferUserInfo(stopMessage)
+            currentCorrelationID = nil
+        }
     }
 
     // MARK: - Private

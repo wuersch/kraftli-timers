@@ -15,6 +15,7 @@ import Foundation
 enum WatchMessageType: String, Codable {
     case startTimer
     case timerControl
+    case stopTimer
     case workoutSessionEnded
     case timerStartedOnWatch
 }
@@ -112,6 +113,31 @@ struct TimerControlMessage: WatchMessage, Equatable {
     // Custom Codable to exclude computed messageType
     private enum CodingKeys: String, CodingKey {
         case action
+    }
+}
+
+// MARK: - StopTimerMessage
+
+/// Reliable stop message sent from iPhone to Watch via `transferUserInfo`.
+///
+/// Unlike `TimerControlMessage(.stop)` which uses `sendMessage` (requires reachability),
+/// this is queued by the system and delivered even when the Watch is unreachable.
+/// Uses a correlation ID to prevent stale stops from killing new timers — if the ID
+/// doesn't match the active timer, the stop is ignored.
+struct StopTimerMessage: WatchMessage, Equatable {
+    var messageType: WatchMessageType { .stopTimer }
+
+    /// Matches against the active timer's correlation ID.
+    /// If nil or matching → apply the stop. If mismatched → ignore (stale stop).
+    let correlationID: UUID?
+
+    init(correlationID: UUID? = nil) {
+        self.correlationID = correlationID
+    }
+
+    // Custom Codable to exclude computed messageType
+    private enum CodingKeys: String, CodingKey {
+        case correlationID
     }
 }
 
@@ -245,6 +271,8 @@ enum WatchMessageCoder {
             return try decoder.decode(StartTimerMessage.self, from: data)
         case .timerControl:
             return try decoder.decode(TimerControlMessage.self, from: data)
+        case .stopTimer:
+            return try decoder.decode(StopTimerMessage.self, from: data)
         case .workoutSessionEnded:
             return try decoder.decode(WorkoutSessionEndedMessage.self, from: data)
         case .timerStartedOnWatch:

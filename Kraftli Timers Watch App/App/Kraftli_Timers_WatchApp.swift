@@ -102,6 +102,14 @@ struct Kraftli_Timers_Watch_AppApp: App {
             ContentView()
                 .environment(messageCoordinator)
                 .environment(appDelegate.workoutSessionManager)
+                .onAppear {
+                    // Wire session manager so coordinator can end orphaned sessions
+                    messageCoordinator.sessionManager = appDelegate.workoutSessionManager
+                }
+                .task {
+                    // Clean up any orphaned HKWorkoutSession from a previous crash/force-quit
+                    await appDelegate.workoutSessionManager.cleanupOrphanedSessionIfNeeded()
+                }
         }
         .modelContainer(modelContainer)
     }
