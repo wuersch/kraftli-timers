@@ -37,6 +37,18 @@ final class WatchMessageCoordinator {
         }
     }
 
+    /// Correlation ID of the currently active timer.
+    /// Used to validate incoming `StopTimerMessage` — only stops matching
+    /// the active timer (or with nil correlation) are applied.
+    var activeCorrelationID: UUID?
+
+    /// Reference to the workout session manager for orphaned stop handling.
+    /// Set by the app entry point after both coordinator and manager are created.
+    var sessionManager: WorkoutSessionManager?
+
+    /// Deduplication for `StopTimerMessage` (dual delivery may arrive twice).
+    private var lastHandledStopDate: Date?
+
     init() {
         setupMessageHandling()
         Logger.timerSync.info("WatchMessageCoordinator initialized")
@@ -80,8 +92,60 @@ final class WatchMessageCoordinator {
                 Logger.timerSync.warning("Received control message but no active sync service")
             }
 
+        case let stopMessage as StopTimerMessage:
+            handleStopTimerMessage(stopMessage)
+
         default:
             Logger.timerSync.warning("Received unknown message type")
+        }
+    }
+
+    // MARK: - Stop Timer Handling
+
+    /// Handles a reliable stop message from iPhone.
+    ///
+    /// This arrives via `transferUserInfo` (queued delivery) and/or `sendMessage`
+    /// (immediate delivery). Correlation ID matching prevents stale stops from
+    /// killing a new timer that started after the original one completed.
+    @MainActor
+    private func handleStopTimerMessage(_ message: StopTimerMessage) {
+        // Deduplicate within a short window (stop may arrive via both sendMessage
+        // and transferUserInfo)
+        if let lastDate = lastHandledStopDate,
+           Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
+            Logger.timerSync.debug("Skipping duplicate StopTimerMessage")
+            return
+        }
+        lastHandledStopDate = Date()
+
+        if let syncService = activeSyncService {
+            // Timer view is showing — check correlation before forwarding
+            if message.correlationID == nil || message.correlationID == activeCorrelationID {
+                Logger.timerSync.info("StopTimerMessage matches active timer, forwarding stop")
+                syncService.handleControlMessage(TimerControlMessage(action: .stop))
+            } else {
+                Logger.timerSync.info("StopTimerMessage correlationID mismatch (stop: \(message.correlationID?.uuidString ?? "nil"), active: \(self.activeCorrelationID?.uuidString ?? "nil")), ignoring stale stop")
+            }
+        } else {
+            // No timer view showing — handle as orphaned stop
+            Logger.timerSync.info("StopTimerMessage received with no active timer, cleaning up orphaned session")
+            handleOrphanedStop()
+        }
+    }
+
+    /// Ends an orphaned HKWorkoutSession when no timer view is active.
+    ///
+    /// This handles the case where iPhone sent a stop but the Watch timer view
+    /// was already dismissed (or was never shown). The HK session may still be
+    /// active, preventing the user from closing the Watch app.
+    @MainActor
+    private func handleOrphanedStop() {
+        guard let sessionManager, sessionManager.sessionState != .idle else { return }
+
+        Logger.timerSync.info("Ending orphaned workout session (state: \(String(describing: sessionManager.sessionState)))")
+        Task {
+            _ = await sessionManager.endSession()
+            sessionManager.resetToIdle()
         }
     }
 }

@@ -96,9 +96,10 @@ final class WorkoutSessionManager: NSObject {
     ///
     /// - Parameter configuration: Workout configuration (activity type, location type)
     func startSession(configuration: HKWorkoutConfiguration) async throws {
-        guard sessionState == .idle else {
-            Logger.workoutSession.warning("Cannot start session: already in state \(String(describing: self.sessionState))")
-            return
+        if sessionState != .idle {
+            Logger.workoutSession.warning("Ending stale session (state: \(String(describing: self.sessionState))) before starting new one")
+            _ = await endSession()
+            resetToIdle()
         }
 
         // Reserve state immediately to prevent concurrent start attempts.
@@ -177,6 +178,8 @@ final class WorkoutSessionManager: NSObject {
     func endSession() async -> UUID? {
         guard let session, let builder else {
             Logger.workoutSession.warning("Cannot end session: no active session")
+            // Clean up state even without session objects (e.g. stale state after crash)
+            if sessionState != .idle { sessionState = .ended }
             return nil
         }
 
@@ -210,11 +213,45 @@ final class WorkoutSessionManager: NSObject {
     /// Recover an active workout session after app crash or restart.
     ///
     /// watchOS preserves active `HKWorkoutSession` across app launches.
-    /// If the app was killed during a workout, this method recovers the session.
+    /// If the app was killed during a workout, this method recovers the session
+    /// and ends it immediately — the timer model and UI state were lost in the
+    /// crash, so there's nothing to resume.
     func recoverActiveSession() async throws {
-        // watchOS provides the recovered session via the delegate adaptor
-        // The session is automatically recovered if the app was backgrounded
         Logger.workoutSession.info("Attempting to recover active session")
+
+        do {
+            guard let recoveredSession = try await healthStore.recoverActiveWorkoutSession() else {
+                Logger.workoutSession.debug("No active session to recover")
+                return
+            }
+            Logger.workoutSession.info("Recovered orphaned workout session, ending it")
+            recoveredSession.delegate = self
+            self.session = recoveredSession
+            self.builder = recoveredSession.associatedWorkoutBuilder()
+            recoveredSession.end()
+            session = nil
+            builder = nil
+            sessionState = .idle
+        } catch {
+            // Recovery failed — log and continue
+            Logger.workoutSession.debug("Failed to recover active session: \(error.localizedDescription)")
+        }
+    }
+
+    /// Cleans up any orphaned HKWorkoutSession left by a previous app launch.
+    ///
+    /// Called at app startup when our session reference is nil and state is idle.
+    /// If the system has an active session from a previous crash or force-quit,
+    /// we recover and end it so it doesn't block new sessions.
+    func cleanupOrphanedSessionIfNeeded() async {
+        // Only run when we have no session reference (fresh launch)
+        guard session == nil, sessionState == .idle else { return }
+
+        do {
+            try await recoverActiveSession()
+        } catch {
+            // No orphan found — this is the happy path
+        }
     }
 
     /// Reset manager to idle state (for cleanup after workout is fully processed).

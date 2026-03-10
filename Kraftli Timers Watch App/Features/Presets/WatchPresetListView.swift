@@ -50,6 +50,14 @@ enum TimerPresentation: Identifiable, Equatable {
         }
     }
 
+    /// Extracts the correlation ID from the timer presentation.
+    var correlationID: UUID? {
+        switch self {
+        case .emom(_, _, _, _, _, let id): return id
+        case .amrap(_, _, _, _, let id): return id
+        }
+    }
+
     /// Creates a TimerPresentation from a StartTimerMessage received from iPhone.
     static func fromMessage(_ message: StartTimerMessage) -> TimerPresentation {
         switch message.timerKind {
@@ -138,11 +146,14 @@ struct WatchPresetListView: View {
             }
         }
         .onChange(of: activeTimer) { _, newValue in
-            // Update coordinator's active sync service when timer is presented/dismissed
-            if newValue != nil {
+            // Update coordinator's active sync service and correlation ID
+            // when timer is presented/dismissed
+            if let timer = newValue {
                 messageCoordinator.activeSyncService = syncService
+                messageCoordinator.activeCorrelationID = timer.correlationID
             } else {
                 messageCoordinator.activeSyncService = nil
+                messageCoordinator.activeCorrelationID = nil
                 syncService = nil
             }
         }
