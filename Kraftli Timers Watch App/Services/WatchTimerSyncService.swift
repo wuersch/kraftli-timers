@@ -59,13 +59,13 @@ protocol WatchTimerSyncService {
     /// - Parameters:
     ///   - kind: The type of timer (EMOM or AMRAP)
     ///   - totalDuration: Total workout duration in seconds
-    ///   - intervalDuration: Interval duration for EMOM (nil for AMRAP)
+    ///   - intervalCount: Number of intervals/reps for EMOM (nil for AMRAP)
     ///   - exerciseName: Name of the exercise
     ///   - completion: Called with the result of the send operation
     func sendTimerStartedOnWatch(
         kind: TimerKind,
         totalDuration: TimeInterval,
-        intervalDuration: TimeInterval?,
+        intervalCount: Int?,
         exerciseName: String,
         completion: ((Result<Void, Error>) -> Void)?
     )
@@ -132,14 +132,14 @@ final class DefaultWatchTimerSyncService: WatchTimerSyncService {
     func sendTimerStartedOnWatch(
         kind: TimerKind,
         totalDuration: TimeInterval,
-        intervalDuration: TimeInterval?,
+        intervalCount: Int?,
         exerciseName: String,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
         let message = TimerStartedOnWatchMessage(
             timerKind: kind,
             totalDuration: totalDuration,
-            intervalDuration: intervalDuration,
+            intervalCount: intervalCount,
             exerciseName: exerciseName
         )
         // Best-effort: sendMessage only (Watch workout proceeds regardless)
@@ -185,7 +185,7 @@ final class SilentWatchTimerSyncService: WatchTimerSyncService {
     func sendTimerStartedOnWatch(
         kind: TimerKind,
         totalDuration: TimeInterval,
-        intervalDuration: TimeInterval?,
+        intervalCount: Int?,
         exerciseName: String,
         completion: ((Result<Void, Error>) -> Void)?
     ) {

@@ -184,7 +184,7 @@ struct AMRAPTimerView: View {
         syncService?.startTimerOnWatch(
             kind: .amrap,
             totalDuration: timerModel.totalDuration,
-            intervalDuration: nil,
+            intervalCount: nil,
             exerciseName: exerciseName,
             scheduledStartTime: scheduledStartTime,
             correlationID: correlationID,

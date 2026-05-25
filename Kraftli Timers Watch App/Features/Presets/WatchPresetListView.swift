@@ -29,7 +29,7 @@ enum ActiveEditor: Identifiable {
 enum TimerPresentation: Identifiable, Equatable {
     case emom(
         duration: TimeInterval,
-        intervalDuration: TimeInterval,
+        intervalCount: Int,
         exerciseName: String,
         displayOnly: Bool = false,
         scheduledStartTime: Date? = nil,
@@ -45,7 +45,7 @@ enum TimerPresentation: Identifiable, Equatable {
 
     var id: String {
         switch self {
-        case .emom(let duration, let interval, _, _, _, _): return "emom-\(duration)-\(interval)"
+        case .emom(let duration, let count, _, _, _, _): return "emom-\(duration)-\(count)"
         case .amrap(let duration, _, _, _, _): return "amrap-\(duration)"
         }
     }
@@ -64,7 +64,7 @@ enum TimerPresentation: Identifiable, Equatable {
         case .emom:
             return .emom(
                 duration: message.totalDuration,
-                intervalDuration: message.intervalDuration ?? 60,
+                intervalCount: message.intervalCount ?? 1,
                 exerciseName: message.exerciseName,
                 displayOnly: message.displayOnly,
                 scheduledStartTime: message.scheduledStartTime,
@@ -124,10 +124,10 @@ struct WatchPresetListView: View {
         }
         .fullScreenCover(item: $activeTimer) { timer in
             switch timer {
-            case .emom(let duration, let intervalDuration, let exerciseName, let displayOnly, let scheduledStartTime, let correlationID):
+            case .emom(let duration, let intervalCount, let exerciseName, let displayOnly, let scheduledStartTime, let correlationID):
                 WatchEMOMTimerView(
                     totalDuration: duration,
-                    intervalDuration: intervalDuration,
+                    intervalCount: intervalCount,
                     exerciseName: exerciseName,
                     displayOnly: displayOnly,
                     syncService: syncService ?? DefaultWatchTimerSyncService(),
@@ -241,7 +241,7 @@ struct WatchPresetListView: View {
         if preset.kind == .emom {
             activeTimer = .emom(
                 duration: preset.durationInterval,
-                intervalDuration: preset.intervalDuration,
+                intervalCount: preset.targetReps ?? 1,
                 exerciseName: preset.exerciseInfo?.name ?? "EMOM Workout"
             )
         } else {
