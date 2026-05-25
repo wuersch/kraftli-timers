@@ -50,10 +50,11 @@ public class EMOMTimerModel: WorkoutTimer {
     
     @MainActor
     var completedIntervals: Int {
-        let elapsedTime = totalDuration - totalTimeRemaining
-        // +epsilon so an exact boundary (e.g. 113.9999… from the derived float) snaps up;
-        // clamp so completion reports the authoritative total, never one short.
-        return min(Int(elapsedTime / intervalDuration + 1e-6), _totalIntervals)
+        // Scale the elapsed *fraction* by the rep count. The denominator is the exact
+        // totalDuration, never the derived (lossy) intervalDuration — so at completion the
+        // fraction is exactly 1.0 (x/x) and this lands exactly on the rep count, no epsilon.
+        let elapsedFraction = (totalDuration - totalTimeRemaining) / totalDuration
+        return min(Int(elapsedFraction * Double(_totalIntervals)), _totalIntervals)
     }
 
     /// The interval currently in progress (1-based), for display purposes.
@@ -200,8 +201,10 @@ public class EMOMTimerModel: WorkoutTimer {
 
         // Derive interval time from total elapsed (single source of truth)
         if preciseTotalTimeRemaining > 0 {
-            // Detect interval transitions (use precise timing)
-            let elapsedIntervalCount = Int(totalElapsed / intervalDuration)
+            // Detect interval transitions (use precise timing). Derive the count from the
+            // exact totalDuration rather than the lossy intervalDuration, matching the
+            // count properties above (behaviorally identical, just consistent).
+            let elapsedIntervalCount = Int(totalElapsed * Double(_totalIntervals) / totalDuration)
             if elapsedIntervalCount > lastCompletedInterval {
                 lastCompletedInterval = elapsedIntervalCount
                 lastWarningTriggered = false
