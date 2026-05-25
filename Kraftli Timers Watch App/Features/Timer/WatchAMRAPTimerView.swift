@@ -54,7 +54,7 @@ struct WatchAMRAPTimerView: View {
             config: WatchWorkoutConfig(
                 timerKind: .amrap,
                 totalDuration: totalDuration,
-                intervalDuration: nil,
+                intervalCount: nil,
                 exerciseName: exerciseName,
                 displayOnly: displayOnly,
                 scheduledStartTime: scheduledStartTime,

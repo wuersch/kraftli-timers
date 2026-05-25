@@ -25,7 +25,7 @@ struct WatchEMOMTimerView: View {
 
     private let exerciseName: String
     private let totalDuration: TimeInterval
-    private let intervalDuration: TimeInterval
+    private let intervalCount: Int
 
     /// When true, skip workout logging (timer was started from iPhone).
     private let displayOnly: Bool
@@ -55,7 +55,7 @@ struct WatchEMOMTimerView: View {
             config: WatchWorkoutConfig(
                 timerKind: .emom,
                 totalDuration: totalDuration,
-                intervalDuration: intervalDuration,
+                intervalCount: intervalCount,
                 exerciseName: exerciseName,
                 displayOnly: displayOnly,
                 scheduledStartTime: scheduledStartTime,
@@ -78,7 +78,7 @@ struct WatchEMOMTimerView: View {
     // MARK: - Initialization
     init(
         totalDuration: TimeInterval = 20 * 60,
-        intervalDuration: TimeInterval = 60,
+        intervalCount: Int = 20,
         exerciseName: String = "EMOM Workout",
         displayOnly: Bool = false,
         syncService: WatchTimerSyncService = DefaultWatchTimerSyncService(),
@@ -88,7 +88,7 @@ struct WatchEMOMTimerView: View {
         feedbackProvider: FeedbackProvider = SilentFeedback()
     ) {
         self.totalDuration = totalDuration
-        self.intervalDuration = intervalDuration
+        self.intervalCount = intervalCount
         self.exerciseName = exerciseName
         self.displayOnly = displayOnly
         self.syncService = syncService
@@ -96,7 +96,7 @@ struct WatchEMOMTimerView: View {
         self.correlationID = correlationID
         self.timerModel = EMOMTimerModel(
             totalDuration: totalDuration,
-            intervalDuration: intervalDuration,
+            intervalCount: intervalCount,
             timerProvider: timerProvider,
             feedbackProvider: feedbackProvider
         )
@@ -274,7 +274,7 @@ struct WatchEMOMTimerView: View {
     NavigationStack {
         WatchEMOMTimerView(
             totalDuration: 60,
-            intervalDuration: 12
+            intervalCount: 5
         )
     }
 }

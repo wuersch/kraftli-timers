@@ -12,7 +12,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func initialState_isNotRunning() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -25,7 +25,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func start_setsIsRunningTrue() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -39,7 +39,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func pause_setsIsRunningFalse() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -54,7 +54,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func reset_restoresInitialState() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -71,7 +71,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func totalIntervals_calculatedCorrectly() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -82,7 +82,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func completedIntervals_startsAtZero() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -93,7 +93,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func overallProgress_startsAtOne() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -104,7 +104,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func intervalProgress_startsAtOne() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -115,7 +115,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func currentInterval_startsAtOne() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -126,7 +126,7 @@ struct EMOMTimerModelTests {
     @Test @MainActor func currentInterval_capsAtTotal() {
         let model = EMOMTimerModel(
             totalDuration: 60,
-            intervalDuration: 10,
+            intervalCount: 6,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -154,5 +154,20 @@ struct EMOMTimerModelTests {
         // 60 seconds / 10 reps = 6 seconds per interval
         #expect(model.intervalTimeRemaining == 6)
         #expect(model.totalIntervals == 10)
+    }
+
+    @Test @MainActor func totalIntervals_survivesFloatingPointRoundTrip() {
+        // Regression: deriving the count via Int(totalDuration / intervalDuration)
+        // truncated 113.9999… to 113 for certain rep counts (e.g. 114 over 20 min).
+        for reps in [112, 113, 114, 137, 199] {
+            let model = EMOMTimerModel(
+                totalReps: reps,
+                totalMinutes: 20,
+                timerProvider: MockTimerProvider(),
+                feedbackProvider: SilentFeedback()
+            )
+
+            #expect(model.totalIntervals == reps)   // 114 returned 113 before the fix
+        }
     }
 }

@@ -40,7 +40,7 @@ protocol TimerSyncService {
     /// - Parameters:
     ///   - kind: The type of timer (EMOM or AMRAP)
     ///   - totalDuration: Total workout duration in seconds
-    ///   - intervalDuration: Interval duration for EMOM timers (nil for AMRAP)
+    ///   - intervalCount: Number of intervals/reps for EMOM timers (nil for AMRAP)
     ///   - exerciseName: Name of the exercise being performed
     ///   - scheduledStartTime: Absolute time when the timer should start (after countdown)
     ///   - correlationID: WorkoutLog ID for Watch to echo back in `WorkoutSessionEndedMessage`
@@ -48,7 +48,7 @@ protocol TimerSyncService {
     func startTimerOnWatch(
         kind: TimerKind,
         totalDuration: TimeInterval,
-        intervalDuration: TimeInterval?,
+        intervalCount: Int?,
         exerciseName: String,
         scheduledStartTime: Date?,
         correlationID: UUID?,
@@ -120,7 +120,7 @@ final class DefaultTimerSyncService: TimerSyncService {
     func startTimerOnWatch(
         kind: TimerKind,
         totalDuration: TimeInterval,
-        intervalDuration: TimeInterval?,
+        intervalCount: Int?,
         exerciseName: String,
         scheduledStartTime: Date?,
         correlationID: UUID?,
@@ -131,7 +131,7 @@ final class DefaultTimerSyncService: TimerSyncService {
         let message = StartTimerMessage(
             timerKind: kind,
             totalDuration: totalDuration,
-            intervalDuration: intervalDuration,
+            intervalCount: intervalCount,
             exerciseName: exerciseName,
             displayOnly: true,  // Watch should not log workout
             scheduledStartTime: scheduledStartTime,
@@ -226,7 +226,7 @@ final class SilentTimerSyncService: TimerSyncService {
     func startTimerOnWatch(
         kind: TimerKind,
         totalDuration: TimeInterval,
-        intervalDuration: TimeInterval?,
+        intervalCount: Int?,
         exerciseName: String,
         scheduledStartTime: Date?,
         correlationID: UUID?,

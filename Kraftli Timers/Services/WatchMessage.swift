@@ -52,7 +52,7 @@ struct StartTimerMessage: WatchMessage, Equatable {
 
     let timerKindRaw: String
     let totalDuration: TimeInterval
-    let intervalDuration: TimeInterval?  // Only set for EMOM
+    let intervalCount: Int?  // Only set for EMOM (number of intervals / reps)
     let exerciseName: String
 
     /// When true, watch should not log the workout (iPhone is the source of truth).
@@ -74,7 +74,7 @@ struct StartTimerMessage: WatchMessage, Equatable {
     init(
         timerKind: TimerKind,
         totalDuration: TimeInterval,
-        intervalDuration: TimeInterval? = nil,
+        intervalCount: Int? = nil,
         exerciseName: String,
         displayOnly: Bool = true,
         scheduledStartTime: Date? = nil,
@@ -82,7 +82,7 @@ struct StartTimerMessage: WatchMessage, Equatable {
     ) {
         self.timerKindRaw = timerKind.rawValue
         self.totalDuration = totalDuration
-        self.intervalDuration = intervalDuration
+        self.intervalCount = intervalCount
         self.exerciseName = exerciseName
         self.displayOnly = displayOnly
         self.scheduledStartTime = scheduledStartTime
@@ -91,7 +91,7 @@ struct StartTimerMessage: WatchMessage, Equatable {
 
     // Custom Codable to exclude computed messageType
     private enum CodingKeys: String, CodingKey {
-        case timerKindRaw, totalDuration, intervalDuration, exerciseName, displayOnly, scheduledStartTime, correlationID
+        case timerKindRaw, totalDuration, intervalCount, exerciseName, displayOnly, scheduledStartTime, correlationID
     }
 }
 
@@ -204,7 +204,7 @@ struct TimerStartedOnWatchMessage: WatchMessage, Equatable {
 
     let timerKindRaw: String
     let totalDuration: TimeInterval
-    let intervalDuration: TimeInterval?
+    let intervalCount: Int?
     let exerciseName: String
 
     var timerKind: TimerKind {
@@ -214,18 +214,18 @@ struct TimerStartedOnWatchMessage: WatchMessage, Equatable {
     init(
         timerKind: TimerKind,
         totalDuration: TimeInterval,
-        intervalDuration: TimeInterval? = nil,
+        intervalCount: Int? = nil,
         exerciseName: String
     ) {
         self.timerKindRaw = timerKind.rawValue
         self.totalDuration = totalDuration
-        self.intervalDuration = intervalDuration
+        self.intervalCount = intervalCount
         self.exerciseName = exerciseName
     }
 
     // Custom Codable to exclude computed messageType
     private enum CodingKeys: String, CodingKey {
-        case timerKindRaw, totalDuration, intervalDuration, exerciseName
+        case timerKindRaw, totalDuration, intervalCount, exerciseName
     }
 }
 

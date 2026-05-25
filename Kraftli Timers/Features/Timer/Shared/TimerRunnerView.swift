@@ -174,7 +174,7 @@ struct TimerRunnerView: View {
             EMOMTimerView(
                 timerModel: EMOMTimerModel(
                     totalDuration: preset.durationInterval,
-                    intervalDuration: intervalDuration,
+                    intervalCount: preset.targetReps ?? 1,
                     timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
@@ -183,7 +183,7 @@ struct TimerRunnerView: View {
                 syncService: timerSyncService,
                 healthKitService: healthKitService,
                 exerciseName: preset.exerciseInfo?.name ?? "Workout",
-                syncIntervalDuration: intervalDuration,
+                syncIntervalCount: preset.targetReps,
                 correlationID: correlationID,
                 isSwipeDisabled: $isSwipeDisabled,
                 showHint: $showHint,
@@ -210,13 +210,6 @@ struct TimerRunnerView: View {
                 onDismissRequested: { dismiss() }
             )
         }
-    }
-
-    private var intervalDuration: TimeInterval {
-        guard let targetReps = preset.targetReps, targetReps > 0 else {
-            return preset.durationInterval
-        }
-        return preset.durationInterval / Double(targetReps)
     }
 
     /// Handles the workout session ended message from Watch.

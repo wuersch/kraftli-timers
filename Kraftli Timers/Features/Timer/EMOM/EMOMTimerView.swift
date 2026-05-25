@@ -41,8 +41,8 @@ struct EMOMTimerView: View {
     /// Exercise name for Watch sync message.
     private let exerciseName: String
 
-    /// Interval duration for Watch sync message (EMOM-specific).
-    private let syncIntervalDuration: TimeInterval?
+    /// Interval count (reps) for Watch sync message (EMOM-specific).
+    private let syncIntervalCount: Int?
 
     /// Pre-generated correlation ID for Watch ↔ iPhone UUID matching.
     private let correlationID: UUID?
@@ -83,7 +83,7 @@ struct EMOMTimerView: View {
         syncService: TimerSyncService? = nil,
         healthKitService: (any HealthKitService)? = nil,
         exerciseName: String = "Workout",
-        syncIntervalDuration: TimeInterval? = nil,
+        syncIntervalCount: Int? = nil,
         correlationID: UUID? = nil,
         isSwipeDisabled: Binding<Bool> = .constant(false),
         showHint: Binding<Bool> = .constant(true),
@@ -97,7 +97,7 @@ struct EMOMTimerView: View {
         self.syncService = syncService
         self.healthKitService = healthKitService
         self.exerciseName = exerciseName
-        self.syncIntervalDuration = syncIntervalDuration
+        self.syncIntervalCount = syncIntervalCount
         self.correlationID = correlationID
         self._isSwipeDisabled = isSwipeDisabled
         self._showHint = showHint
@@ -196,7 +196,7 @@ struct EMOMTimerView: View {
         syncService?.startTimerOnWatch(
             kind: .emom,
             totalDuration: timerModel.totalDuration,
-            intervalDuration: syncIntervalDuration,
+            intervalCount: syncIntervalCount,
             exerciseName: exerciseName,
             scheduledStartTime: scheduledStartTime,
             correlationID: correlationID,

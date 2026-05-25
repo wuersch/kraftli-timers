@@ -21,6 +21,7 @@ public class EMOMTimerModel: WorkoutTimer {
     // MARK: - Private Properties
     private let intervalWarningThreshold: TimeInterval
     private let _totalDuration: TimeInterval
+    private let _totalIntervals: Int
     private let intervalDuration: TimeInterval
     private let timerCoordinator: TimerCoordinator
     private let feedbackProvider: FeedbackProvider
@@ -50,7 +51,9 @@ public class EMOMTimerModel: WorkoutTimer {
     @MainActor
     var completedIntervals: Int {
         let elapsedTime = totalDuration - totalTimeRemaining
-        return Int(elapsedTime / intervalDuration)
+        // +epsilon so an exact boundary (e.g. 113.9999… from the derived float) snaps up;
+        // clamp so completion reports the authoritative total, never one short.
+        return min(Int(elapsedTime / intervalDuration + 1e-6), _totalIntervals)
     }
 
     /// The interval currently in progress (1-based), for display purposes.
@@ -62,7 +65,7 @@ public class EMOMTimerModel: WorkoutTimer {
     
     @MainActor
     var totalIntervals: Int {
-        Int(totalDuration / intervalDuration)
+        _totalIntervals
     }
 
     // MARK: - WorkoutTimer Protocol
@@ -82,17 +85,21 @@ public class EMOMTimerModel: WorkoutTimer {
     // MARK: - Initialization
     init(
         totalDuration: TimeInterval = 20 * 60,
-        intervalDuration: TimeInterval = 60,
+        intervalCount: Int = 20,
         intervalWarningThreshold: TimeInterval = 3,
         timerProvider: TimerProvider,
         feedbackProvider: FeedbackProvider
     ) {
         precondition(totalDuration > 0, "totalDuration must be > 0")
-        precondition(intervalDuration > 0, "intervalDuration must be > 0")
-        precondition(totalDuration >= intervalDuration, "totalDuration must be >= intervalDuration")
+        precondition(intervalCount > 0, "intervalCount must be > 0")
         precondition(intervalWarningThreshold >= 0, "intervalWarningThreshold must be >= 0")
 
+        // The integer interval count is the source of truth; intervalDuration is derived
+        // from it exactly once here so we never decode the count back out of a float.
+        let intervalDuration = totalDuration / Double(intervalCount)
+
         self._totalDuration = totalDuration
+        self._totalIntervals = intervalCount
         self.intervalDuration = intervalDuration
         self.intervalWarningThreshold = intervalWarningThreshold
         self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
@@ -114,11 +121,10 @@ public class EMOMTimerModel: WorkoutTimer {
         precondition(totalMinutes > 0, "totalMinutes must be > 0")
 
         let totalSeconds = TimeInterval(totalMinutes * 60)
-        let intervalSeconds = totalSeconds / Double(totalReps)
 
         self.init(
             totalDuration: totalSeconds,
-            intervalDuration: intervalSeconds,
+            intervalCount: totalReps,
             timerProvider: timerProvider,
             feedbackProvider: feedbackProvider
         )

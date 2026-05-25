@@ -22,7 +22,7 @@ import os
 struct WatchWorkoutConfig {
     let timerKind: TimerKind
     let totalDuration: TimeInterval
-    let intervalDuration: TimeInterval?
+    let intervalCount: Int?
     let exerciseName: String
     let displayOnly: Bool
     let scheduledStartTime: Date?
@@ -184,7 +184,7 @@ struct WatchWorkoutCoordinator {
             syncService.sendTimerStartedOnWatch(
                 kind: self.config.timerKind,
                 totalDuration: self.config.totalDuration,
-                intervalDuration: self.config.intervalDuration,
+                intervalCount: self.config.intervalCount,
                 exerciseName: self.config.exerciseName,
                 completion: nil
             )
