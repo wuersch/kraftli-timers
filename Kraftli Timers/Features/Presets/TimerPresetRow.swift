@@ -22,7 +22,7 @@ struct TimerPresetRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(preset.kindRawValue == "AMRAP" ? "timer.amrap" : "timer.interval")
+            Image(preset.kind.icon)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 28, height: 28)
