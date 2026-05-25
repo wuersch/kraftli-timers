@@ -3,7 +3,7 @@
 //  Kraftli Timers Watch App
 //
 //  AMRAP timer view optimized for watchOS.
-//  Tap to count rounds, Digital Crown also adjusts rounds.
+//  Tap to count rounds.
 //
 
 import SwiftUI
@@ -16,7 +16,6 @@ struct WatchAMRAPTimerView: View {
     // MARK: - Properties
     @State private var timerModel: AMRAPTimerModel
     @State private var countdown = WatchCountdownCoordinator()
-    @State private var crownValue: Double = 0
     @State private var hasLoggedWorkout = false
     @State private var cancellables = Set<AnyCancellable>()
     @Environment(\.dismiss) private var dismiss
@@ -46,7 +45,18 @@ struct WatchAMRAPTimerView: View {
         timerModel.totalTimeRemaining <= 0
     }
 
-    private let accentColor: Color = .indigo
+    /// Static timer kind — drives the accent color and the top-left glyph.
+    private let timerKind: TimerKind = .amrap
+
+    /// Live heart rate as an integer string, or "--" before the first sample.
+    private var heartRateText: String {
+        sessionManager.currentHeartRate.map { "\(Int($0))" } ?? "--"
+    }
+
+    /// Accumulated active calories as an integer string, or "--".
+    private var caloriesText: String {
+        sessionManager.activeCalories.map { "\(Int($0))" } ?? "--"
+    }
 
     /// Lazily built coordinator that delegates shared workout lifecycle logic.
     private var coordinator: WatchWorkoutCoordinator {
@@ -100,114 +110,30 @@ struct WatchAMRAPTimerView: View {
 
     // MARK: - Body
     var body: some View {
-        GeometryReader { geometry in
-            let size = min(geometry.size.width, geometry.size.height)
-            let ringSize = size * 0.70
-            let lineWidth = ringSize * 0.06
+        Group {
+            if countdown.isCountingDown {
+                WatchCountdownView(countdown: countdown)
+            } else {
+                TabView {
+                    metricsPage
 
-            ZStack {
-                VStack(spacing: 6) {
-                    // Ring with center content
-                    ZStack {
-                        // Ring - stays full during countdown, fills green on completion
-                        ProgressRing(
-                            size: ringSize,
-                            lineWidth: lineWidth,
-                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.progress),
-                            color: isCompleted ? .green : accentColor,
-                            backgroundColor: Color.gray.opacity(0.3),
-                            rotationDegrees: -90
-                        )
-                        .animation(.easeOut(duration: 0.6), value: isCompleted)
-
-                        // Center content - switches between countdown and normal display
-                        if countdown.isCountingDown {
-                            countdownCenterContent(ringSize: ringSize)
-                        } else {
-                            VStack(spacing: 2) {
-                                Text("\(timerModel.roundsCompleted)")
-                                    .font(.system(size: ringSize * 0.28, weight: .bold, design: .rounded))
-                                    .foregroundStyle(isCompleted ? .green : accentColor)
-                                    .monospacedDigit()
-                                    .contentTransition(.numericText())
-
-                                if isCompleted {
-                                    Text("DONE")
-                                        .font(.system(size: ringSize * 0.10, weight: .medium))
-                                        .foregroundStyle(.green)
-                                }
-                            }
-                        }
-                    }
-
-                    // Bottom section - ZStack maintains consistent height
-                    ZStack {
-                        // Normal total time (always present for layout)
-                        Text(isCompleted ? totalDuration.formatted : timerModel.totalTimeRemaining.formatted)
-                            .font(.system(size: ringSize * 0.16, weight: .bold, design: .rounded))
-                            .foregroundStyle(isCompleted ? .green : .primary)
-                            .monospacedDigit()
-                            .opacity(countdown.isCountingDown ? 0 : 1)
-
-                        // "Get ready" text (shown during countdown)
-                        Text("Get ready")
-                            .font(.system(size: ringSize * 0.13, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .opacity(countdown.isCountingDown ? 1 : 0)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            .overlay(alignment: .bottom) {
-                // Hide controls during countdown
-                if !countdown.isCountingDown {
-                    HStack {
-                        Button {
+                    WatchTimerControlsPage(
+                        isRunning: timerModel.isRunning,
+                        isCompleted: isCompleted,
+                        onStop: {
                             coordinator.handleStop(timer: timerModel, countdown: countdown, dismiss: dismiss)
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.primary)
-                                .frame(width: 32, height: 32)
-                                .background(Color.gray.opacity(0.3))
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-
-                        Button {
+                        },
+                        onPlayPause: {
                             coordinator.handlePlayPause(
                                 timer: timerModel,
                                 countdown: countdown,
                                 isCompleted: isCompleted,
                                 startTimerWithWorkoutSession: { coordinator.startTimerWithWorkoutSession(timer: timerModel) }
                             )
-                        } label: {
-                            Image(systemName: timerModel.isRunning ? "pause.fill" : "play.fill")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(isCompleted ? .gray : .primary)
-                                .frame(width: 32, height: 32)
-                                .background(Color.gray.opacity(0.3))
-                                .clipShape(Circle())
                         }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(16)
+                    )
                 }
-            }
-        }
-        .ignoresSafeArea()
-        .contentShape(Rectangle())
-        .onTapGesture {
-            // Tap only counts rounds when running (and not during countdown)
-            if timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
-                timerModel.incrementRoundsCompleted()
-                syncService.sendTimerControl(.incrementRound) { result in
-                    if case .failure(let error) = result {
-                        Logger.timerSync.warning("sendTimerControl(.incrementRound) failed: \(error.localizedDescription)")
-                    }
-                }
+                .tabViewStyle(.page)
             }
         }
         .toolbar(.hidden)
@@ -241,17 +167,72 @@ struct WatchAMRAPTimerView: View {
         }
     }
 
-    // MARK: - Countdown Center Content
-    @ViewBuilder
-    private func countdownCenterContent(ringSize: CGFloat) -> some View {
-        let displayText = countdown.countdownValue.map { $0 > 0 ? "\($0)" : "GO" } ?? ""
-        let textColor: Color = .primary
+    // MARK: - Metrics Page
+    private var metricsPage: some View {
+        ZStack(alignment: .topLeading) {
+            // Metrics respect the safe area (sit below the clock), vertically
+            // centered as a tight column. The whole column is tappable to count
+            // rounds.
+            VStack(alignment: .leading, spacing: -4) {
+                // Total remaining
+                WatchMetricRow(
+                    value: isCompleted ? totalDuration.formatted : timerModel.totalTimeRemaining.formatted,
+                    labelTop: "TOTAL",
+                    valueColor: isCompleted ? .green : timerKind.color
+                )
+                // Rounds (the key tappable count)
+                WatchMetricRow(
+                    value: "\(timerModel.roundsCompleted)",
+                    labelTop: "ROUNDS",
+                    valueColor: isCompleted ? .green : timerKind.color
+                )
+                // Live heart rate
+                WatchMetricRow(
+                    value: heartRateText,
+                    symbol: "heart.fill",
+                    symbolColor: .red
+                )
+                // Active calories
+                WatchMetricRow(
+                    value: caloriesText,
+                    labelTop: "ACTIVE",
+                    labelBottom: "KCAL",
+                    labelColor: .orange
+                )
 
-        Text(displayText)
-            .font(.system(size: ringSize * 0.35, weight: .bold, design: .rounded))
-            .foregroundStyle(textColor)
-            .contentTransition(.numericText())
-            .id(countdown.countdownValue)
+                if isCompleted {
+                    Text("DONE")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.green)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // Tap counts rounds when running (not when completed). The metrics
+                // page is only shown after the countdown, so no countdown guard needed.
+                if timerModel.isRunning && !isCompleted {
+                    timerModel.incrementRoundsCompleted()
+                    syncService.sendTimerControl(.incrementRound) { result in
+                        if case .failure(let error) = result {
+                            Logger.timerSync.warning("sendTimerControl(.incrementRound) failed: \(error.localizedDescription)")
+                        }
+                    }
+                }
+            }
+
+            // Glyph ignores the top inset so it rides up into the corner,
+            // level with the clock.
+            Image(timerKind.icon)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 26, height: 26)
+                .foregroundStyle(timerKind.color)
+                .padding(.top, 18)
+                .ignoresSafeArea(.container, edges: .top)
+                .allowsHitTesting(false)
+        }
+        .padding(.horizontal, 12)
     }
 
     // MARK: - Remote Control (AMRAP-specific)

@@ -16,4 +16,13 @@ extension TimerKind {
         case .amrap: return .indigo
         }
     }
+
+    /// Asset name for the timer kind glyph (used as the top-left mark on the
+    /// Watch active-workout screen, and in preset rows on iPhone).
+    var icon: String {
+        switch self {
+        case .emom: return "timer.interval"
+        case .amrap: return "timer.amrap"
+        }
+    }
 }

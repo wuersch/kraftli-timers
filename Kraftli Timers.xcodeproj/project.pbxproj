@@ -89,9 +89,9 @@
 		4C74D6EE2F1CE676009A425D /* Exceptions for "Kraftli Timers" folder in "Kraftli Timers Watch App" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Components/ProgressRing.swift,
 				Exercises.json,
 				"Extensions/TimeInterval+Format.swift",
+				"Extensions/TimerKind+UI.swift",
 				Features/Timer/AMRAP/AMRAPTimerModel.swift,
 				Features/Timer/EMOM/EMOMTimerModel.swift,
 				Features/Timer/Shared/TimerCoordinator.swift,
