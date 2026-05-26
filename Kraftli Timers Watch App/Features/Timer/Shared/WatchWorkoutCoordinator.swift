@@ -147,15 +147,27 @@ struct WatchWorkoutCoordinator {
 
     // MARK: - Countdown & Session Start
 
-    /// Starts the countdown if a scheduled start time was provided from iPhone.
+    /// Starts the pre-workout countdown.
+    ///
+    /// - **iPhone-led** (a `scheduledStartTime` was sent over): join the
+    ///   countdown already in progress on the phone.
+    /// - **Standalone Watch start** (no scheduled time, not display-only): run a
+    ///   local 3-2-1 countdown, then start — matching the iPhone-led flow and
+    ///   Apple's Workout app (tap a preset → countdown → running, no Play step).
+    /// - **Phone mirror** (`displayOnly`): do nothing; the mirror waits for a
+    ///   remote `.play` and must never self-start its own HK session.
     func startCountdownIfNeeded(
         countdown: WatchCountdownCoordinator,
         startTimerWithWorkoutSession: @escaping () -> Void
     ) {
-        guard let scheduledStartTime = config.scheduledStartTime else { return }
-
-        countdown.startCountdown(scheduledStartTime: scheduledStartTime) {
-            startTimerWithWorkoutSession()
+        if let scheduled = config.scheduledStartTime {
+            countdown.startCountdown(scheduledStartTime: scheduled, completion: startTimerWithWorkoutSession)
+        } else if !config.displayOnly {
+            // Standalone Watch start: auto-run a local 3-2-1, then start.
+            countdown.startCountdown(
+                scheduledStartTime: Date().addingTimeInterval(3),
+                completion: startTimerWithWorkoutSession
+            )
         }
     }
 

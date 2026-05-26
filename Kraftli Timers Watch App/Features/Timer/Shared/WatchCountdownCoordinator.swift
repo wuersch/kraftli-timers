@@ -28,6 +28,10 @@ final class WatchCountdownCoordinator {
 
     private var countdownTask: Task<Void, Never>?
 
+    /// Stored so `finishNow()` can fire the start when the user taps to skip
+    /// the remaining countdown.
+    private var completion: (() -> Void)?
+
     // MARK: - Public Methods
 
     /// Starts a countdown that completes at the specified absolute time.
@@ -55,6 +59,7 @@ final class WatchCountdownCoordinator {
         }
 
         isCountingDown = true
+        self.completion = completion
 
         countdownTask = Task { [weak self] in
             guard let self else { return }
@@ -100,5 +105,23 @@ final class WatchCountdownCoordinator {
         countdownTask = nil
         countdownValue = nil
         isCountingDown = false
+        completion = nil
+    }
+
+    /// Skips the remaining countdown and starts immediately (tap-to-start).
+    ///
+    /// Mirrors Apple's Workout app: tapping during the 3-2-1 jumps straight to
+    /// the workout. Fires the stored completion exactly once; cancelling the
+    /// task first makes the in-flight `countdownTask`'s own `completion()` call
+    /// short-circuit on its `Task.isCancelled` guard, so there's no double-fire.
+    func finishNow() {
+        guard isCountingDown else { return }
+        countdownTask?.cancel()
+        countdownTask = nil
+        countdownValue = nil
+        isCountingDown = false
+        let startNow = completion
+        completion = nil
+        startNow?()
     }
 }
