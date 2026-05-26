@@ -22,6 +22,9 @@ struct AMRAPTimerView: View {
     @State private var cancellables = Set<AnyCancellable>()
     @State private var isPulsing = false
 
+    /// Guards the one-shot auto-start so a repeated `onAppear` can't relaunch the countdown.
+    @State private var didAutoStart = false
+
     /// Tracks whether Watch is handling the HKWorkoutSession (Scenario C).
     /// When true, iPhone skips its own HealthKit save to avoid duplicates.
     @State private var watchHandledWorkout = false
@@ -40,6 +43,10 @@ struct AMRAPTimerView: View {
 
     /// Pre-generated correlation ID for Watch ↔ iPhone UUID matching.
     private let correlationID: UUID?
+
+    /// When true, the countdown + timer start automatically on first appear
+    /// (e.g. launched from the preset play button), mirroring the Watch behavior.
+    private let autoStart: Bool
 
     // MARK: - Bindings for Parent Coordination
 
@@ -76,6 +83,7 @@ struct AMRAPTimerView: View {
         healthKitService: (any HealthKitService)? = nil,
         exerciseName: String = "Workout",
         correlationID: UUID? = nil,
+        autoStart: Bool = false,
         isSwipeDisabled: Binding<Bool> = .constant(false),
         showHint: Binding<Bool> = .constant(true),
         showConfetti: Binding<Bool> = .constant(false),
@@ -88,6 +96,7 @@ struct AMRAPTimerView: View {
         self.healthKitService = healthKitService
         self.exerciseName = exerciseName
         self.correlationID = correlationID
+        self.autoStart = autoStart
         self._isSwipeDisabled = isSwipeDisabled
         self._showHint = showHint
         self._showConfetti = showConfetti
@@ -358,6 +367,12 @@ struct AMRAPTimerView: View {
             setupControlSubscription()
             // Register cleanup action with parent
             onCleanupForDismiss?(cleanupForDismiss)
+            // Auto-start the countdown + timer when launched from the preset play button.
+            // Guarded so a repeated onAppear can't cancel/restart an in-progress countdown.
+            if autoStart && !didAutoStart {
+                didAutoStart = true
+                startCountdown()
+            }
         }
         .onChange(of: mirroredWorkout?.sessionState) { _, newState in
             reconcileMirroredState(newState)
