@@ -25,6 +25,8 @@ public class EMOMTimerModel: WorkoutTimer {
     private let intervalDuration: TimeInterval
     private let timerCoordinator: TimerCoordinator
     private let feedbackProvider: FeedbackProvider
+    /// Wall-clock source. Injectable so tests can drive time deterministically.
+    private let now: () -> Date
 
     private var totalStartDate: Date?
     private var pausedTotalTime: TimeInterval?
@@ -89,7 +91,8 @@ public class EMOMTimerModel: WorkoutTimer {
         intervalCount: Int = 20,
         intervalWarningThreshold: TimeInterval = 3,
         timerProvider: TimerProvider,
-        feedbackProvider: FeedbackProvider
+        feedbackProvider: FeedbackProvider,
+        now: @escaping () -> Date = { Date() }
     ) {
         precondition(totalDuration > 0, "totalDuration must be > 0")
         precondition(intervalCount > 0, "intervalCount must be > 0")
@@ -103,8 +106,9 @@ public class EMOMTimerModel: WorkoutTimer {
         self._totalIntervals = intervalCount
         self.intervalDuration = intervalDuration
         self.intervalWarningThreshold = intervalWarningThreshold
-        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
+        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider, now: now)
         self.feedbackProvider = feedbackProvider
+        self.now = now
         self.totalTimeRemaining = totalDuration
         self.intervalTimeRemaining = intervalDuration
         self.preciseTotalTimeRemaining = totalDuration
@@ -149,7 +153,41 @@ public class EMOMTimerModel: WorkoutTimer {
         isRunning = false
         timerCoordinator.stop()
     }
-    
+
+    /// Pauses using the authoritative `date` (HealthKit's canonical transition time) rather
+    /// than the local clock, so both devices freeze at the identical `remaining`.
+    @MainActor
+    func pause(at date: Date) {
+        guard isRunning, let totalStart = totalStartDate else {
+            // No anchor to measure against — fall back to the local-clock freeze.
+            pause()
+            return
+        }
+
+        // Recompute the frozen display from the shared `date` (not the last, possibly-stale tick).
+        let elapsed = max(0, date.timeIntervalSince(totalStart))
+        setDisplayFields(totalElapsed: elapsed)
+        pausedTotalTime = preciseTotalTimeRemaining
+        isRunning = false
+        timerCoordinator.stop()
+    }
+
+    /// Resumes by re-anchoring `totalStartDate` from the shared `date` and the frozen
+    /// `remaining`, so both devices adopt the identical absolute anchor. Does not replay
+    /// start feedback (remote-driven) and preserves interval/warning state so no sounds repeat.
+    @MainActor
+    func resume(at date: Date) {
+        guard !isRunning else { return }  // Already running → no toggle, no feedback bounce.
+
+        let remaining = pausedTotalTime ?? preciseTotalTimeRemaining
+        let anchor = date.addingTimeInterval(-(totalDuration - remaining))
+        totalStartDate = timerCoordinator.start(startDate: anchor) { [weak self] in
+            self?.update()
+        }
+        pausedTotalTime = nil
+        isRunning = true
+    }
+
     @MainActor
     func reset() {
         timerCoordinator.stop()
@@ -179,15 +217,11 @@ public class EMOMTimerModel: WorkoutTimer {
         pausedTotalTime = nil
     }
     
+    /// Recomputes the four displayed remaining-time fields from the elapsed time.
+    /// Pure display math — no feedback, no interval/warning counter mutation — so it can be
+    /// reused by `pause(at:)` to freeze against the canonical date without firing sounds.
     @MainActor
-    private func update() {
-        guard let totalStart = totalStartDate else {
-            return
-        }
-
-        let now = Date()
-        let totalElapsed = now.timeIntervalSince(totalStart)
-
+    private func setDisplayFields(totalElapsed: TimeInterval) {
         // Calculate precise values for smooth progress animations
         preciseTotalTimeRemaining = max(0, totalDuration - totalElapsed)
         let preciseIntervalElapsed = totalElapsed.truncatingRemainder(dividingBy: intervalDuration)
@@ -198,6 +232,17 @@ public class EMOMTimerModel: WorkoutTimer {
         totalTimeRemaining = max(0, totalDuration - totalElapsedSeconds)
         let intervalElapsedSeconds = totalElapsedSeconds.truncatingRemainder(dividingBy: intervalDuration)
         intervalTimeRemaining = intervalDuration - intervalElapsedSeconds
+    }
+
+    @MainActor
+    private func update() {
+        guard let totalStart = totalStartDate else {
+            return
+        }
+
+        let totalElapsed = now().timeIntervalSince(totalStart)
+
+        setDisplayFields(totalElapsed: totalElapsed)
 
         // Derive interval time from total elapsed (single source of truth)
         if preciseTotalTimeRemaining > 0 {

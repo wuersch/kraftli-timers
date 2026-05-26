@@ -270,17 +270,24 @@ struct EMOMTimerView: View {
     private func reconcileMirroredState(_ newState: MirroredWorkoutObserver.SessionState?) {
         guard let newState else { return }
 
+        // Anchor pause/resume to HealthKit's canonical transition date (identical on both
+        // devices) rather than the local clock, so repeated pause/resume stays in lockstep.
+        let date = mirroredWorkout?.lastTransitionDate ?? Date()
+
         switch newState {
         case .paused:
             if timerModel.isRunning {
                 Logger.timerSync.info("Mirrored session paused → pausing local timer")
-                timerModel.pause()
+                timerModel.pause(at: date)
                 session.onTimerPaused()
             }
         case .running:
             if !timerModel.isRunning && !isCompleted && session.hasEverStarted {
                 Logger.timerSync.info("Mirrored session running → resuming local timer")
-                startAndScheduleHintHide()
+                // Remote-driven resume: re-anchor to the shared date and resume hint tracking
+                // without replaying start feedback (startAndScheduleHintHide stays on the local path).
+                timerModel.resume(at: date)
+                session.onTimerStarted { [timerModel] in timerModel.isRunning }
             }
         case .ended:
             Logger.timerSync.info("Mirrored session ended")

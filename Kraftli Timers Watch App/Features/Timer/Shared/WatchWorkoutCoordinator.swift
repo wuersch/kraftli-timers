@@ -253,18 +253,21 @@ struct WatchWorkoutCoordinator {
         _ newState: WorkoutSessionManager.SessionState,
         timer: some WorkoutTimer,
         isCompleted: Bool,
-        isCountingDown: Bool
+        isCountingDown: Bool,
+        transitionDate: Date
     ) {
         switch newState {
         case .paused:
             if timer.isRunning {
                 Logger.timerSync.info("Session state paused → pausing local timer (remote)")
-                timer.pause()
+                // Anchor to HealthKit's canonical transition date (identical on both devices),
+                // not the local clock, so repeated pause/resume stays in lockstep.
+                timer.pause(at: transitionDate)
             }
         case .running:
             if !timer.isRunning && !isCompleted && !isCountingDown {
                 Logger.timerSync.info("Session state running → resuming local timer (remote)")
-                timer.start()
+                timer.resume(at: transitionDate)
             }
         case .idle, .ended:
             break

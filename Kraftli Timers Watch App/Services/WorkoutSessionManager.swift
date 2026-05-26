@@ -34,6 +34,12 @@ final class WorkoutSessionManager: NSObject {
     /// Current session state.
     private(set) var sessionState: SessionState = .idle
 
+    /// The canonical `date` of the most recent session-state transition, as reported by
+    /// HealthKit's delegate. This timestamp is identical on Watch and iPhone, so reconcile
+    /// sites use it to re-anchor the timer (`pause(at:)` / `resume(at:)`) to a shared point
+    /// instead of each device's local clock — eliminating cross-device pause/resume drift.
+    private(set) var lastTransitionDate: Date?
+
     /// Most recent heart rate reading (beats per minute).
     private(set) var currentHeartRate: Double?
 
@@ -288,6 +294,9 @@ extension WorkoutSessionManager: HKWorkoutSessionDelegate {
         date: Date
     ) {
         Task { @MainActor in
+            // Set the canonical transition date BEFORE sessionState so the view's
+            // onChange(of: sessionState) observer reads the matching date.
+            lastTransitionDate = date
             switch toState {
             case .running:
                 sessionState = .running
