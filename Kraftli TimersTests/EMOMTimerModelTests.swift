@@ -170,4 +170,104 @@ struct EMOMTimerModelTests {
             #expect(model.totalIntervals == reps)   // 114 returned 113 before the fix
         }
     }
+
+    // MARK: - Cross-device anchoring / pause-resume drift (ADR-003)
+
+    /// Two independent models (Watch + phone) fed the SAME canonical pause/resume dates stay
+    /// bit-for-bit in sync across many cycles — even though the "phone" processes each event a
+    /// fixed latency after the "Watch". This is the invariant ADR-003 establishes, and the
+    /// assertions are synchronous because `pause(at:)` recomputes the display fields itself.
+    @Test @MainActor func canonicalDatePauseResume_keepsDevicesInSync() {
+        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let clock = { fakeNow }
+
+        let watch = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
+        )
+        let phone = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
+        )
+
+        // Both start anchored to the same instant (mirrors the scheduledStartTime handshake).
+        watch.start()
+        phone.start()
+
+        let latency: TimeInterval = 0.3
+        for _ in 0..<20 {
+            // Run, then PAUSE: Watch processes the canonical date, phone processes it `latency` later.
+            fakeNow += 1
+            let pauseDate = fakeNow
+            watch.pause(at: pauseDate)
+            fakeNow += latency
+            phone.pause(at: pauseDate)
+
+            #expect(watch.totalTimeRemaining == phone.totalTimeRemaining)
+            #expect(watch.intervalTimeRemaining == phone.intervalTimeRemaining)
+
+            // Paused gap, then RESUME with the same staggered processing.
+            fakeNow += 1
+            let resumeDate = fakeNow
+            watch.resume(at: resumeDate)
+            fakeNow += latency
+            phone.resume(at: resumeDate)
+        }
+
+        // Evaluate both at one final shared instant.
+        fakeNow += 1
+        let finalDate = fakeNow
+        watch.pause(at: finalDate)
+        phone.pause(at: finalDate)
+        #expect(watch.totalTimeRemaining == phone.totalTimeRemaining)
+        #expect(watch.intervalTimeRemaining == phone.intervalTimeRemaining)
+
+        watch.reset()
+        phone.reset()
+    }
+
+    /// Regression doc: the pre-fix behaviour re-anchored resume from each device's LOCAL clock
+    /// (`start()`), so the same staggered processing drifts and the error accumulates (~latency
+    /// per cycle). Contrast with the canonical-date `resume(at:)` above, which does not drift.
+    @Test @MainActor func localClockResume_accumulatesDrift() {
+        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let clock = { fakeNow }
+
+        let watch = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
+        )
+        let phone = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
+        )
+
+        watch.start()
+        phone.start()
+
+        let latency: TimeInterval = 0.3
+        for _ in 0..<20 {
+            // Pause is shared (canonical date) so the drift is isolated to the resume path.
+            fakeNow += 1
+            let pauseDate = fakeNow
+            watch.pause(at: pauseDate)
+            phone.pause(at: pauseDate)
+
+            // OLD resume: re-anchor from the local clock, staggered by latency.
+            fakeNow += 1
+            watch.start()
+            fakeNow += latency
+            phone.start()
+        }
+
+        fakeNow += 1
+        let finalDate = fakeNow
+        watch.pause(at: finalDate)
+        phone.pause(at: finalDate)
+        // ~0.3s drift per cycle over 20 cycles accumulates well past a second.
+        #expect(abs(watch.totalTimeRemaining - phone.totalTimeRemaining) > 2)
+
+        watch.reset()
+        phone.reset()
+    }
 }

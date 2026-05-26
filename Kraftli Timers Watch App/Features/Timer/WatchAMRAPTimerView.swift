@@ -173,7 +173,8 @@ struct WatchAMRAPTimerView: View {
                 newState,
                 timer: timerModel,
                 isCompleted: isCompleted,
-                isCountingDown: countdown.isCountingDown
+                isCountingDown: countdown.isCountingDown,
+                transitionDate: sessionManager.lastTransitionDate ?? Date()
             )
         }
         .onChange(of: isCompleted) { _, completed in
