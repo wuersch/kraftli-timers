@@ -28,6 +28,8 @@ struct WatchCountdownView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture { countdown.finishNow() }
     }
 
     /// 3/2/1 → the number, 0 → "GO", nil → empty.

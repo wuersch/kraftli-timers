@@ -17,6 +17,8 @@ struct WatchEMOMTimerView: View {
     @State private var countdown = WatchCountdownCoordinator()
     @State private var hasLoggedWorkout = false
     @State private var cancellables = Set<AnyCancellable>()
+    @State private var page: WorkoutPage = .metrics
+    @State private var didStart = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -123,9 +125,9 @@ struct WatchEMOMTimerView: View {
             if countdown.isCountingDown {
                 WatchCountdownView(countdown: countdown)
             } else {
-                TabView {
-                    metricsPage
-
+                TabView(selection: $page) {
+                    // Controls sit to the LEFT (Apple Workout parity); the
+                    // selection below makes metrics the page shown on launch.
                     WatchTimerControlsPage(
                         isRunning: timerModel.isRunning,
                         isCompleted: isCompleted,
@@ -133,14 +135,21 @@ struct WatchEMOMTimerView: View {
                             coordinator.handleStop(timer: timerModel, countdown: countdown, dismiss: dismiss)
                         },
                         onPlayPause: {
+                            let isResuming = !timerModel.isRunning && !isCompleted
                             coordinator.handlePlayPause(
                                 timer: timerModel,
                                 countdown: countdown,
                                 isCompleted: isCompleted,
                                 startTimerWithWorkoutSession: { coordinator.startTimerWithWorkoutSession(timer: timerModel) }
                             )
+                            // Resuming brings the running timer back into view.
+                            if isResuming { withAnimation { page = .metrics } }
                         }
                     )
+                    .tag(WorkoutPage.controls)
+
+                    metricsPage
+                        .tag(WorkoutPage.metrics)
                 }
                 .tabViewStyle(.page)
             }
@@ -152,6 +161,15 @@ struct WatchEMOMTimerView: View {
             onPause: { timerModel.pause() }
         )
         .onAppear {
+            // Run setup exactly once. onAppear can fire again when the view
+            // re-appears (e.g. starting the HKWorkoutSession promotes the app
+            // to the foreground workout scene). Without this guard the
+            // standalone auto-start would relaunch its `now+3` countdown on
+            // every re-appear — looping forever, never reaching the timer — and
+            // would also stack duplicate control subscriptions.
+            guard !didStart else { return }
+            didStart = true
+
             coordinator.setupControlSubscription(cancellables: &cancellables) { action in
                 coordinator.handleRemoteControl(
                     action,

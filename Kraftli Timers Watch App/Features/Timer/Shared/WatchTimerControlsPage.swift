@@ -10,6 +10,15 @@
 
 import SwiftUI
 
+/// The two swipe pages of the Watch active-workout screen. Controls sit to the
+/// *left* of the metrics page (Apple Workout parity); the `TabView` selection
+/// defaults to `.metrics`, so metrics is shown on launch and a swipe-right
+/// reveals the controls.
+enum WorkoutPage {
+    case controls
+    case metrics
+}
+
 struct WatchTimerControlsPage: View {
     let isRunning: Bool
     let isCompleted: Bool
@@ -18,11 +27,15 @@ struct WatchTimerControlsPage: View {
 
     var body: some View {
         HStack(spacing: 24) {
-            // Stop = red; Play = green, Pause = yellow (gray once completed).
-            controlButton(systemName: "xmark", color: .red, action: onStop)
+            // Apple Workout parity: End (red ✕) and a Pause/Resume button, each
+            // with a text label beneath. With auto-start the right button is
+            // only ever Pause (running) or Resume (paused, arrow.clockwise), so
+            // it stays yellow (gray once completed).
+            controlButton(systemName: "xmark", color: .red, label: "End", action: onStop)
             controlButton(
-                systemName: isRunning ? "pause.fill" : "play.fill",
-                color: isCompleted ? .gray : (isRunning ? .yellow : .green),
+                systemName: isRunning ? "pause.fill" : "arrow.clockwise",
+                color: isCompleted ? .gray : .yellow,
+                label: isRunning ? "Pause" : "Resume",
                 action: onPlayPause
             )
         }
@@ -32,17 +45,24 @@ struct WatchTimerControlsPage: View {
     private func controlButton(
         systemName: String,
         color: Color,
+        label: String,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: 56, height: 56)
-                .background(color.opacity(0.25))
-                .clipShape(Circle())
+        VStack(spacing: 6) {
+            Button(action: action) {
+                Image(systemName: systemName)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(color)
+                    .frame(width: 56, height: 56)
+                    .background(color.opacity(0.25))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+
+            Text(label)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
     }
 }
 
