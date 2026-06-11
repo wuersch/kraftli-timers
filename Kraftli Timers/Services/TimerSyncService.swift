@@ -138,11 +138,12 @@ final class DefaultTimerSyncService: TimerSyncService {
             correlationID: correlationID
         )
 
-        // Dual-delivery: transferUserInfo is reliable (queued by the system and
-        // delivered even when the Watch app is closed), while sendMessage provides
-        // immediate delivery when the Watch is already reachable.
-        // The Watch deduplicates messages that arrive via both paths.
-        connectivity.transferUserInfo(message)
+        // Dual-delivery: the application context is the canonical "current timer
+        // command" — latest-state-wins, persisted by the system, and delivered
+        // even when the Watch app launches later (the startWatchApp cold-launch
+        // path). sendMessage provides immediate delivery when the Watch is
+        // already reachable. The Watch deduplicates across both paths.
+        connectivity.updateApplicationContext(message)
         connectivity.sendMessage(message, completion: completion)
     }
 
@@ -153,11 +154,13 @@ final class DefaultTimerSyncService: TimerSyncService {
         let message = TimerControlMessage(action: action)
         connectivity.sendMessage(message, completion: completion)
 
-        // Dual delivery for stop: also send via transferUserInfo so it arrives
-        // even when Watch is unreachable (wrist lowered, BT dropped).
+        // Dual delivery for stop: also publish as the application context so it
+        // arrives even when Watch is unreachable (wrist lowered, BT dropped).
+        // Publishing the stop *overwrites* the start command — WCSession has no
+        // "clear context" API, so a stop is how a stale start is superseded.
         if action == .stop {
             let stopMessage = StopTimerMessage(correlationID: currentCorrelationID)
-            connectivity.transferUserInfo(stopMessage)
+            connectivity.updateApplicationContext(stopMessage)
             currentCorrelationID = nil
         }
     }

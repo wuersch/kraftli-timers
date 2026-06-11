@@ -23,11 +23,17 @@ final class WatchMessageCoordinator {
     var pendingStartTimer: StartTimerMessage?
 
     /// Deduplication: tracks the last StartTimerMessage handled and when it arrived.
-    /// When dual-delivery (sendMessage + transferUserInfo) is used, the same message
-    /// may arrive twice. We skip duplicates within a short window.
+    /// Dual delivery (sendMessage + application context) may deliver the same
+    /// message twice. Fallback for messages without a correlation ID; identified
+    /// messages dedup via `handledStartCorrelationIDs`.
     private var lastHandledStartTimer: StartTimerMessage?
     private var lastHandledStartTimerDate: Date?
     private static let deduplicationWindow: TimeInterval = 10
+
+    /// Correlation IDs of start commands already handled. Unlike the time-window
+    /// dedup, this also catches a context redelivered long after the fast path
+    /// (e.g. on a later activation).
+    private var handledStartCorrelationIDs: Set<UUID> = []
 
     /// The active sync service for mirrored timer control messages.
     /// Set this when a mirrored timer is presented, clear when dismissed.
@@ -75,13 +81,29 @@ final class WatchMessageCoordinator {
     private func handleMessage(_ message: WatchMessage) {
         switch message {
         case let startTimer as StartTimerMessage:
-            // Deduplicate: dual-delivery (sendMessage + transferUserInfo) may deliver
-            // the same StartTimerMessage twice. Skip if we handled an identical message
-            // within the deduplication window.
-            if let last = lastHandledStartTimer,
-               let lastDate = lastHandledStartTimerDate,
-               last == startTimer,
-               Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
+            // A persisted application context can describe a workout that is
+            // already over (e.g. the app is launched manually much later).
+            // Never present a dead timer.
+            if startTimer.isExpired() {
+                Logger.timerSync.info("Ignoring expired StartTimerMessage: \(startTimer.exerciseName)")
+                return
+            }
+
+            if let correlationID = startTimer.correlationID {
+                // Identified command: skip if already handled (dual delivery,
+                // context redelivered on a later activation) or already stopped
+                // (a start must not resurrect a timer the user ended).
+                if handledStartCorrelationIDs.contains(correlationID)
+                    || stoppedCorrelationIDs.contains(correlationID) {
+                    Logger.timerSync.debug("Skipping already-handled/stopped StartTimerMessage: \(startTimer.exerciseName)")
+                    return
+                }
+                handledStartCorrelationIDs.insert(correlationID)
+            } else if let last = lastHandledStartTimer,
+                      let lastDate = lastHandledStartTimerDate,
+                      last == startTimer,
+                      Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
+                // Unidentified command: fall back to identity + window dedup.
                 Logger.timerSync.debug("Skipping duplicate StartTimerMessage: \(startTimer.exerciseName)")
                 return
             }
@@ -112,8 +134,8 @@ final class WatchMessageCoordinator {
 
     /// Handles a reliable stop message from iPhone.
     ///
-    /// This arrives via `transferUserInfo` (queued delivery) and/or `sendMessage`
-    /// (immediate delivery). Correlation ID matching prevents stale stops from
+    /// This arrives via the application context (persisted delivery) and/or
+    /// `sendMessage` (immediate delivery). Correlation ID matching prevents stale stops from
     /// killing a new timer that started after the original one completed.
     @MainActor
     private func handleStopTimerMessage(_ message: StopTimerMessage) {

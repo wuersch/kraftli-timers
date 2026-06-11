@@ -43,10 +43,15 @@ enum TimerPresentation: Identifiable, Equatable {
         correlationID: UUID? = nil
     )
 
+    // The correlation ID is part of the identity: a new iPhone-led start for the
+    // same preset must re-create the timer view (fresh scheduledStartTime), not
+    // reuse the already-started one.
     var id: String {
         switch self {
-        case .emom(let duration, let count, _, _, _, _): return "emom-\(duration)-\(count)"
-        case .amrap(let duration, _, _, _, _): return "amrap-\(duration)"
+        case .emom(let duration, let count, _, _, _, let correlationID):
+            return "emom-\(duration)-\(count)-\(correlationID?.uuidString ?? "local")"
+        case .amrap(let duration, _, _, _, let correlationID):
+            return "amrap-\(duration)-\(correlationID?.uuidString ?? "local")"
         }
     }
 

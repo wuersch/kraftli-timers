@@ -126,10 +126,11 @@ struct TimerControlMessage: WatchMessage, Equatable {
 
 // MARK: - StopTimerMessage
 
-/// Reliable stop message sent from iPhone to Watch via `transferUserInfo`.
+/// Reliable stop message sent from iPhone to Watch via the application context.
 ///
 /// Unlike `TimerControlMessage(.stop)` which uses `sendMessage` (requires reachability),
-/// this is queued by the system and delivered even when the Watch is unreachable.
+/// this is persisted by the system and delivered even when the Watch is unreachable.
+/// Publishing it overwrites any pending start command (latest-state-wins).
 /// Uses a correlation ID to prevent stale stops from killing new timers — if the ID
 /// doesn't match the active timer, the stop is ignored.
 struct StopTimerMessage: WatchMessage, Equatable {
