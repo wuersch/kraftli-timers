@@ -15,6 +15,10 @@ struct Kraftli_TimersApp: App {
     @State private var settings = AppSettings()
     @State private var mirroredWorkoutObserver = MirroredWorkoutObserver()
 
+    /// Routes Watch messages for the whole app lifetime.
+    /// Created at startup so the handler exists before any message arrives.
+    @State private var phoneMessageCoordinator = PhoneMessageCoordinator()
+
     // Capture launch screen preference once at startup (not reactive to mid-session changes)
     @State private var showLaunchScreen: Bool
 
@@ -57,6 +61,7 @@ struct Kraftli_TimersApp: App {
                 ContentView()
                     .environment(settings)
                     .environment(mirroredWorkoutObserver)
+                    .environment(phoneMessageCoordinator)
 
                 if showLaunchScreen {
                     LaunchScreenView {
@@ -72,6 +77,10 @@ struct Kraftli_TimersApp: App {
                 Self.deduplicatePresets(in: modelContainer.mainContext)
             }
             .onAppear {
+                // Wire the model context so Watch messages can update WorkoutLogs
+                // even when no timer view is alive.
+                phoneMessageCoordinator.modelContext = modelContainer.mainContext
+
                 // Set up mirrored workout session handler (Scenario D: Watch-initiated workouts).
                 // When Watch starts a workout and mirrors to iPhone, this handler receives
                 // the session. We store it in MirroredWorkoutObserver so iPhone can observe

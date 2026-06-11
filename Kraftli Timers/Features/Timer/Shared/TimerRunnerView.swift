@@ -17,9 +17,13 @@ struct TimerRunnerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
+    @Environment(PhoneMessageCoordinator.self) private var messageCoordinator
 
     /// Service for syncing timer to Apple Watch.
-    private let timerSyncService: TimerSyncService
+    /// @State so the instance survives SwiftUI re-creating this struct —
+    /// the coordinator forwards messages to the registered instance, and a
+    /// fresh one per re-init would silently stop receiving them.
+    @State private var timerSyncService: TimerSyncService
 
     /// Service for saving workouts to HealthKit.
     private let healthKitService: any HealthKitService
@@ -65,7 +69,7 @@ struct TimerRunnerView: View {
         healthKitService: any HealthKitService = DefaultHealthKitService()
     ) {
         self.preset = preset
-        self.timerSyncService = timerSyncService
+        self._timerSyncService = State(initialValue: timerSyncService)
         self.healthKitService = healthKitService
     }
 
@@ -120,6 +124,18 @@ struct TimerRunnerView: View {
             .onReceive(timerSyncService.workoutSessionEndedReceived) { endedMessage in
                 handleWorkoutSessionEnded(endedMessage)
             }
+            .onAppear {
+                // Register with the app-level coordinator so Watch messages
+                // reach this timer's publishers.
+                messageCoordinator.activeSyncService = timerSyncService as? DefaultTimerSyncService
+            }
+            .onDisappear {
+                // Only clear if we're still the registered service — a newly
+                // presented timer may already have taken over.
+                if messageCoordinator.activeSyncService === timerSyncService as? DefaultTimerSyncService {
+                    messageCoordinator.activeSyncService = nil
+                }
+            }
         }
     }
 
@@ -159,9 +175,11 @@ struct TimerRunnerView: View {
     }
 
     /// Pre-generated ID for correlating iPhone's WorkoutLog with Watch's HealthKit UUID.
-    /// Generated once per TimerRunnerView instance, sent to Watch via StartTimerMessage,
-    /// echoed back in WorkoutSessionEndedMessage, and used as the WorkoutLog.id.
-    private let correlationID = UUID()
+    /// Sent to Watch via StartTimerMessage, echoed back in WorkoutSessionEndedMessage,
+    /// and used as the WorkoutLog.id. @State so SwiftUI re-creating this struct keeps
+    /// the ID stable — the Watch echoes the value from start time, and a regenerated
+    /// ID would break the match.
+    @State private var correlationID = UUID()
 
     @ViewBuilder
     private var timerContent: some View {
@@ -216,12 +234,11 @@ struct TimerRunnerView: View {
 
     /// Handles the workout session ended message from Watch.
     ///
-    /// Updates the WorkoutLog with the HealthKit UUID, then merges health data
-    /// into the summary. If the summary is already showing, updates in-place with
-    /// animation. If still in the delay period, stores data for pickup.
+    /// Merges health data into the summary. (The WorkoutLog HealthKit-UUID update
+    /// happens in `PhoneMessageCoordinator`, which outlives this view.) If the
+    /// summary is already showing, updates in-place with animation. If still in
+    /// the delay period, stores data for pickup.
     private func handleWorkoutSessionEnded(_ endedMessage: WorkoutSessionEndedMessage) {
-        updateLogWithWatchUUID(endedMessage)
-
         if summaryData != nil {
             // Summary already showing — merge non-nil health fields in-place
             // (Watch sends nil fields when session ends on dismiss; guard against overwriting real data)
@@ -268,41 +285,6 @@ struct TimerRunnerView: View {
 
         withAnimation(.easeInOut(duration: 0.5)) {
             summaryData = data
-        }
-    }
-
-    /// Updates a WorkoutLog with the Watch's HealthKit UUID.
-    ///
-    /// Uses the correlation ID for exact matching when available; falls back to the most
-    /// recent log without a UUID if the correlation ID is missing (backwards compatibility).
-    private func updateLogWithWatchUUID(_ endedMessage: WorkoutSessionEndedMessage) {
-        guard let watchUUID = endedMessage.healthKitWorkoutUUID else { return }
-
-        if let correlationID = endedMessage.correlationID {
-            // Exact match by WorkoutLog ID
-            let descriptor = FetchDescriptor<WorkoutLog>(
-                predicate: #Predicate { $0.id == correlationID }
-            )
-            guard let log = try? modelContext.fetch(descriptor).first,
-                  log.healthKitWorkoutUUID == nil else {
-                return
-            }
-            log.healthKitWorkoutUUID = watchUUID
-            try? modelContext.save()
-            Logger.healthKit.info("Updated workout log \(correlationID) with Watch HealthKit UUID: \(watchUUID)")
-        } else {
-            // Fallback: match most recent log without a UUID
-            let descriptor = FetchDescriptor<WorkoutLog>(
-                sortBy: [SortDescriptor(\.date, order: .reverse)]
-            )
-            guard let logs = try? modelContext.fetch(descriptor),
-                  let latestLog = logs.first,
-                  latestLog.healthKitWorkoutUUID == nil else {
-                return
-            }
-            latestLog.healthKitWorkoutUUID = watchUUID
-            try? modelContext.save()
-            Logger.healthKit.info("Updated latest workout log with Watch HealthKit UUID: \(watchUUID) (no correlation ID)")
         }
     }
 
@@ -395,6 +377,7 @@ struct TimerRunnerView: View {
         )
     )
     .environment(AppSettings())
+    .environment(PhoneMessageCoordinator())
 }
 
 #Preview("AMRAP") {
@@ -408,4 +391,5 @@ struct TimerRunnerView: View {
         )
     )
     .environment(AppSettings())
+    .environment(PhoneMessageCoordinator())
 }

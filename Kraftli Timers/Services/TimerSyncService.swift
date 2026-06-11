@@ -82,6 +82,12 @@ protocol TimerSyncService {
 // MARK: - Default Implementation
 
 /// Default implementation using WatchConnectivityService.
+///
+/// Note: This service does not register its own message handler.
+/// `PhoneMessageCoordinator` owns message routing for the whole app lifetime
+/// and forwards messages to the active service via `handleMessage(_:)`.
+/// This keeps instances side-effect-free, so SwiftUI re-creating a view
+/// (and its default-parameter service) can't steal the global handler.
 final class DefaultTimerSyncService: TimerSyncService {
     private let connectivity: WatchConnectivityService
     private let timerControlSubject = PassthroughSubject<TimerControlAction, Never>()
@@ -94,7 +100,6 @@ final class DefaultTimerSyncService: TimerSyncService {
 
     init(connectivity: WatchConnectivityService = .shared) {
         self.connectivity = connectivity
-        setupMessageHandling()
     }
 
     var isWatchReachable: Bool {
@@ -165,36 +170,15 @@ final class DefaultTimerSyncService: TimerSyncService {
         }
     }
 
-    // MARK: - Private
+    // MARK: - Internal (for PhoneMessageCoordinator)
 
-    private func setupMessageHandling() {
-        connectivity.onMessageReceived = { [weak self] message in
-            self?.handleMessage(message)
-        }
-    }
-
-    /// Deduplication: tracks the last WorkoutSessionEndedMessage handled and when it arrived.
-    /// When dual-delivery (sendMessage + transferUserInfo) is used, the same message
-    /// may arrive twice. We skip duplicates within a short window.
-    private var lastHandledSessionEnded: WorkoutSessionEndedMessage?
-    private var lastHandledSessionEndedDate: Date?
-    private static let deduplicationWindow: TimeInterval = 10
-
-    private func handleMessage(_ message: WatchMessage) {
+    /// Publishes a message forwarded from the coordinator to this service's
+    /// subscribers. Deduplication happens upstream in the coordinator.
+    func handleMessage(_ message: WatchMessage) {
         switch message {
         case let controlMessage as TimerControlMessage:
             timerControlSubject.send(controlMessage.action)
         case let endedMessage as WorkoutSessionEndedMessage:
-            // Deduplicate: dual-delivery may deliver the same message twice
-            if let last = lastHandledSessionEnded,
-               let lastDate = lastHandledSessionEndedDate,
-               last == endedMessage,
-               Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
-                Logger.timerSync.debug("Skipping duplicate WorkoutSessionEndedMessage")
-                return
-            }
-            lastHandledSessionEnded = endedMessage
-            lastHandledSessionEndedDate = Date()
             workoutSessionEndedSubject.send(endedMessage)
         case let startedMessage as TimerStartedOnWatchMessage:
             timerStartedOnWatchSubject.send(startedMessage)
