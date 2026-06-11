@@ -67,26 +67,29 @@ final class WatchConnectivityService: NSObject, ObservableObject {
         }
     }
 
-    /// Queues a message for reliable background delivery to Watch.
+    /// Publishes the message as the application context — the canonical
+    /// "current timer command".
     ///
-    /// Unlike `sendMessage`, this works even when the Watch app is not reachable.
-    /// The system queues the transfer and delivers it when the Watch becomes available.
-    /// Use this alongside `sendMessage` for critical messages like `StartTimerMessage`.
+    /// Latest-state-wins: a new start or stop replaces any previous value, and
+    /// watchOS persists it for delivery even when the Watch app launches later
+    /// (e.g. via `startWatchApp(toHandle:)`). This is what makes a timer start
+    /// reliable on cold launch, where `sendMessage` fails (not reachable) and a
+    /// queued transfer has no delivery-time guarantee.
     ///
-    /// - Parameter message: The message to transfer
-    func transferUserInfo(_ message: WatchMessage) {
+    /// - Parameter message: The message representing the current timer command
+    func updateApplicationContext(_ message: WatchMessage) {
         guard let session = session,
               session.activationState == .activated else {
-            Logger.watchConnectivity.warning("Cannot transfer user info: session not activated")
+            Logger.watchConnectivity.warning("Cannot update application context: session not activated")
             return
         }
 
         do {
             let encoded = try WatchMessageCoder.encode(message)
-            session.transferUserInfo(encoded)
-            Logger.watchConnectivity.debug("Queued user info transfer: \(message.messageType.rawValue)")
+            try session.updateApplicationContext(encoded)
+            Logger.watchConnectivity.debug("Updated application context: \(message.messageType.rawValue)")
         } catch {
-            Logger.watchConnectivity.error("Failed to encode user info: \(error.localizedDescription)")
+            Logger.watchConnectivity.error("Failed to update application context: \(error.localizedDescription)")
         }
     }
 
@@ -189,6 +192,20 @@ extension WatchConnectivityService: WCSessionDelegate {
         DispatchQueue.main.async {
             self.isReachable = session.isReachable
         }
+
+        #if os(watchOS)
+        // Consume any application context that arrived while the app wasn't
+        // running — the cold-launch path: startWatchApp(toHandle:) opens the
+        // app, and the persisted context holds the current timer command.
+        // Duplicates with the sendMessage fast path are absorbed by the
+        // coordinator's dedup.
+        if activationState == .activated {
+            let context = session.receivedApplicationContext
+            if !context.isEmpty {
+                handleReceivedMessage(context)
+            }
+        }
+        #endif
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
@@ -232,6 +249,10 @@ extension WatchConnectivityService: WCSessionDelegate {
 
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         handleReceivedMessage(userInfo)
+    }
+
+    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        handleReceivedMessage(applicationContext)
     }
     #endif
 }
