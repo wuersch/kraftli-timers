@@ -171,6 +171,54 @@ struct EMOMTimerModelTests {
         }
     }
 
+    // MARK: - Anchored late start (start(at:))
+
+    /// A mirror joining late anchors to the leader's start date and shows the
+    /// matching elapsed position instead of starting from zero.
+    @Test @MainActor func startAt_pastAnchor_showsLeaderElapsedTime() {
+        let fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let model = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(),
+            now: { fakeNow }
+        )
+
+        // Leader started 90 s ago
+        model.start(at: fakeNow.addingTimeInterval(-90))
+
+        #expect(model.isRunning == true)
+        #expect(model.totalTimeRemaining == 510)
+        #expect(model.completedIntervals == 1)  // 90 s elapsed of 60 s intervals
+        model.reset()
+    }
+
+    /// Joining mid-workout must not replay the interval-complete sounds for
+    /// intervals that finished before the join, and must not play start feedback
+    /// (it's a remote-driven start).
+    @Test @MainActor func startAt_pastAnchor_doesNotReplayFeedback() {
+        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let provider = MockTimerProvider()
+        let spy = SpyFeedbackProvider()
+        let model = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: provider, feedbackProvider: spy,
+            now: { fakeNow }
+        )
+
+        // Join 90 s in (one interval already complete, mid second interval)
+        model.start(at: fakeNow.addingTimeInterval(-90))
+        provider.simulateTick()
+
+        #expect(spy.startCount == 0)
+        #expect(spy.intervalCompleteCount == 0)
+
+        // The NEXT interval boundary still fires its feedback normally.
+        fakeNow += 31  // elapsed 121 s → past the 120 s boundary
+        provider.simulateTick()
+        #expect(spy.intervalCompleteCount == 1)
+        model.reset()
+    }
+
     // MARK: - Cross-device anchoring / pause-resume drift (ADR-003)
 
     /// Two independent models (Watch + phone) fed the SAME canonical pause/resume dates stay

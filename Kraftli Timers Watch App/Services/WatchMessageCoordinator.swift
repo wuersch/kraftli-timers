@@ -77,8 +77,9 @@ final class WatchMessageCoordinator {
     }
 
     /// Routes incoming messages to the appropriate handler.
+    /// Internal so tests can invoke it directly.
     @MainActor
-    private func handleMessage(_ message: WatchMessage) {
+    func handleMessage(_ message: WatchMessage) {
         switch message {
         case let startTimer as StartTimerMessage:
             // A persisted application context can describe a workout that is
