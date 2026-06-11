@@ -164,8 +164,8 @@ struct WatchAMRAPTimerView: View {
             coordinator.setupControlSubscription(cancellables: &cancellables) { action in
                 handleRemoteControl(action)
             }
-            coordinator.startCountdownIfNeeded(countdown: countdown) {
-                coordinator.startTimerWithWorkoutSession(timer: timerModel)
+            coordinator.startCountdownIfNeeded(countdown: countdown) { anchor in
+                coordinator.startTimerWithWorkoutSession(timer: timerModel, at: anchor)
             }
         }
         .onChange(of: sessionManager.sessionState) { _, newState in

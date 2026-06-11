@@ -108,6 +108,22 @@ class AMRAPTimerModel: WorkoutTimer {
         isRunning = true
     }
 
+    /// Starts anchored to the supplied absolute `date` (which may lie in the past), so a
+    /// late-joining mirror shows the leader's elapsed time instead of starting from zero.
+    /// Does not play start feedback (remote-driven start).
+    @MainActor
+    func start(at date: Date) {
+        guard !isRunning else { return }
+
+        let elapsed = max(0, now().timeIntervalSince(date))
+        totalTimeRemaining = max(0, totalDuration - elapsed)
+        startDate = timerCoordinator.start(startDate: date) { [weak self] in
+            self?.update()
+        }
+        pausedTime = nil
+        isRunning = true
+    }
+
     @MainActor
     func reset() {
         timerCoordinator.stop()

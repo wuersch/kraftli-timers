@@ -93,6 +93,14 @@ struct StartTimerMessage: WatchMessage, Equatable {
     private enum CodingKeys: String, CodingKey {
         case timerKindRaw, totalDuration, intervalCount, exerciseName, displayOnly, scheduledStartTime, correlationID
     }
+
+    /// True when the workout this message describes is already over —
+    /// the scheduled start plus the full duration lies in the past.
+    /// Messages without a scheduled start never expire.
+    func isExpired(asOf now: Date = Date()) -> Bool {
+        guard let scheduledStartTime else { return false }
+        return now > scheduledStartTime.addingTimeInterval(totalDuration)
+    }
 }
 
 // MARK: - TimerControlMessage
