@@ -34,6 +34,25 @@ struct AMRAPTimerModelTests {
         model.reset()
     }
 
+    /// A mirror joining late anchors to the leader's start date and shows the
+    /// matching elapsed position instead of starting from zero.
+    @Test @MainActor func startAt_pastAnchor_showsLeaderElapsedTime() {
+        let fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let model = AMRAPTimerModel(
+            totalDuration: 300,
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: SilentFeedback(),
+            now: { fakeNow }
+        )
+
+        // Leader started 90 s ago
+        model.start(at: fakeNow.addingTimeInterval(-90))
+
+        #expect(model.isRunning == true)
+        #expect(model.totalTimeRemaining == 210)
+        model.reset()
+    }
+
     @Test @MainActor func pause_setsIsRunningFalse() {
         let model = AMRAPTimerModel(
             totalDuration: 300,
