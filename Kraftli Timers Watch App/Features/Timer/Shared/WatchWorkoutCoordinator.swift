@@ -150,24 +150,43 @@ struct WatchWorkoutCoordinator {
     /// Starts the pre-workout countdown.
     ///
     /// - **iPhone-led** (a `scheduledStartTime` was sent over): join the
-    ///   countdown already in progress on the phone.
+    ///   countdown already in progress on the phone. If the message arrived
+    ///   *after* the scheduled start (slow delivery), skip the countdown and
+    ///   start anchored to the leader's start time so both devices show the
+    ///   same elapsed time.
     /// - **Standalone Watch start** (no scheduled time, not display-only): run a
     ///   local 3-2-1 countdown, then start — matching the iPhone-led flow and
     ///   Apple's Workout app (tap a preset → countdown → running, no Play step).
-    /// - **Phone mirror** (`displayOnly`): do nothing; the mirror waits for a
-    ///   remote `.play` and must never self-start its own HK session.
+    ///
+    /// The completion receives the anchor date for late joins (nil for on-time
+    /// starts, where countdown completion is the shared anchor on both devices).
     func startCountdownIfNeeded(
         countdown: WatchCountdownCoordinator,
-        startTimerWithWorkoutSession: @escaping () -> Void
+        startTimerWithWorkoutSession: @escaping (Date?) -> Void
     ) {
+        // Defensive: an expired command describes a workout that is already over.
+        // The message coordinator filters these before presenting; this guard
+        // covers any path that reaches a timer view with a dead command anyway.
+        if let scheduled = config.scheduledStartTime,
+           Date() > scheduled.addingTimeInterval(config.totalDuration) {
+            Logger.timerSync.warning("Ignoring expired start command (scheduled \(scheduled), duration \(self.config.totalDuration)s)")
+            return
+        }
+
         if let scheduled = config.scheduledStartTime {
-            countdown.startCountdown(scheduledStartTime: scheduled, completion: startTimerWithWorkoutSession)
+            if scheduled.timeIntervalSinceNow > 0 {
+                countdown.startCountdown(scheduledStartTime: scheduled) {
+                    startTimerWithWorkoutSession(nil)
+                }
+            } else {
+                // Late join: anchor to the leader's start time, no countdown.
+                startTimerWithWorkoutSession(scheduled)
+            }
         } else if !config.displayOnly {
             // Standalone Watch start: auto-run a local 3-2-1, then start.
-            countdown.startCountdown(
-                scheduledStartTime: Date().addingTimeInterval(3),
-                completion: startTimerWithWorkoutSession
-            )
+            countdown.startCountdown(scheduledStartTime: Date().addingTimeInterval(3)) {
+                startTimerWithWorkoutSession(nil)
+            }
         }
     }
 
@@ -176,11 +195,21 @@ struct WatchWorkoutCoordinator {
     /// For iPhone-led workouts (Scenario C), the session was already started
     /// via `handle(_ workoutConfiguration:)`. For standalone (Scenarios B/D),
     /// we create the session and start mirroring to iPhone.
-    func startTimerWithWorkoutSession(timer: some WorkoutTimer) {
-        timer.start()
+    ///
+    /// - Parameter anchor: For late joins, the leader's absolute start time;
+    ///   the timer starts mid-workout at the matching elapsed position.
+    func startTimerWithWorkoutSession(timer: some WorkoutTimer, at anchor: Date? = nil) {
+        if let anchor {
+            timer.start(at: anchor)
+        } else {
+            timer.start()
+        }
 
         Logger.workoutSession.info("startTimerWithWorkoutSession: sessionState=\(String(describing: self.sessionManager.sessionState))")
-        if sessionManager.sessionState == .idle {
+        // Phone mirrors (displayOnly) must never self-start an HK session — the
+        // session arrives via handle(_ workoutConfiguration:), which may land
+        // after the countdown finishes. Self-starting here would race it.
+        if sessionManager.sessionState == .idle && !config.displayOnly {
             Task {
                 do {
                     let config = HKWorkoutConfiguration()

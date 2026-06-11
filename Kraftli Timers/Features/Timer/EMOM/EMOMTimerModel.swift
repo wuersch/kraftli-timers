@@ -188,6 +188,28 @@ public class EMOMTimerModel: WorkoutTimer {
         isRunning = true
     }
 
+    /// Starts anchored to the supplied absolute `date` (which may lie in the past), so a
+    /// late-joining mirror shows the leader's elapsed time instead of starting from zero.
+    /// Pre-seeds the interval and warning trackers from the elapsed time so joining
+    /// mid-workout doesn't replay interval/warning feedback. Does not play start feedback
+    /// (remote-driven start).
+    @MainActor
+    func start(at date: Date) {
+        guard !isRunning else { return }
+
+        let elapsed = max(0, now().timeIntervalSince(date))
+        setDisplayFields(totalElapsed: elapsed)
+        lastCompletedInterval = Int(elapsed * Double(_totalIntervals) / totalDuration)
+        let intervalElapsed = elapsed.truncatingRemainder(dividingBy: intervalDuration)
+        lastWarningTriggered = (intervalDuration - intervalElapsed) <= intervalWarningThreshold
+
+        totalStartDate = timerCoordinator.start(startDate: date) { [weak self] in
+            self?.update()
+        }
+        pausedTotalTime = nil
+        isRunning = true
+    }
+
     @MainActor
     func reset() {
         timerCoordinator.stop()

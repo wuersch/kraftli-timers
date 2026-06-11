@@ -36,6 +36,14 @@ protocol WorkoutTimer: AnyObject {
     /// recomputed anchor is identical on both. Only acts while paused; does not replay start
     /// feedback (this is a remote-driven resume).
     func resume(at date: Date)
+
+    /// Starts the timer anchored to the supplied absolute `date`, which may lie in the past.
+    ///
+    /// Used when a mirror joins late (e.g. a StartTimerMessage delivered after its
+    /// `scheduledStartTime`): anchoring to the leader's start date makes the mirror show the
+    /// same elapsed time instead of lagging by the delivery delay. Only acts while stopped;
+    /// does not replay start feedback (this is a remote-driven start).
+    func start(at date: Date)
 }
 
 // MARK: - Default Implementations
@@ -50,4 +58,5 @@ extension WorkoutTimer {
     // The concrete EMOM/AMRAP models override these with the real shared-anchor math.
     func pause(at date: Date) { pause() }
     func resume(at date: Date) { start() }
+    func start(at date: Date) { start() }
 }

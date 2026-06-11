@@ -47,7 +47,15 @@ final class WatchMessageCoordinator {
     var sessionManager: WorkoutSessionManager?
 
     /// Deduplication for `StopTimerMessage` (dual delivery may arrive twice).
+    /// Identity-based like the start dedup: only an *identical* stop within the
+    /// window is skipped, so two legitimate stops in quick succession both apply.
+    private var lastHandledStop: StopTimerMessage?
     private var lastHandledStopDate: Date?
+
+    /// Correlation IDs of timers that have already been stopped.
+    /// A late-arriving start command for one of these IDs must be ignored
+    /// (it describes a workout the user already ended).
+    private var stoppedCorrelationIDs: Set<UUID> = []
 
     init() {
         setupMessageHandling()
@@ -109,14 +117,22 @@ final class WatchMessageCoordinator {
     /// killing a new timer that started after the original one completed.
     @MainActor
     private func handleStopTimerMessage(_ message: StopTimerMessage) {
-        // Deduplicate within a short window (stop may arrive via both sendMessage
-        // and transferUserInfo)
-        if let lastDate = lastHandledStopDate,
+        // Deduplicate within a short window (stop may arrive via two delivery
+        // paths). Identity-based: a *different* stop within the window is a new,
+        // legitimate command and must still apply.
+        if let last = lastHandledStop,
+           let lastDate = lastHandledStopDate,
+           last == message,
            Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
             Logger.timerSync.debug("Skipping duplicate StopTimerMessage")
             return
         }
+        lastHandledStop = message
         lastHandledStopDate = Date()
+
+        if let stoppedID = message.correlationID {
+            stoppedCorrelationIDs.insert(stoppedID)
+        }
 
         if let syncService = activeSyncService {
             // Timer view is showing — check correlation before forwarding
