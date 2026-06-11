@@ -195,7 +195,7 @@ struct EMOMTimerModelTests {
     /// Joining mid-workout must not replay the interval-complete sounds for
     /// intervals that finished before the join, and must not play start feedback
     /// (it's a remote-driven start).
-    @Test @MainActor func startAt_pastAnchor_doesNotReplayFeedback() {
+    @Test @MainActor func startAt_pastAnchor_doesNotReplayFeedback() async {
         var fakeNow = Date(timeIntervalSince1970: 1_000_000)
         let provider = MockTimerProvider()
         let spy = SpyFeedbackProvider()
@@ -208,6 +208,7 @@ struct EMOMTimerModelTests {
         // Join 90 s in (one interval already complete, mid second interval)
         model.start(at: fakeNow.addingTimeInterval(-90))
         provider.simulateTick()
+        await Self.drainMainQueue()  // ticks dispatch update() via Task { @MainActor }
 
         #expect(spy.startCount == 0)
         #expect(spy.intervalCompleteCount == 0)
@@ -215,8 +216,15 @@ struct EMOMTimerModelTests {
         // The NEXT interval boundary still fires its feedback normally.
         fakeNow += 31  // elapsed 121 s → past the 120 s boundary
         provider.simulateTick()
+        await Self.drainMainQueue()
         #expect(spy.intervalCompleteCount == 1)
         model.reset()
+    }
+
+    /// Lets main-actor Tasks queued by the tick handler run before asserting.
+    @MainActor
+    private static func drainMainQueue() async {
+        for _ in 0..<5 { await Task.yield() }
     }
 
     // MARK: - Cross-device anchoring / pause-resume drift (ADR-003)
