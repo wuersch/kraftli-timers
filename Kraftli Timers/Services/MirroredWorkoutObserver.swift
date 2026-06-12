@@ -69,6 +69,10 @@ final class MirroredWorkoutObserver: NSObject {
     /// Called from the mirroring handler in `Kraftli_TimersApp` when Watch
     /// mirrors a workout session to iPhone.
     func setSession(_ session: HKWorkoutSession) {
+        // Detach the previous session's delegate so its late callbacks (e.g. a
+        // trailing didDisconnect in a back-to-back A→B workout flow) can't
+        // clear away the session we're about to store.
+        self.session?.delegate = nil
         self.session = session
         session.delegate = self
 
@@ -89,6 +93,7 @@ final class MirroredWorkoutObserver: NSObject {
 
     /// Clear the stored session (e.g., when workout ends).
     func clearSession() {
+        session?.delegate = nil
         session = nil
         sessionState = .idle
         Logger.workoutSession.info("Mirrored session cleared")
@@ -121,6 +126,13 @@ extension MirroredWorkoutObserver: HKWorkoutSessionDelegate {
         date: Date
     ) {
         Task { @MainActor in
+            // Ignore callbacks from a session that is no longer ours — a queued
+            // state change for an old session must not flip sessionState after
+            // clearSession() and spuriously pause/resume the local timer.
+            guard workoutSession === self.session else {
+                Logger.workoutSession.info("Ignoring mirrored state change \(String(describing: fromState)) → \(String(describing: toState)) from stale session")
+                return
+            }
             // Set the canonical transition date BEFORE sessionState so the view's
             // onChange(of: sessionState) observer reads the matching date.
             lastTransitionDate = date
@@ -143,6 +155,12 @@ extension MirroredWorkoutObserver: HKWorkoutSessionDelegate {
         didFailWithError error: Error
     ) {
         Task { @MainActor in
+            // A failure from an already-replaced session must not end the
+            // current one's state.
+            guard workoutSession === self.session else {
+                Logger.workoutSession.info("Ignoring failure from stale mirrored session: \(error.localizedDescription)")
+                return
+            }
             Logger.workoutSession.error("Mirrored session failed: \(error.localizedDescription)")
             sessionState = .ended
         }
@@ -153,6 +171,13 @@ extension MirroredWorkoutObserver: HKWorkoutSessionDelegate {
         didDisconnectFromRemoteDeviceWithError error: (any Error)?
     ) {
         Task { @MainActor in
+            // A trailing disconnect from workout A must not clearSession() away
+            // workout B's session — that would silently downgrade B from HK
+            // mirroring to reachability-dependent WCSession messages.
+            guard workoutSession === self.session else {
+                Logger.workoutSession.info("Ignoring disconnect from stale mirrored session")
+                return
+            }
             if let error {
                 Logger.workoutSession.error("Mirrored session disconnected with error: \(error.localizedDescription)")
             } else {
