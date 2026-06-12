@@ -294,6 +294,15 @@ extension WorkoutSessionManager: HKWorkoutSessionDelegate {
         date: Date
     ) {
         Task { @MainActor in
+            // Ignore callbacks from a session that is no longer ours. Cleanup and
+            // recovery nil out `session` before this Task runs, so a late `.ended`
+            // transition for a torn-down session can't clobber freshly reset state
+            // (it would stick sessionState at .ended and block every standalone
+            // start gate that requires .idle — HR/kcal would show "--" forever).
+            guard workoutSession === self.session else {
+                Logger.workoutSession.info("Ignoring state change \(String(describing: fromState)) → \(String(describing: toState)) from stale session")
+                return
+            }
             // Set the canonical transition date BEFORE sessionState so the view's
             // onChange(of: sessionState) observer reads the matching date.
             lastTransitionDate = date
@@ -316,6 +325,12 @@ extension WorkoutSessionManager: HKWorkoutSessionDelegate {
         didFailWithError error: Error
     ) {
         Task { @MainActor in
+            // A failure from an already-replaced session must not tear down the
+            // current one's state.
+            guard workoutSession === self.session else {
+                Logger.workoutSession.info("Ignoring failure from stale session: \(error.localizedDescription)")
+                return
+            }
             Logger.workoutSession.error("Workout session failed: \(error.localizedDescription)")
             cleanupSession()
         }
@@ -347,6 +362,9 @@ extension WorkoutSessionManager: HKLiveWorkoutBuilderDelegate {
         didCollectDataOf collectedTypes: Set<HKSampleType>
     ) {
         Task { @MainActor in
+            // A late sample from a torn-down builder must not re-populate the
+            // metrics that cleanupSession() just cleared.
+            guard workoutBuilder === self.builder else { return }
             for type in collectedTypes {
                 guard let quantityType = type as? HKQuantityType else { continue }
 
