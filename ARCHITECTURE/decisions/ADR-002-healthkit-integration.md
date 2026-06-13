@@ -73,7 +73,7 @@ Both `HealthKitService` (iPhone) and `WorkoutSessionManager` (Watch) follow the 
 - Two parallel communication channels add complexity
 - Timing-sensitive: Watch must be ready before WatchConnectivity messages arrive
 - `startWatchApp(toHandle:)` restricted to Healthcare & Fitness App Store category
-- Crash recovery is complex (stub implementation for now)
+- Crash recovery finalizes the orphaned session to HealthKit (see Crash Recovery below)
 - iPhone can't verify Watch actually started the session before setting `watchHandledWorkout`
 
 ### Neutral
@@ -84,7 +84,25 @@ Both `HealthKitService` (iPhone) and `WorkoutSessionManager` (Watch) follow the 
 ## Future Direction
 
 1. **Scenario D mirrored UI**: Show a read-only timer on iPhone when Watch starts a workout independently
-2. **Crash recovery**: Implement `HKHealthStore.recoverActiveWorkoutSession()` to recover orphaned sessions
+2. ~~**Crash recovery**: Implement `HKHealthStore.recoverActiveWorkoutSession()` to recover orphaned sessions~~ — Implemented (issue #49): see Crash Recovery below
 3. ~~**Message reliability**: Add retry/acknowledgment for critical messages (UUID correlation)~~ — Implemented: dual delivery (`sendMessage` + `transferUserInfo`) with deduplication, plus correlation IDs for exact matching
 4. **Live metrics display**: Show heart rate and calories on both devices during workout
 5. **Workout summaries**: Post-workout screen with heart rate zones, calories, duration breakdown
+
+## Crash Recovery
+
+**Decision (issue #49):** When `cleanupOrphanedSessionIfNeeded()` recovers a session preserved
+across a crash/watchdog kill, `recoverActiveSession()` **finalizes** it to HealthKit
+(`endCollection(at:)` + `finishWorkout()`, mirroring `endSession()`) rather than discarding it with
+a bare `end()`. A workout interrupted mid-session is real HR/energy data the user earned, and
+HealthKit is where they expect it to be durable; a saved partial workout is also deletable by the
+user, whereas a discarded one is unrecoverable.
+
+Scope, deliberately minimal:
+- **End date = recovery time.** Simple, matches `endSession()`. Accepted caveat: an unusually long
+  gap before relaunch could inflate the duration; fine for the common prompt auto-relaunch path. A
+  last-sample end date is a possible future refinement.
+- **No in-app `WorkoutLog`, no iPhone message, no recovery notice.** The crash wiped the timer
+  model, so the app metadata (exercise name, EMOM/AMRAP kind, completed reps, `correlationID`) is
+  gone — a faithful in-app log isn't reconstructable, and without a `correlationID` an iPhone
+  message has nothing to link to. Landing the `HKWorkout` in Apple Health is the win.

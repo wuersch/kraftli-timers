@@ -220,8 +220,15 @@ final class WorkoutSessionManager: NSObject {
     ///
     /// watchOS preserves active `HKWorkoutSession` across app launches.
     /// If the app was killed during a workout, this method recovers the session
-    /// and ends it immediately — the timer model and UI state were lost in the
-    /// crash, so there's nothing to resume.
+    /// and **finalizes** it — the timer model and UI state were lost in the crash so
+    /// there's nothing to resume, but the HR/energy collected before the kill is real
+    /// data the user earned, so we save it to HealthKit rather than discard it (issue #49).
+    ///
+    /// We finalize with a recovery-time end date (mirroring `endSession()`), accepting that
+    /// an unusually long gap before relaunch could inflate the duration — fine for the common
+    /// prompt auto-relaunch path. The app metadata (exercise name, kind, correlation ID) was
+    /// lost in the crash, so we deliberately don't write a SwiftData `WorkoutLog` or notify the
+    /// iPhone — landing the workout in Apple Health is the win. See ADR-002.
     func recoverActiveSession() async throws {
         Logger.workoutSession.info("Attempting to recover active session")
 
@@ -230,13 +237,27 @@ final class WorkoutSessionManager: NSObject {
                 Logger.workoutSession.debug("No active session to recover")
                 return
             }
-            Logger.workoutSession.info("Recovered orphaned workout session, ending it")
+            Logger.workoutSession.info("Recovered orphaned workout session, finalizing it")
             recoveredSession.delegate = self
             self.session = recoveredSession
-            self.builder = recoveredSession.associatedWorkoutBuilder()
-            recoveredSession.end()
+            let builder = recoveredSession.associatedWorkoutBuilder()
+            self.builder = builder
+
+            do {
+                try await builder.endCollection(at: Date())
+                let workout = try await builder.finishWorkout()
+                recoveredSession.end()
+                Logger.workoutSession.info("Recovered workout finalized, UUID: \(workout?.uuid.uuidString ?? "nil")")
+            } catch {
+                recoveredSession.end()
+                Logger.workoutSession.error("Failed to finalize recovered workout: \(error.localizedDescription)")
+            }
+
+            // Land at .idle (not cleanupSession()'s .ended) so the next standalone start gate
+            // passes; niling session first means the trailing .ended delegate callback is
+            // dropped by the identity guard rather than clobbering this state.
             session = nil
-            builder = nil
+            self.builder = nil
             sessionState = .idle
         } catch {
             // Recovery failed — log and continue
