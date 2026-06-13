@@ -40,6 +40,13 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     let onDisappear: () -> Void
     /// Called when the workout completes (timer reaches zero). Used for logging.
     let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
+    /// Whether an HK mirrored session is currently the authoritative control channel.
+    /// While true the background auto-pause is skipped (ADR-005): the timer is wall-clock
+    /// anchored and the still-running Watch/HK session, not scenePhase, drives pause/resume.
+    let isMirroredSessionActive: () -> Bool
+    /// Called when the app returns to the foreground (scenePhase `.active`). Used to
+    /// re-snap local state to the live mirrored session after a background interval.
+    let onForeground: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -54,8 +61,22 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
                 UIApplication.shared.isIdleTimerDisabled = newValue
             }
             .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .background && timer.isRunning {
-                    onPause()
+                switch newPhase {
+                case .background:
+                    // ADR-005: while a mirrored HK session is active it is the sole control
+                    // channel and the timer is wall-clock anchored, so don't local-pause on
+                    // background — the iPhone would freeze and fall behind the still-running
+                    // Watch by the whole background duration. The display self-corrects from
+                    // `startDate` on foreground.
+                    if timer.isRunning && !isMirroredSessionActive() {
+                        onPause()
+                    }
+                case .active:
+                    // Re-snap to the live mirrored session state (a Watch pause/resume during
+                    // background may not have moved local state).
+                    onForeground()
+                default:
+                    break
                 }
             }
             .onChange(of: timer.totalTimeRemaining) { oldValue, newValue in
@@ -81,19 +102,25 @@ extension View {
     ///   - onPause: Called when timer should pause (e.g., app backgrounded)
     ///   - onDisappear: Called when view disappears
     ///   - onWorkoutCompleted: Called when workout completes (timer reaches zero)
+    ///   - isMirroredSessionActive: When true, skip the background auto-pause (ADR-005)
+    ///   - onForeground: Called on scenePhase `.active` to reconcile with the live session
     func timerLifecycle<T: WorkoutTimer>(
         timer: T,
         session: TimerSessionState,
         onPause: @escaping () -> Void,
         onDisappear: @escaping () -> Void,
-        onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil
+        onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
+        isMirroredSessionActive: @escaping () -> Bool = { false },
+        onForeground: @escaping () -> Void = { }
     ) -> some View {
         modifier(TimerLifecycleModifier(
             timer: timer,
             session: session,
             onPause: onPause,
             onDisappear: onDisappear,
-            onWorkoutCompleted: onWorkoutCompleted
+            onWorkoutCompleted: onWorkoutCompleted,
+            isMirroredSessionActive: isMirroredSessionActive,
+            onForeground: onForeground
         ))
     }
 }

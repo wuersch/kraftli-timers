@@ -235,11 +235,17 @@ struct AMRAPTimerView: View {
             syncService: syncService,
             callbacks: WatchSyncCallbacks(
                 onPlay: { [self] in
+                    // ADR-005: while a mirrored HK session is active, HK transitions are the
+                    // sole control channel — ignore the WC play fast path so the canonical
+                    // resume(at:) from reconcileMirroredState wins instead of a local-clock start.
+                    guard mirroredWorkout?.hasActiveSession != true else { return }
                     if !timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
                         startCountdown()
                     }
                 },
                 onPause: { [self] in
+                    // ADR-005: ignore the WC pause fast path while mirrored (see onPlay).
+                    guard mirroredWorkout?.hasActiveSession != true else { return }
                     if timerModel.isRunning {
                         timerModel.pause()
                         session.onTimerPaused()
@@ -359,7 +365,9 @@ struct AMRAPTimerView: View {
                 augmented.watchHandledWorkout = watchHandledWorkout
                 augmented.correlationID = correlationID
                 onWorkoutCompleted?(augmented)
-            }
+            },
+            isMirroredSessionActive: { mirroredWorkout?.hasActiveSession == true },
+            onForeground: { reconcileMirroredState(mirroredWorkout?.sessionState) }
         )
         .onAppear {
             Self.lightHaptic.prepare()

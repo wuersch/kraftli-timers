@@ -175,16 +175,20 @@ struct WatchWorkoutCoordinator {
 
         if let scheduled = config.scheduledStartTime {
             if scheduled.timeIntervalSinceNow > 0 {
-                countdown.startCountdown(scheduledStartTime: scheduled) {
-                    startTimerWithWorkoutSession(nil)
+                // Joined countdown: thread the anchor through. Natural completion passes nil
+                // (start at local now, matching the leader's natural path); a tap-to-skip passes
+                // `scheduled` so the Watch still starts on the shared time (ADR-005, finding 5).
+                countdown.startCountdown(scheduledStartTime: scheduled) { anchor in
+                    startTimerWithWorkoutSession(anchor)
                 }
             } else {
                 // Late join: anchor to the leader's start time, no countdown.
                 startTimerWithWorkoutSession(scheduled)
             }
         } else if !config.displayOnly {
-            // Standalone Watch start: auto-run a local 3-2-1, then start.
-            countdown.startCountdown(scheduledStartTime: Date().addingTimeInterval(3)) {
+            // Standalone Watch start: auto-run a local 3-2-1, then start. There is no leader to
+            // sync with, so ignore the (synthetic now+3) skip anchor and always start at local now.
+            countdown.startCountdown(scheduledStartTime: Date().addingTimeInterval(3)) { _ in
                 startTimerWithWorkoutSession(nil)
             }
         }
@@ -256,12 +260,20 @@ struct WatchWorkoutCoordinator {
         isCompleted: Bool,
         dismiss: DismissAction
     ) {
+        // ADR-005: while an HK session is active it is the sole pause/play control channel.
+        // iPhone-led pause/resume arrives as an HK transition (→ reconcileSessionState with the
+        // canonical date); ignore any competing WC play/pause so it can't pre-empt that with a
+        // local-clock start/pause. Stop and increment-round have no HK equivalent and still flow.
+        let sessionActive = sessionManager.sessionState == .running || sessionManager.sessionState == .paused
+
         switch action {
         case .play:
+            guard !sessionActive else { break }
             if !timer.isRunning && !countdown.isCountingDown {
                 timer.start()
             }
         case .pause:
+            guard !sessionActive else { break }
             if timer.isRunning {
                 timer.pause()
             }
