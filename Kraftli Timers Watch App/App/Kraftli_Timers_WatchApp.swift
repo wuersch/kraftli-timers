@@ -40,60 +40,8 @@ struct Kraftli_Timers_Watch_AppApp: App {
 
         do {
             modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
-
-            // Migrate exercise relationships to exerciseId
-            Self.migrateExerciseRelationships(in: modelContainer.mainContext)
-
-            // Remove CloudKit duplicates (same UUID synced from multiple devices)
-            Self.deduplicatePresets(in: modelContainer.mainContext)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
-        }
-    }
-
-    // MARK: - Deduplication
-
-    /// Removes CloudKit duplicates where the same preset UUID appears more than once.
-    @MainActor
-    private static func deduplicatePresets(in context: ModelContext) {
-        let descriptor = FetchDescriptor<TimerPreset>()
-        guard let presets = try? context.fetch(descriptor) else { return }
-
-        var seen: Set<UUID> = []
-        var didDelete = false
-        for preset in presets {
-            if seen.contains(preset.id) {
-                context.delete(preset)
-                didDelete = true
-            } else {
-                seen.insert(preset.id)
-            }
-        }
-
-        if didDelete {
-            try? context.save()
-        }
-    }
-
-    // MARK: - Migration
-
-    /// Migrates presets from exercise relationship to exerciseId.
-    @MainActor
-    private static func migrateExerciseRelationships(in context: ModelContext) {
-        let descriptor = FetchDescriptor<TimerPreset>()
-        guard let presets = try? context.fetch(descriptor) else { return }
-
-        var migrated = false
-        for preset in presets {
-            // If has relationship but no ID, migrate
-            if let exercise = preset.exercise, preset.exerciseId == nil {
-                preset.exerciseId = exercise.id
-                migrated = true
-            }
-        }
-
-        if migrated {
-            try? context.save()
         }
     }
 
@@ -107,6 +55,17 @@ struct Kraftli_Timers_Watch_AppApp: App {
                     messageCoordinator.sessionManager = appDelegate.workoutSessionManager
                 }
                 .task {
+                    // Run data maintenance after the UI is up, never in App.init: the
+                    // Watch is routinely background-cold-launched and can be suspended
+                    // mid-launch holding the SQLite write lock (0xdead10cc), which would
+                    // kill the launch before an iPhone→Watch handoff is handled.
+                    // deletesDuplicates: false — only the iPhone deletes CloudKit
+                    // duplicates, so two devices can never cross-delete both copies.
+                    PresetMaintenance.performStartupMaintenance(
+                        in: modelContainer.mainContext,
+                        deletesDuplicates: false
+                    )
+
                     // Clean up any orphaned HKWorkoutSession from a previous crash/force-quit
                     await appDelegate.workoutSessionManager.cleanupOrphanedSessionIfNeeded()
                 }

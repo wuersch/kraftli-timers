@@ -224,7 +224,7 @@ struct WatchPresetEditorView: View {
                 kind: timerKind,
                 durationInterval: durationMinutes * 60,
                 targetReps: timerKind == .emom ? Int(targetReps) : nil,
-                sortOrder: presets.count,
+                sortOrder: PresetMaintenance.nextSortOrder(after: presets),
                 exerciseId: selectedExerciseId
             )
             modelContext.insert(preset)

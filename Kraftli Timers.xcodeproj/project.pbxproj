@@ -109,6 +109,7 @@
 				Services/ExerciseRepository.swift,
 				Services/FeedbackProvider.swift,
 				Services/FoundationTimerProvider.swift,
+				Services/PresetMaintenance.swift,
 				Services/SilentFeedback.swift,
 				Services/TimerProvider.swift,
 				Services/WatchConnectivityService.swift,
