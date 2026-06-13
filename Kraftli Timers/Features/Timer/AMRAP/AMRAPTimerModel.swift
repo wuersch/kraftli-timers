@@ -13,6 +13,9 @@ class AMRAPTimerModel: WorkoutTimer {
     @MainActor private(set) var totalTimeRemaining: TimeInterval
     @MainActor private(set) var isRunning = false
     @MainActor private(set) var roundsCompleted = 0
+    /// Explicit completion signal — set true only in `update()` when the timer reaches zero while
+    /// running, so a `pause(at:)` clamp or stray tick can't trigger the completion path.
+    @MainActor private(set) var didComplete = false
 
     // MARK: - Private Properties
     let totalDuration: TimeInterval
@@ -64,6 +67,7 @@ class AMRAPTimerModel: WorkoutTimer {
     func start() {
         guard !isRunning else { return }
 
+        didComplete = false
         isRunning = true
         startTimer()
     }
@@ -75,6 +79,7 @@ class AMRAPTimerModel: WorkoutTimer {
         pausedTime = totalTimeRemaining
         isRunning = false
         timerCoordinator.stop()
+        startDate = nil  // Drop the anchor so a stray enqueued tick can't recompute from it.
     }
 
     /// Pauses using the authoritative `date` (HealthKit's canonical transition time) rather
@@ -91,6 +96,7 @@ class AMRAPTimerModel: WorkoutTimer {
         pausedTime = remaining
         isRunning = false
         timerCoordinator.stop()
+        startDate = nil  // Drop the anchor so a stray enqueued tick can't recompute from it.
     }
 
     /// Resumes by re-anchoring `startDate` from the shared `date` and the frozen `remaining`,
@@ -115,6 +121,7 @@ class AMRAPTimerModel: WorkoutTimer {
     func start(at date: Date) {
         guard !isRunning else { return }
 
+        didComplete = false
         let elapsed = max(0, now().timeIntervalSince(date))
         totalTimeRemaining = max(0, totalDuration - elapsed)
         startDate = timerCoordinator.start(startDate: date) { [weak self] in
@@ -131,6 +138,8 @@ class AMRAPTimerModel: WorkoutTimer {
         totalTimeRemaining = totalDuration
         roundsCompleted = 0
         pausedTime = nil
+        startDate = nil
+        didComplete = false
     }
 
     @MainActor
@@ -159,7 +168,9 @@ class AMRAPTimerModel: WorkoutTimer {
 
     @MainActor
     private func update() {
-        guard let start = startDate else { return }
+        // Ignore a stray tick enqueued before stop()/pause(): the timer is no longer running, so
+        // recomputing from the clock would undo an anchored freeze or fire completion on a paused timer.
+        guard isRunning, let start = startDate else { return }
 
         let timeElapsed: TimeInterval = now().timeIntervalSince(start)
 
@@ -169,6 +180,7 @@ class AMRAPTimerModel: WorkoutTimer {
             timerCoordinator.stop()
             isRunning = false
             totalTimeRemaining = 0
+            didComplete = true
             feedbackProvider.onWorkoutComplete()
         }
     }

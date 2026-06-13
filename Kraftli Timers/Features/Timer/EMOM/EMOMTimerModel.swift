@@ -13,6 +13,9 @@ public class EMOMTimerModel: WorkoutTimer {
     @MainActor private(set) var totalTimeRemaining: TimeInterval
     @MainActor private(set) var intervalTimeRemaining: TimeInterval
     @MainActor private(set) var isRunning: Bool = false
+    /// Explicit completion signal — set true only in `update()` when the timer reaches zero while
+    /// running, so a `pause(at:)` clamp or stray tick can't trigger the completion path.
+    @MainActor private(set) var didComplete = false
 
     // Precise values for smooth progress animations
     @MainActor private var preciseTotalTimeRemaining: TimeInterval
@@ -139,12 +142,13 @@ public class EMOMTimerModel: WorkoutTimer {
     @MainActor
     func start() {
         guard !isRunning else { return }
-        
+
+        didComplete = false
         isRunning = true
         feedbackProvider.onStart()
         startTimer()
     }
-    
+
     @MainActor
     func pause() {
         guard isRunning else { return }
@@ -152,6 +156,7 @@ public class EMOMTimerModel: WorkoutTimer {
         pausedTotalTime = preciseTotalTimeRemaining  // Keep sub-second precision for smooth resume
         isRunning = false
         timerCoordinator.stop()
+        totalStartDate = nil  // Drop the anchor so a stray enqueued tick can't recompute from it.
     }
 
     /// Pauses using the authoritative `date` (HealthKit's canonical transition time) rather
@@ -170,6 +175,7 @@ public class EMOMTimerModel: WorkoutTimer {
         pausedTotalTime = preciseTotalTimeRemaining
         isRunning = false
         timerCoordinator.stop()
+        totalStartDate = nil  // Drop the anchor so a stray enqueued tick can't recompute from it.
     }
 
     /// Resumes by re-anchoring `totalStartDate` from the shared `date` and the frozen
@@ -197,6 +203,7 @@ public class EMOMTimerModel: WorkoutTimer {
     func start(at date: Date) {
         guard !isRunning else { return }
 
+        didComplete = false
         let elapsed = max(0, now().timeIntervalSince(date))
         setDisplayFields(totalElapsed: elapsed)
         lastCompletedInterval = Int(elapsed * Double(_totalIntervals) / totalDuration)
@@ -221,6 +228,8 @@ public class EMOMTimerModel: WorkoutTimer {
         preciseIntervalTimeRemaining = intervalDuration
 
         pausedTotalTime = nil
+        totalStartDate = nil
+        didComplete = false
         lastCompletedInterval = -1
         lastWarningTriggered = false
     }
@@ -258,7 +267,9 @@ public class EMOMTimerModel: WorkoutTimer {
 
     @MainActor
     private func update() {
-        guard let totalStart = totalStartDate else {
+        // Ignore a stray tick enqueued before stop()/pause(): the timer is no longer running, so
+        // recomputing would undo an anchored freeze or fire interval/warning/completion on a paused timer.
+        guard isRunning, let totalStart = totalStartDate else {
             return
         }
 
@@ -294,6 +305,7 @@ public class EMOMTimerModel: WorkoutTimer {
             preciseTotalTimeRemaining = 0
             preciseIntervalTimeRemaining = 0
             lastWarningTriggered = false
+            didComplete = true
             feedbackProvider.onWorkoutComplete()
         }
     }

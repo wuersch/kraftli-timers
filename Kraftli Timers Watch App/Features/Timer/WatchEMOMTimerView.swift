@@ -192,8 +192,10 @@ struct WatchEMOMTimerView: View {
                 transitionDate: sessionManager.lastTransitionDate ?? Date()
             )
         }
-        .onChange(of: isCompleted) { _, completed in
-            guard completed && !hasLoggedWorkout else { return }
+        .onChange(of: timerModel.didComplete) { _, didComplete in
+            // Key off the model's explicit completion signal, not isCompleted (totalTimeRemaining
+            // <= 0) — a pause(at:) clamp must not log/celebrate a workout the user just paused.
+            guard didComplete && !hasLoggedWorkout else { return }
             hasLoggedWorkout = true
             Task {
                 await coordinator.handleWorkoutCompleted(modelContext: modelContext)

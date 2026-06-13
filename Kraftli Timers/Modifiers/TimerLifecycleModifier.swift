@@ -79,16 +79,17 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
                     break
                 }
             }
-            .onChange(of: timer.totalTimeRemaining) { oldValue, newValue in
-                if oldValue > 0 && newValue == 0 {
-                    session.onTimerCompleted()
-                    let completionData = WorkoutCompletionData(
-                        durationSeconds: timer.totalDuration,
-                        repsCompleted: timer.completedReps,
-                        roundsCompleted: timer.completedRounds
-                    )
-                    onWorkoutCompleted?(completionData)
-                }
+            .onChange(of: timer.didComplete) { _, didComplete in
+                // Key off the model's explicit completion signal, not a zero-crossing of
+                // totalTimeRemaining — a pause(at:) clamp or stray tick must not "complete" the workout.
+                guard didComplete else { return }
+                session.onTimerCompleted()
+                let completionData = WorkoutCompletionData(
+                    durationSeconds: timer.totalDuration,
+                    repsCompleted: timer.completedReps,
+                    roundsCompleted: timer.completedRounds
+                )
+                onWorkoutCompleted?(completionData)
             }
     }
 }

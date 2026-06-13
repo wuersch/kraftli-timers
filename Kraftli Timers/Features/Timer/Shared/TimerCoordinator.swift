@@ -9,6 +9,10 @@ import Foundation
 
 /// Coordinates timer execution and pause/resume state management
 /// Reduces duplication across different timer model implementations
+///
+/// `@MainActor`-isolated: the run-loop Timer/CADisplayLink it owns must be scheduled and
+/// invalidated on the main thread, and an `isolated deinit` requires an actor-isolated type.
+@MainActor
 final class TimerCoordinator {
     // MARK: - Properties
     private let timerProvider: TimerProvider
@@ -82,7 +86,10 @@ final class TimerCoordinator {
     }
 
     // MARK: - Cleanup
-    deinit {
+    // `isolated deinit` runs cleanup on the coordinator's (main) actor, so invalidating the
+    // run-loop Timer/CADisplayLink in `stop()` happens on the thread that scheduled it — honoring
+    // the Timer API contract rather than tearing it down from whatever thread drops the last ref.
+    isolated deinit {
         stop()
     }
 }
