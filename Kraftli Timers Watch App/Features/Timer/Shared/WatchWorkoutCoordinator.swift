@@ -104,9 +104,12 @@ struct WatchWorkoutCoordinator {
         countdown: WatchCountdownCoordinator,
         dismiss: DismissAction
     ) {
-        syncService.sendTimerControl(.stop) { result in
+        // Reliable, correlation-tagged stop (transferUserInfo + sendMessage) so a
+        // cancel on the wrist survives a transient connectivity drop — otherwise the
+        // iPhone runs to completion and logs the cancelled workout as completed.
+        syncService.sendStop(correlationID: config.correlationID) { result in
             if case .failure(let error) = result {
-                Logger.timerSync.warning("sendTimerControl(.stop) failed: \(error.localizedDescription)")
+                Logger.timerSync.warning("sendStop failed: \(error.localizedDescription)")
             }
         }
         stopAndCleanup(timer: timer, countdown: countdown, dismiss: dismiss)

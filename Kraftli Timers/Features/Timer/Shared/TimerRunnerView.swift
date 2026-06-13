@@ -126,14 +126,17 @@ struct TimerRunnerView: View {
             }
             .onAppear {
                 // Register with the app-level coordinator so Watch messages
-                // reach this timer's publishers.
+                // reach this timer's publishers. The correlation ID lets the
+                // coordinator match an inbound StopTimerMessage to this workout.
                 messageCoordinator.activeSyncService = timerSyncService as? DefaultTimerSyncService
+                messageCoordinator.activeCorrelationID = correlationID
             }
             .onDisappear {
                 // Only clear if we're still the registered service — a newly
                 // presented timer may already have taken over.
                 if messageCoordinator.activeSyncService === timerSyncService as? DefaultTimerSyncService {
                     messageCoordinator.activeSyncService = nil
+                    messageCoordinator.activeCorrelationID = nil
                 }
             }
         }
