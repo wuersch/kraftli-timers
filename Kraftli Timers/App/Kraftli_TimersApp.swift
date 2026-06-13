@@ -73,8 +73,11 @@ struct Kraftli_TimersApp: App {
             .task {
                 // Run data migrations after the UI is up to minimize SQLite lock time
                 // during launch. Holding a DB lock while suspended causes 0xdead10cc kills.
-                Self.migrateExerciseRelationships(in: modelContainer.mainContext)
-                Self.deduplicatePresets(in: modelContainer.mainContext)
+                // iPhone is the primary device: it alone deletes CloudKit duplicates.
+                PresetMaintenance.performStartupMaintenance(
+                    in: modelContainer.mainContext,
+                    deletesDuplicates: true
+                )
             }
             .onAppear {
                 // Wire the model context so Watch messages can update WorkoutLogs
@@ -92,50 +95,5 @@ struct Kraftli_TimersApp: App {
             }
         }
         .modelContainer(modelContainer)
-    }
-
-    // MARK: - Deduplication
-
-    /// Removes CloudKit duplicates where the same preset UUID appears more than once.
-    private static func deduplicatePresets(in context: ModelContext) {
-        let descriptor = FetchDescriptor<TimerPreset>()
-        guard let presets = try? context.fetch(descriptor) else { return }
-
-        var seen: Set<UUID> = []
-        var didDelete = false
-        for preset in presets {
-            if seen.contains(preset.id) {
-                context.delete(preset)
-                didDelete = true
-            } else {
-                seen.insert(preset.id)
-            }
-        }
-
-        if didDelete {
-            try? context.save()
-        }
-    }
-
-    // MARK: - Migration
-
-    /// Migrates presets from exercise relationship to exerciseId.
-    /// This allows us to stop persisting exercises while keeping preset data intact.
-    private static func migrateExerciseRelationships(in context: ModelContext) {
-        let descriptor = FetchDescriptor<TimerPreset>()
-        guard let presets = try? context.fetch(descriptor) else { return }
-
-        var migrated = false
-        for preset in presets {
-            // If has relationship but no ID, migrate
-            if let exercise = preset.exercise, preset.exerciseId == nil {
-                preset.exerciseId = exercise.id
-                migrated = true
-            }
-        }
-
-        if migrated {
-            try? context.save()
-        }
     }
 }

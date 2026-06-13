@@ -102,3 +102,34 @@ final class TimerPreset {
     }
 }
 
+// MARK: - Content Identity
+
+extension TimerPreset {
+    /// The fields that make two presets *semantically* identical — same timer
+    /// type, duration, reps, and exercise. Deliberately excludes `id` and
+    /// `sortOrder`: two presets with different UUIDs or list positions but the
+    /// same content are "equal" and should be deduplicated to one.
+    ///
+    /// This is the Swift-idiomatic equivalent of overriding `equals`/`hashCode`
+    /// over the defining fields. It lives in a separate value type rather than
+    /// on `TimerPreset` itself: `TimerPreset` is a `@Model` reference type whose
+    /// synthesized object identity SwiftData and SwiftUI (`@Query`, `ForEach`)
+    /// rely on for diffing — overriding its `Equatable`/`Hashable` would break that.
+    struct ContentIdentity: Hashable {
+        let kindRawValue: String
+        let durationInterval: TimeInterval
+        let targetReps: Int?
+        let exerciseId: UUID?
+    }
+
+    var contentIdentity: ContentIdentity {
+        ContentIdentity(
+            kindRawValue: kindRawValue,
+            durationInterval: durationInterval,
+            targetReps: targetReps,
+            // Fall back to the legacy relationship for any row not yet migrated.
+            exerciseId: exerciseId ?? exercise?.id
+        )
+    }
+}
+
