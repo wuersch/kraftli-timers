@@ -91,6 +91,7 @@ struct WatchMessageCoordinatorTests {
     @Test @MainActor func twoDistinctStops_bothApply() {
         let coordinator = WatchMessageCoordinator()
         let syncService = DefaultWatchTimerSyncService()
+        coordinator.isTimerPresented = true
         coordinator.activeSyncService = syncService
 
         var stopCount = 0
@@ -115,6 +116,7 @@ struct WatchMessageCoordinatorTests {
     @Test @MainActor func duplicateStop_sameCorrelationID_appliesOnce() {
         let coordinator = WatchMessageCoordinator()
         let syncService = DefaultWatchTimerSyncService()
+        coordinator.isTimerPresented = true
         coordinator.activeSyncService = syncService
 
         var stopCount = 0
@@ -135,6 +137,7 @@ struct WatchMessageCoordinatorTests {
     @Test @MainActor func stop_mismatchedCorrelationID_isIgnored() {
         let coordinator = WatchMessageCoordinator()
         let syncService = DefaultWatchTimerSyncService()
+        coordinator.isTimerPresented = true
         coordinator.activeSyncService = syncService
         coordinator.activeCorrelationID = UUID()
 
@@ -148,5 +151,65 @@ struct WatchMessageCoordinatorTests {
         coordinator.handleMessage(StopTimerMessage(correlationID: UUID()))
 
         #expect(stopCount == 0)
+    }
+
+    // MARK: - Stop routing (pure decision, issue #46 finding 7)
+
+    /// The regression: a standalone timer is on screen (no sync service, no
+    /// correlation) and a stale iPhone-led stop arrives. It must be ignored, NOT
+    /// routed to orphaned cleanup — which previously ended the live HK session.
+    @Test func routeStop_standalonePresented_ignoresForeignStop() {
+        let routing = WatchMessageCoordinator.routeStop(
+            isTimerPresented: true,
+            hasSyncService: false,
+            activeCorrelationID: nil,
+            stopCorrelationID: UUID()
+        )
+        #expect(routing == .ignoreStandalone)
+    }
+
+    /// No timer on screen → end any orphaned HK session.
+    @Test func routeStop_noTimer_orphanedCleanup() {
+        let routing = WatchMessageCoordinator.routeStop(
+            isTimerPresented: false,
+            hasSyncService: false,
+            activeCorrelationID: nil,
+            stopCorrelationID: UUID()
+        )
+        #expect(routing == .orphanedCleanup)
+    }
+
+    /// iPhone-led timer on screen, stop matches the active correlation → forward.
+    @Test func routeStop_iPhoneLedMatching_forwards() {
+        let id = UUID()
+        let routing = WatchMessageCoordinator.routeStop(
+            isTimerPresented: true,
+            hasSyncService: true,
+            activeCorrelationID: id,
+            stopCorrelationID: id
+        )
+        #expect(routing == .forward)
+    }
+
+    /// A nil-correlation stop applies to the active iPhone-led timer.
+    @Test func routeStop_iPhoneLedNilCorrelation_forwards() {
+        let routing = WatchMessageCoordinator.routeStop(
+            isTimerPresented: true,
+            hasSyncService: true,
+            activeCorrelationID: UUID(),
+            stopCorrelationID: nil
+        )
+        #expect(routing == .forward)
+    }
+
+    /// iPhone-led timer on screen, stop targets a different workout → stale.
+    @Test func routeStop_iPhoneLedMismatch_stale() {
+        let routing = WatchMessageCoordinator.routeStop(
+            isTimerPresented: true,
+            hasSyncService: true,
+            activeCorrelationID: UUID(),
+            stopCorrelationID: UUID()
+        )
+        #expect(routing == .ignoreStaleMismatch)
     }
 }

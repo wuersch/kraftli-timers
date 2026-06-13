@@ -154,9 +154,11 @@ struct WatchPresetListView: View {
             // Update coordinator's active sync service and correlation ID
             // when timer is presented/dismissed
             if let timer = newValue {
+                messageCoordinator.isTimerPresented = true
                 messageCoordinator.activeSyncService = syncService
                 messageCoordinator.activeCorrelationID = timer.correlationID
             } else {
+                messageCoordinator.isTimerPresented = false
                 messageCoordinator.activeSyncService = nil
                 messageCoordinator.activeCorrelationID = nil
                 syncService = nil

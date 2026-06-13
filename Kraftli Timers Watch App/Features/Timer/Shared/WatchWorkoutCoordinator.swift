@@ -343,7 +343,14 @@ struct WatchWorkoutCoordinator {
         } else {
             let log = config.makeWorkoutLog(healthKitUUID)
             modelContext.insert(log)
-            try? modelContext.save()
+            // Surface a save failure: this is the only SwiftData record of a
+            // standalone workout, saved just as watchOS is most likely to suspend
+            // the app. Swallowing the error lost the workout with no diagnostics.
+            do {
+                try modelContext.save()
+            } catch {
+                Logger.workoutLogging.error("Failed to save standalone Watch workout log: \(error.localizedDescription)")
+            }
         }
 
         Logger.healthKit.info("Watch \(config.timerKind.rawValue) workout completed, HealthKit UUID: \(healthKitUUID?.uuidString ?? "none"), displayOnly: \(config.displayOnly), avgHR: \(averageHeartRate.map { String(format: "%.0f", $0) } ?? "none")")

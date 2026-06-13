@@ -48,6 +48,14 @@ final class WatchMessageCoordinator {
     /// the active timer (or with nil correlation) are applied.
     var activeCorrelationID: UUID?
 
+    /// Whether *any* timer view is currently on screen — set for both iPhone-led
+    /// and standalone (wrist-started) timers. Standalone timers register no sync
+    /// service and carry no correlation ID, so this flag is the only way to tell
+    /// "standalone timer presented" apart from "nothing presented" — without it a
+    /// stale iPhone-led stop would reach `handleOrphanedStop` and end a live
+    /// standalone workout (issue #46, finding 7).
+    var isTimerPresented: Bool = false
+
     /// Reference to the workout session manager for orphaned stop handling.
     /// Set by the app entry point after both coordinator and manager are created.
     var sessionManager: WorkoutSessionManager?
@@ -133,11 +141,44 @@ final class WatchMessageCoordinator {
 
     // MARK: - Stop Timer Handling
 
+    /// How an inbound `StopTimerMessage` should be dispatched. Pure routing
+    /// decision — see `routeStop`.
+    enum StopRouting: Equatable {
+        /// No timer view at all — end any orphaned HKWorkoutSession left running.
+        case orphanedCleanup
+        /// A standalone (wrist-started) timer is on screen — never stop it from a
+        /// remote message (the iPhone has no correlation for a standalone workout).
+        case ignoreStandalone
+        /// An iPhone-led timer is on screen but the stop targets a different
+        /// workout — stale, ignore.
+        case ignoreStaleMismatch
+        /// An iPhone-led timer is on screen and the stop matches — forward it.
+        case forward
+    }
+
+    /// Decides how to route an inbound stop. Pure (no side effects, no HealthKit)
+    /// so the staleness/standalone-protection logic is unit-testable directly.
+    static func routeStop(
+        isTimerPresented: Bool,
+        hasSyncService: Bool,
+        activeCorrelationID: UUID?,
+        stopCorrelationID: UUID?
+    ) -> StopRouting {
+        guard isTimerPresented else { return .orphanedCleanup }
+        guard hasSyncService else { return .ignoreStandalone }
+        if stopCorrelationID == nil || stopCorrelationID == activeCorrelationID {
+            return .forward
+        }
+        return .ignoreStaleMismatch
+    }
+
     /// Handles a reliable stop message from iPhone.
     ///
     /// This arrives via the application context (persisted delivery) and/or
     /// `sendMessage` (immediate delivery). Correlation ID matching prevents stale stops from
-    /// killing a new timer that started after the original one completed.
+    /// killing a new timer that started after the original one completed, and the
+    /// presence flag prevents a stale stop from ending a live *standalone* workout
+    /// (issue #46, finding 7).
     @MainActor
     private func handleStopTimerMessage(_ message: StopTimerMessage) {
         // Deduplicate within a short window (stop may arrive via two delivery
@@ -157,18 +198,22 @@ final class WatchMessageCoordinator {
             stoppedCorrelationIDs.insert(stoppedID)
         }
 
-        if let syncService = activeSyncService {
-            // Timer view is showing — check correlation before forwarding
-            if message.correlationID == nil || message.correlationID == activeCorrelationID {
-                Logger.timerSync.info("StopTimerMessage matches active timer, forwarding stop")
-                syncService.handleControlMessage(TimerControlMessage(action: .stop))
-            } else {
-                Logger.timerSync.info("StopTimerMessage correlationID mismatch (stop: \(message.correlationID?.uuidString ?? "nil"), active: \(self.activeCorrelationID?.uuidString ?? "nil")), ignoring stale stop")
-            }
-        } else {
-            // No timer view showing — handle as orphaned stop
+        switch Self.routeStop(
+            isTimerPresented: isTimerPresented,
+            hasSyncService: activeSyncService != nil,
+            activeCorrelationID: activeCorrelationID,
+            stopCorrelationID: message.correlationID
+        ) {
+        case .orphanedCleanup:
             Logger.timerSync.info("StopTimerMessage received with no active timer, cleaning up orphaned session")
             handleOrphanedStop()
+        case .ignoreStandalone:
+            Logger.timerSync.info("StopTimerMessage received while a standalone timer is active, ignoring (no correlation for wrist-started workouts)")
+        case .ignoreStaleMismatch:
+            Logger.timerSync.info("StopTimerMessage correlationID mismatch (stop: \(message.correlationID?.uuidString ?? "nil"), active: \(self.activeCorrelationID?.uuidString ?? "nil")), ignoring stale stop")
+        case .forward:
+            Logger.timerSync.info("StopTimerMessage matches active timer, forwarding stop")
+            activeSyncService?.handleControlMessage(TimerControlMessage(action: .stop))
         }
     }
 
