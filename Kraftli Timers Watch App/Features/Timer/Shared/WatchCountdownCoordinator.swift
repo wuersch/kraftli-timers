@@ -29,8 +29,14 @@ final class WatchCountdownCoordinator {
     private var countdownTask: Task<Void, Never>?
 
     /// Stored so `finishNow()` can fire the start when the user taps to skip
-    /// the remaining countdown.
-    private var completion: (() -> Void)?
+    /// the remaining countdown. The `Date?` is the start anchor: `nil` on natural
+    /// completion (start at local now), or the shared `scheduledStartTime` on skip.
+    private var completion: ((Date?) -> Void)?
+
+    /// The absolute time this countdown is counting toward. Passed to `completion`
+    /// by `finishNow()` so a tap-to-skip anchors to the shared leader time (ADR-005,
+    /// finding 5) instead of starting early at local now.
+    private var scheduledStartTime: Date?
 
     // MARK: - Public Methods
 
@@ -42,10 +48,11 @@ final class WatchCountdownCoordinator {
     ///
     /// - Parameters:
     ///   - scheduledStartTime: The absolute time when the timer should start.
-    ///   - completion: Called when countdown completes and timer should start.
+    ///   - completion: Called when countdown completes and timer should start. Receives the
+    ///     start anchor: `nil` on natural completion, or `scheduledStartTime` on tap-to-skip.
     func startCountdown(
         scheduledStartTime: Date,
-        completion: @escaping () -> Void
+        completion: @escaping (Date?) -> Void
     ) {
         // Cancel any existing countdown
         cancelCountdown()
@@ -54,12 +61,13 @@ final class WatchCountdownCoordinator {
 
         // If we're already past the start time, skip countdown entirely
         guard timeUntilStart > 0 else {
-            completion()
+            completion(nil)
             return
         }
 
         isCountingDown = true
         self.completion = completion
+        self.scheduledStartTime = scheduledStartTime
 
         countdownTask = Task { [weak self] in
             guard let self else { return }
@@ -94,8 +102,11 @@ final class WatchCountdownCoordinator {
 
             self.countdownValue = nil
             self.isCountingDown = false
+            self.scheduledStartTime = nil
 
-            completion()
+            // Natural completion: anchor at local now (≈ scheduled + GO display), matching the
+            // iPhone's natural countdown path, so both devices stay in lockstep.
+            completion(nil)
         }
     }
 
@@ -106,6 +117,7 @@ final class WatchCountdownCoordinator {
         countdownValue = nil
         isCountingDown = false
         completion = nil
+        scheduledStartTime = nil
     }
 
     /// Skips the remaining countdown and starts immediately (tap-to-start).
@@ -121,7 +133,12 @@ final class WatchCountdownCoordinator {
         countdownValue = nil
         isCountingDown = false
         let startNow = completion
+        let anchor = scheduledStartTime
         completion = nil
-        startNow?()
+        scheduledStartTime = nil
+        // Skip the animation, not the synchronized start: anchor to the shared scheduled time
+        // (ADR-005, finding 5) so a tap before `scheduled` doesn't start the Watch ahead of the
+        // leader. The standalone caller ignores this anchor (no leader to sync with).
+        startNow?(anchor)
     }
 }
