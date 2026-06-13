@@ -209,4 +209,43 @@ struct PhoneMessageCoordinatorTests {
 
         #expect(log.healthKitWorkoutUUID == nil)
     }
+
+    /// Issue #48 / finding 10: if the first (dual-delivery) twin arrives before `modelContext` is
+    /// wired, the UUID can't link yet. The twin within the dedup window must still complete the
+    /// link — pre-fix it was dropped as a "duplicate" because dedup was committed before the apply.
+    @Test @MainActor func sessionEnded_uuidLinkedByTwin_afterContextWired() throws {
+        let coordinator = PhoneMessageCoordinator()  // modelContext nil (background-launch ordering)
+        let correlationID = UUID()
+        let watchUUID = UUID()
+        let message = WorkoutSessionEndedMessage(
+            healthKitWorkoutUUID: watchUUID,
+            correlationID: correlationID
+        )
+
+        // Twin 1: arrives before the context exists → can't link yet.
+        coordinator.handleMessage(message)
+
+        // Context is now wired with the matching log (no UUID yet).
+        let schema = Schema([WorkoutLog.self])
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [ModelConfiguration(isStoredInMemoryOnly: true)]
+        )
+        let context = container.mainContext
+        let log = WorkoutLog(
+            id: correlationID,
+            exerciseName: "Burpees",
+            timerKind: .emom,
+            durationSeconds: 1200,
+            repsCompleted: 100
+        )
+        context.insert(log)
+        try context.save()
+        coordinator.modelContext = context
+
+        // Twin 2: same message within the dedup window — must still link, not be dropped.
+        coordinator.handleMessage(message)
+
+        #expect(log.healthKitWorkoutUUID == watchUUID)
+    }
 }

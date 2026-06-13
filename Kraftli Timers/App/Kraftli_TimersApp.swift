@@ -16,8 +16,9 @@ struct Kraftli_TimersApp: App {
     @State private var mirroredWorkoutObserver = MirroredWorkoutObserver()
 
     /// Routes Watch messages for the whole app lifetime.
-    /// Created at startup so the handler exists before any message arrives.
-    @State private var phoneMessageCoordinator = PhoneMessageCoordinator()
+    /// Created in `init` (with the model context already wired) so the handler exists before any
+    /// message arrives — including a background WCSession launch with no scene.
+    @State private var phoneMessageCoordinator: PhoneMessageCoordinator
 
     // Capture launch screen preference once at startup (not reactive to mid-session changes)
     @State private var showLaunchScreen: Bool
@@ -28,9 +29,6 @@ struct Kraftli_TimersApp: App {
     init() {
         // Load exercise reference data from JSON (in-memory, not persisted)
         ExerciseRepository.load()
-
-        // Activate WatchConnectivity for real-time sync with Watch
-        WatchConnectivityService.shared.activate()
 
         // Determine if launch screen should show (before settings is fully initialized)
         let launchEnabled = UserDefaults.standard.object(forKey: "launchScreenEnabled") as? Bool ?? true
@@ -53,6 +51,17 @@ struct Kraftli_TimersApp: App {
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
+
+        // Create the message coordinator with the model context already wired, so a Watch
+        // WorkoutSessionEndedMessage can link its HealthKit UUID to the WorkoutLog even on a
+        // background WCSession launch (terminated app, no scene → the WindowGroup's onAppear,
+        // where this used to be wired, never fires).
+        _phoneMessageCoordinator = State(
+            initialValue: PhoneMessageCoordinator(modelContext: modelContainer.mainContext)
+        )
+
+        // Activate WatchConnectivity *after* the coordinator's message handler is registered.
+        WatchConnectivityService.shared.activate()
     }
 
     var body: some Scene {
@@ -80,10 +89,6 @@ struct Kraftli_TimersApp: App {
                 )
             }
             .onAppear {
-                // Wire the model context so Watch messages can update WorkoutLogs
-                // even when no timer view is alive.
-                phoneMessageCoordinator.modelContext = modelContainer.mainContext
-
                 // Set up mirrored workout session handler (Scenario D: Watch-initiated workouts).
                 // When Watch starts a workout and mirrors to iPhone, this handler receives
                 // the session. We store it in MirroredWorkoutObserver so iPhone can observe

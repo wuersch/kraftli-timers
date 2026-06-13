@@ -54,7 +54,11 @@ final class PhoneMessageCoordinator {
     /// long after the fast path is still recognized as already-handled.
     private var stoppedCorrelationIDs: Set<UUID> = []
 
-    init() {
+    /// - Parameter modelContext: Wired at construction (from `App.init`) so a `WorkoutSessionEndedMessage`
+    ///   can link the Watch's HealthKit UUID even on a background WatchConnectivity launch, where no
+    ///   scene appears and a view-driven `.onAppear` would never fire.
+    init(modelContext: ModelContext? = nil) {
+        self.modelContext = modelContext
         WatchConnectivityService.shared.onMessageReceived = { [weak self] message in
             self?.handleMessage(message)
         }
@@ -70,6 +74,12 @@ final class PhoneMessageCoordinator {
         }
 
         if let endedMessage = message as? WorkoutSessionEndedMessage {
+            // Attempt the UUID link on *every* delivery, before the dedup gate. The link is
+            // idempotent (no-ops once set), so a dual-delivery twin can still complete a link the
+            // first delivery couldn't (e.g. it arrived before modelContext was wired) — the dedup
+            // gate below must not drop that retry. The gate guards only the one-shot publisher forward.
+            updateLogWithWatchUUID(endedMessage)
+
             if let last = lastHandledSessionEnded,
                let lastDate = lastHandledSessionEndedDate,
                last == endedMessage,
@@ -79,8 +89,6 @@ final class PhoneMessageCoordinator {
             }
             lastHandledSessionEnded = endedMessage
             lastHandledSessionEndedDate = Date()
-
-            updateLogWithWatchUUID(endedMessage)
         }
 
         activeSyncService?.handleMessage(message)
