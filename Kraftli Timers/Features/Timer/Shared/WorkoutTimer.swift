@@ -12,6 +12,12 @@ protocol WorkoutTimer: AnyObject {
     var totalDuration: TimeInterval { get }
     var isRunning: Bool { get }
 
+    /// Explicit completion signal, set by the model **only** inside its tick `update()` when the
+    /// timer legitimately reaches zero while running. Completion observers key off this rather than
+    /// inferring it from `totalTimeRemaining` crossing zero — so a `pause(at:)` clamp or a stray
+    /// post-pause tick can no longer "complete" the workout. Reset by `reset()`/`start()`.
+    var didComplete: Bool { get }
+
     /// Reps completed (EMOM timers)
     var completedReps: Int? { get }
     /// Rounds completed (AMRAP timers)
@@ -53,6 +59,10 @@ extension WorkoutTimer {
     var isCompleted: Bool {
         totalTimeRemaining <= 0
     }
+
+    // Safe default so non-model conformers (e.g. test stubs) still compile; the concrete
+    // EMOM/AMRAP models override this with a stored property set in `update()`.
+    var didComplete: Bool { false }
 
     // Default forwarding so conformers that don't need canonical-date anchoring still compile.
     // The concrete EMOM/AMRAP models override these with the real shared-anchor math.

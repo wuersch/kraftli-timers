@@ -232,4 +232,96 @@ struct AMRAPTimerModelTests {
         watch.reset()
         phone.reset()
     }
+
+    // MARK: - Completion signal & tick guards (issue #47)
+
+    /// Reaching zero while running sets the explicit `didComplete` signal.
+    @Test @MainActor func update_reachingZero_setsDidComplete() async {
+        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let provider = MockTimerProvider()
+        let model = AMRAPTimerModel(
+            totalDuration: 60,
+            timerProvider: provider, feedbackProvider: SilentFeedback(), now: { fakeNow }
+        )
+
+        model.start()
+        #expect(model.didComplete == false)
+
+        fakeNow += 61  // past the natural end
+        provider.simulateTick()
+        await Self.drainMainQueue()
+
+        #expect(model.didComplete == true)
+        #expect(model.isRunning == false)
+        #expect(model.totalTimeRemaining == 0)
+    }
+
+    /// Finding 14: a `pause(at:)` whose canonical date lands at/after the natural end clamps
+    /// remaining to 0, but must NOT be treated as completion (no didComplete → no log/confetti).
+    @Test @MainActor func pauseAt_clampingToZero_doesNotComplete() {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        let model = AMRAPTimerModel(
+            totalDuration: 60,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: { start }
+        )
+
+        model.start()
+        model.pause(at: start.addingTimeInterval(60))  // canonical date at the natural end
+
+        #expect(model.totalTimeRemaining == 0)
+        #expect(model.didComplete == false)
+        #expect(model.isRunning == false)
+    }
+
+    /// Finding 15: a tick that enqueues its update() Task just before `pause()` runs must be a
+    /// no-op — it must not recompute the frozen display from the clock or fire completion.
+    @Test @MainActor func strayTickEnqueuedBeforePause_isNoOp() async {
+        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let provider = MockTimerProvider()
+        let spy = SpyFeedbackProvider()
+        let model = AMRAPTimerModel(
+            totalDuration: 600,
+            timerProvider: provider, feedbackProvider: spy, now: { fakeNow }
+        )
+
+        model.start()
+        fakeNow += 10
+        provider.simulateTick()
+        await Self.drainMainQueue()
+        let frozen = model.totalTimeRemaining  // 590
+
+        // A tick fires (enqueues its update Task) and the user pauses before it runs.
+        provider.simulateTick()
+        model.pause()
+        fakeNow += 100  // clock moves on
+        await Self.drainMainQueue()  // the stray update() now runs — must do nothing
+
+        #expect(model.totalTimeRemaining == frozen)
+        #expect(model.didComplete == false)
+        #expect(spy.workoutCompleteCount == 0)
+    }
+
+    @Test @MainActor func reset_clearsDidComplete() async {
+        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let provider = MockTimerProvider()
+        let model = AMRAPTimerModel(
+            totalDuration: 60,
+            timerProvider: provider, feedbackProvider: SilentFeedback(), now: { fakeNow }
+        )
+
+        model.start()
+        fakeNow += 61
+        provider.simulateTick()
+        await Self.drainMainQueue()
+        #expect(model.didComplete == true)
+
+        model.reset()
+        #expect(model.didComplete == false)
+    }
+
+    /// Lets main-actor Tasks queued by the tick handler run before asserting.
+    @MainActor
+    private static func drainMainQueue() async {
+        for _ in 0..<5 { await Task.yield() }
+    }
 }
