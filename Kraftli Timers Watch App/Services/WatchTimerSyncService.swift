@@ -30,6 +30,24 @@ protocol WatchTimerSyncService {
         completion: ((Result<Void, Error>) -> Void)?
     )
 
+    /// Sends a reliable stop command to iPhone.
+    ///
+    /// Unlike `sendTimerControl(.stop)` (immediate `sendMessage` only), this uses
+    /// dual delivery (`transferUserInfo` + `sendMessage`) so a cancel on the wrist
+    /// still reaches the iPhone after a transient connectivity drop — otherwise the
+    /// iPhone's wall-clock timer runs to completion and logs a cancelled workout as
+    /// completed. The `correlationID` lets the iPhone ignore a stale stop that would
+    /// otherwise kill a later workout. Mirrors the iPhone→Watch `StopTimerMessage`.
+    ///
+    /// - Parameters:
+    ///   - correlationID: The active workout's correlation ID (the iPhone-issued
+    ///     WorkoutLog ID echoed from `StartTimerMessage`), or nil.
+    ///   - completion: Called with the result of the immediate send attempt.
+    func sendStop(
+        correlationID: UUID?,
+        completion: ((Result<Void, Error>) -> Void)?
+    )
+
     /// Sends a workout session ended message to iPhone with the HealthKit UUID and metrics.
     ///
     /// Uses dual delivery (`sendMessage` + `transferUserInfo`) to ensure the
@@ -105,6 +123,20 @@ final class DefaultWatchTimerSyncService: WatchTimerSyncService {
         connectivity.sendMessage(message, completion: completion)
     }
 
+    func sendStop(
+        correlationID: UUID?,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        let message = StopTimerMessage(correlationID: correlationID)
+        // Dual delivery: transferUserInfo is reliable (queued by the system and
+        // delivered even when iPhone is unreachable), while sendMessage provides
+        // immediate delivery when iPhone is already reachable. iPhone deduplicates
+        // across both paths and ignores stale stops by correlation ID.
+        connectivity.transferUserInfo(message)
+        connectivity.sendMessage(message, completion: completion)
+        Logger.timerSync.info("Sent stop (dual delivery), correlationID: \(correlationID?.uuidString ?? "none")")
+    }
+
     func sendWorkoutSessionEnded(
         healthKitUUID: UUID?,
         correlationID: UUID?,
@@ -166,6 +198,13 @@ final class SilentWatchTimerSyncService: WatchTimerSyncService {
 
     func sendTimerControl(
         _ action: TimerControlAction,
+        completion: ((Result<Void, Error>) -> Void)?
+    ) {
+        // No-op for standalone timers
+    }
+
+    func sendStop(
+        correlationID: UUID?,
         completion: ((Result<Void, Error>) -> Void)?
     ) {
         // No-op for standalone timers

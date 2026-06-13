@@ -34,6 +34,85 @@ struct PhoneMessageCoordinatorTests {
         // Reaching this point without a crash is the assertion.
     }
 
+    // MARK: - Inbound StopTimerMessage (Watch→iPhone reliable stop, issue #45)
+
+    /// A stop whose correlation ID matches the active timer is forwarded as `.stop`,
+    /// so the runner dismisses without logging a cancelled workout as completed.
+    @Test @MainActor func stop_matchingCorrelationID_forwardsStop() {
+        let coordinator = PhoneMessageCoordinator()
+        let syncService = DefaultTimerSyncService()
+        coordinator.activeSyncService = syncService
+        let correlationID = UUID()
+        coordinator.activeCorrelationID = correlationID
+
+        var receivedActions: [TimerControlAction] = []
+        let cancellable = syncService.timerControlReceived.sink { receivedActions.append($0) }
+        defer { cancellable.cancel() }
+
+        coordinator.handleMessage(StopTimerMessage(correlationID: correlationID))
+
+        #expect(receivedActions == [.stop])
+    }
+
+    /// A stop with no correlation ID applies to whatever timer is active.
+    @Test @MainActor func stop_nilCorrelationID_forwardsStop() {
+        let coordinator = PhoneMessageCoordinator()
+        let syncService = DefaultTimerSyncService()
+        coordinator.activeSyncService = syncService
+        coordinator.activeCorrelationID = UUID()
+
+        var receivedActions: [TimerControlAction] = []
+        let cancellable = syncService.timerControlReceived.sink { receivedActions.append($0) }
+        defer { cancellable.cancel() }
+
+        coordinator.handleMessage(StopTimerMessage(correlationID: nil))
+
+        #expect(receivedActions == [.stop])
+    }
+
+    /// A stale stop for a *different* workout must not kill the active timer.
+    @Test @MainActor func stop_mismatchedCorrelationID_ignored() {
+        let coordinator = PhoneMessageCoordinator()
+        let syncService = DefaultTimerSyncService()
+        coordinator.activeSyncService = syncService
+        coordinator.activeCorrelationID = UUID()
+
+        var receivedActions: [TimerControlAction] = []
+        let cancellable = syncService.timerControlReceived.sink { receivedActions.append($0) }
+        defer { cancellable.cancel() }
+
+        coordinator.handleMessage(StopTimerMessage(correlationID: UUID()))  // different ID
+
+        #expect(receivedActions.isEmpty)
+    }
+
+    /// Dual delivery (transferUserInfo + sendMessage) of the same stop forwards once.
+    @Test @MainActor func stop_duplicateWithinWindow_forwardedOnce() {
+        let coordinator = PhoneMessageCoordinator()
+        let syncService = DefaultTimerSyncService()
+        coordinator.activeSyncService = syncService
+        let correlationID = UUID()
+        coordinator.activeCorrelationID = correlationID
+
+        var receivedActions: [TimerControlAction] = []
+        let cancellable = syncService.timerControlReceived.sink { receivedActions.append($0) }
+        defer { cancellable.cancel() }
+
+        let message = StopTimerMessage(correlationID: correlationID)
+        coordinator.handleMessage(message)
+        coordinator.handleMessage(message)  // dual delivery duplicate
+
+        #expect(receivedActions == [.stop])
+    }
+
+    /// A stop arriving with no active timer view is a no-op (the iPhone owns no HK
+    /// session in the iPhone-led case) and must not crash.
+    @Test @MainActor func stop_withNoActiveSyncService_doesNotCrash() {
+        let coordinator = PhoneMessageCoordinator()
+        coordinator.handleMessage(StopTimerMessage(correlationID: UUID()))
+        // Reaching this point without a crash is the assertion.
+    }
+
     // MARK: - WorkoutSessionEnded dedup
 
     @Test @MainActor func duplicateSessionEnded_forwardedOnce() {
