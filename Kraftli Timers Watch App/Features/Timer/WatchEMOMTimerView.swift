@@ -221,9 +221,10 @@ struct WatchEMOMTimerView: View {
                     labelTop: "INTERVAL",
                     valueColor: intervalColor
                 )
-                // Reps done / total
+                // Reps: the interval currently in progress / total, matching the
+                // iPhone's 1-based `currentInterval` display (starts at 1/N, ends N/N).
                 WatchMetricRow(
-                    value: "\(timerModel.completedIntervals)/\(timerModel.totalIntervals)",
+                    value: "\(timerModel.currentInterval)/\(timerModel.totalIntervals)",
                     labelTop: "REPS"
                 )
                 // Live heart rate
