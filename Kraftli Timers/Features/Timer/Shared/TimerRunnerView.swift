@@ -156,16 +156,9 @@ struct TimerRunnerView: View {
         summaryTransitionTask?.cancel()
         summaryTransitionTask = nil
         if summaryData == nil {
-            // Timer is showing - call cleanup first
+            // Timer is showing - call cleanup first. (Once the summary shows, the timer
+            // session already ended with the timer view; ADR-006.)
             timerCleanup?()
-        } else if preset.kind == .amrap {
-            // Summary is showing - timer already completed, just tell Watch to dismiss.
-            // (EMOM runs on the timer session, which ended with the timer; ADR-006.)
-            timerSyncService.sendTimerControl(.stop) { result in
-                if case .failure(let error) = result {
-                    Logger.timerSync.warning("sendTimerControl(.stop) on summary dismiss failed: \(error.localizedDescription)")
-                }
-            }
         }
         dismiss()
     }
@@ -219,10 +212,8 @@ struct TimerRunnerView: View {
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
-                syncService: timerSyncService,
-                healthKitService: healthKitService,
                 exerciseName: preset.exerciseInfo?.name ?? "Workout",
-                correlationID: correlationID,
+                workoutID: correlationID,
                 autoStart: true,
                 isSwipeDisabled: $isSwipeDisabled,
                 showHint: $showHint,

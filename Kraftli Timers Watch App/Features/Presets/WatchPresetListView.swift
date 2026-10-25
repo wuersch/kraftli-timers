@@ -28,7 +28,7 @@ enum ActiveEditor: Identifiable {
 /// Captures all timer configuration at tap time, ensuring data is available when the cover presents.
 /// This avoids SwiftUI state timing issues with `fullScreenCover(isPresented:)`.
 enum TimerPresentation: Identifiable, Equatable {
-    /// An EMOM run through the timer session (ADR-006), started on either device.
+    // Both run through the timer session (ADR-006), started on either device.
     case emom(
         duration: TimeInterval,
         intervalCount: Int,
@@ -39,9 +39,8 @@ enum TimerPresentation: Identifiable, Equatable {
     case amrap(
         duration: TimeInterval,
         exerciseName: String,
-        displayOnly: Bool = false,
-        scheduledStartTime: Date? = nil,
-        correlationID: UUID? = nil
+        workoutID: UUID = UUID(),
+        startedOnPhone: Bool = false
     )
 
     // The correlation ID is part of the identity: a new iPhone-led start for the
@@ -51,8 +50,8 @@ enum TimerPresentation: Identifiable, Equatable {
         switch self {
         case .emom(_, _, _, let workoutID, _):
             return "emom-\(workoutID.uuidString)"
-        case .amrap(let duration, _, _, _, let correlationID):
-            return "amrap-\(duration)-\(correlationID?.uuidString ?? "local")"
+        case .amrap(_, _, let workoutID, _):
+            return "amrap-\(workoutID.uuidString)"
         }
     }
 
@@ -60,24 +59,7 @@ enum TimerPresentation: Identifiable, Equatable {
     var correlationID: UUID? {
         switch self {
         case .emom(_, _, _, let workoutID, _): return workoutID
-        case .amrap(_, _, _, _, let id): return id
-        }
-    }
-
-    /// Creates a TimerPresentation from a legacy StartTimerMessage received from iPhone.
-    /// EMOM no longer uses it: the iPhone sends a `StartRequest` instead (ADR-006).
-    static func fromMessage(_ message: StartTimerMessage) -> TimerPresentation? {
-        switch message.timerKind {
-        case .emom:
-            return nil
-        case .amrap:
-            return .amrap(
-                duration: message.totalDuration,
-                exerciseName: message.exerciseName,
-                displayOnly: message.displayOnly,
-                scheduledStartTime: message.scheduledStartTime,
-                correlationID: message.correlationID
-            )
+        case .amrap(_, _, let workoutID, _): return workoutID
         }
     }
 }
@@ -96,10 +78,6 @@ struct WatchPresetListView: View {
 
     /// The currently presented editor sheet, if any.
     @State private var activeEditor: ActiveEditor?
-
-    /// Sync service for mirrored timers (started from iPhone).
-    /// Created when receiving a StartTimerMessage, nil for standalone timers.
-    @State private var syncService: DefaultWatchTimerSyncService?
 
     var body: some View {
         Group {
@@ -140,29 +118,24 @@ struct WatchPresetListView: View {
                     workoutID: workoutID,
                     startedOnPhone: startedOnPhone
                 )
-            case .amrap(let duration, let exerciseName, let displayOnly, let scheduledStartTime, let correlationID):
+            case .amrap(let duration, let exerciseName, let workoutID, let startedOnPhone):
                 WatchAMRAPTimerView(
                     totalDuration: duration,
                     exerciseName: exerciseName,
-                    displayOnly: displayOnly,
-                    syncService: syncService ?? DefaultWatchTimerSyncService(),
-                    scheduledStartTime: scheduledStartTime,
-                    correlationID: correlationID
+                    workoutID: workoutID,
+                    startedOnPhone: startedOnPhone
                 )
             }
         }
         .onChange(of: activeTimer) { _, newValue in
-            // Update coordinator's active sync service and correlation ID
-            // when timer is presented/dismissed
+            // Tell the coordinator a timer is on screen, so a stale legacy stop can't end
+            // its workout. Timers run on the timer session now, not a legacy sync service.
             if let timer = newValue {
                 messageCoordinator.isTimerPresented = true
-                messageCoordinator.activeSyncService = syncService
                 messageCoordinator.activeCorrelationID = timer.correlationID
             } else {
                 messageCoordinator.isTimerPresented = false
-                messageCoordinator.activeSyncService = nil
                 messageCoordinator.activeCorrelationID = nil
-                syncService = nil
             }
         }
         .sheet(item: $activeEditor) { editor in
@@ -266,30 +239,33 @@ struct WatchPresetListView: View {
 
     // MARK: - Message Handling
 
-    /// Handles a timer start message from iPhone.
+    /// Handles a legacy timer start message from iPhone. Both timer kinds now start
+    /// through a `StartRequest` (ADR-006), so the message no longer presents anything.
     @MainActor
     private func handleStartTimer(_ message: StartTimerMessage) {
-        // Create sync service for mirrored timer (enables bidirectional control)
-        syncService = DefaultWatchTimerSyncService()
-        // Present the timer
-        guard let presentation = TimerPresentation.fromMessage(message) else {
-            Logger.timerSync.info("Ignoring legacy EMOM StartTimerMessage")
-            return
-        }
-        activeTimer = presentation
+        Logger.timerSync.info("Ignoring legacy StartTimerMessage: \(message.exerciseName)")
     }
 
     /// Presents an iPhone-started workout the starter accepted (ADR-006).
     private func presentRequestedWorkout(_ request: StartRequest) {
         workoutStarter.requestPresented()
-        guard TimerKind(rawValue: request.config.timerKindRaw) == .emom else { return }
-        activeTimer = .emom(
-            duration: request.config.totalDuration,
-            intervalCount: request.config.intervalCount ?? 1,
-            exerciseName: request.config.exerciseName,
-            workoutID: request.workoutID,
-            startedOnPhone: true
-        )
+        switch TimerKind(rawValue: request.config.timerKindRaw) ?? .emom {
+        case .emom:
+            activeTimer = .emom(
+                duration: request.config.totalDuration,
+                intervalCount: request.config.intervalCount ?? 1,
+                exerciseName: request.config.exerciseName,
+                workoutID: request.workoutID,
+                startedOnPhone: true
+            )
+        case .amrap:
+            activeTimer = .amrap(
+                duration: request.config.totalDuration,
+                exerciseName: request.config.exerciseName,
+                workoutID: request.workoutID,
+                startedOnPhone: true
+            )
+        }
     }
 }
 

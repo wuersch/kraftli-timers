@@ -19,8 +19,8 @@ class AMRAPTimerModel: WorkoutTimer {
     // MARK: - Published Properties (MainActor isolated)
     @MainActor private(set) var totalTimeRemaining: TimeInterval
     @MainActor private(set) var isRunning = false
-    /// Rounds counted on this device. `apply(_:)` adopts the owner's count; local taps
-    /// still increment it directly until the views move to the session controller.
+    /// Rounds completed, as counted by the workout's owner (`TimerState.roundCount`).
+    /// Taps go through `TimerSessionController.incrementRound()`, never to the model.
     @MainActor private(set) var roundsCompleted = 0
     /// Explicit completion signal — set true only when the workout reaches zero (observed on a
     /// tick, or adopted from a completed state), never by a pause or a stop.
@@ -148,17 +148,6 @@ class AMRAPTimerModel: WorkoutTimer {
         totalTimeRemaining = totalDuration
         roundsCompleted = 0
         didComplete = false
-    }
-
-    @MainActor
-    func incrementRoundsCompleted() {
-        roundsCompleted += 1
-    }
-
-    @MainActor
-    func decrementRoundsCompleted() {
-        guard roundsCompleted > 0 else { return }
-        roundsCompleted -= 1
     }
 
     // MARK: - Private Methods

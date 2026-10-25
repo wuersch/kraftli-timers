@@ -74,54 +74,25 @@ struct AMRAPTimerModelTests {
             feedbackProvider: SilentFeedback()
         )
 
-        model.start()
-        model.incrementRoundsCompleted()
-        model.incrementRoundsCompleted()
+        var state = TimerState(
+            workoutID: UUID(),
+            owner: .phone,
+            config: TimerConfig(
+                timerKindRaw: TimerKind.amrap.rawValue,
+                totalDuration: 300,
+                intervalCount: nil,
+                exerciseName: "Pull-ups"
+            ),
+            startDate: Date().addingTimeInterval(-10)
+        )
+        state.roundCount = 2
+        model.apply(state)
+        #expect(model.roundsCompleted == 2)
         model.pause()
         model.reset()
 
         #expect(model.isRunning == false)
         #expect(model.totalTimeRemaining == 300)
-        #expect(model.roundsCompleted == 0)
-    }
-
-    @Test @MainActor func incrementRoundsCompleted_incrementsCount() {
-        let model = AMRAPTimerModel(
-            totalDuration: 300,
-            timerProvider: MockTimerProvider(),
-            feedbackProvider: SilentFeedback()
-        )
-
-        model.incrementRoundsCompleted()
-        #expect(model.roundsCompleted == 1)
-
-        model.incrementRoundsCompleted()
-        #expect(model.roundsCompleted == 2)
-    }
-
-    @Test @MainActor func decrementRoundsCompleted_decrementsCount() {
-        let model = AMRAPTimerModel(
-            totalDuration: 300,
-            timerProvider: MockTimerProvider(),
-            feedbackProvider: SilentFeedback()
-        )
-
-        model.incrementRoundsCompleted()
-        model.incrementRoundsCompleted()
-        model.decrementRoundsCompleted()
-
-        #expect(model.roundsCompleted == 1)
-    }
-
-    @Test @MainActor func decrementRoundsCompleted_doesNotGoBelowZero() {
-        let model = AMRAPTimerModel(
-            totalDuration: 300,
-            timerProvider: MockTimerProvider(),
-            feedbackProvider: SilentFeedback()
-        )
-
-        model.decrementRoundsCompleted()
-
         #expect(model.roundsCompleted == 0)
     }
 
