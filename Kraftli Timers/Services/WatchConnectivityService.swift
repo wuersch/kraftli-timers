@@ -95,65 +95,7 @@ final class WatchConnectivityService: NSObject, ObservableObject {
         return session.isPaired && session.isWatchAppInstalled
     }
 
-    /// Sends a message to Watch for immediate delivery.
-    ///
-    /// Uses WCSession.sendMessage for real-time communication when Watch is reachable.
-    /// This is ideal for time-sensitive actions like starting a timer.
-    ///
-    /// - Parameters:
-    ///   - message: The message to send
-    ///   - completion: Called with success/failure result
-    func sendMessage(
-        _ message: WatchMessage,
-        completion: ((Result<Void, Error>) -> Void)? = nil
-    ) {
-        guard let session = session,
-              session.activationState == .activated,
-              session.isReachable else {
-            completion?(.failure(WatchConnectivityError.watchNotReachable))
-            return
-        }
-
-        do {
-            let encoded = try WatchMessageCoder.encode(message)
-            session.sendMessage(encoded, replyHandler: { _ in
-                completion?(.success(()))
-            }, errorHandler: { error in
-                completion?(.failure(error))
-            })
-        } catch {
-            completion?(.failure(error))
-        }
-    }
-
-    /// Publishes the message as the application context — the canonical
-    /// "current timer command".
-    ///
-    /// Latest-state-wins: a new start or stop replaces any previous value, and
-    /// watchOS persists it for delivery even when the Watch app launches later
-    /// (e.g. via `startWatchApp(toHandle:)`). This is what makes a timer start
-    /// reliable on cold launch, where `sendMessage` fails (not reachable) and a
-    /// queued transfer has no delivery-time guarantee.
-    ///
-    /// - Parameter message: The message representing the current timer command
-    func updateApplicationContext(_ message: WatchMessage) {
-        guard let session = session,
-              session.activationState == .activated else {
-            Logger.watchConnectivity.warning("Cannot update application context: session not activated")
-            return
-        }
-
-        do {
-            let encoded = try WatchMessageCoder.encode(message)
-            try session.updateApplicationContext(encoded)
-            Logger.watchConnectivity.debug("Updated application context: \(message.messageType.rawValue)")
-        } catch {
-            Logger.watchConnectivity.error("Failed to update application context: \(error.localizedDescription)")
-        }
-    }
-
-    /// Called when a real-time message is received from Watch.
-    /// Used for timer control messages (play/pause/stop) from mirrored timers.
+    /// Called with every `WatchMessage` from the Watch (the end-of-workout HealthKit summary).
     var onMessageReceived: ((WatchMessage) -> Void)?
 
     private func handleReceivedMessage(_ dictionary: [String: Any]) {
@@ -169,13 +111,7 @@ final class WatchConnectivityService: NSObject, ObservableObject {
     #endif
 
     #if os(watchOS)
-    /// Called when a real-time message is received from iPhone.
-    /// Used for immediate actions like starting a timer.
-    var onMessageReceived: ((WatchMessage) -> Void)?
-
     /// Sends a message to iPhone for immediate delivery.
-    ///
-    /// Used for timer control messages (play/pause/stop) from mirrored timers.
     ///
     /// - Parameters:
     ///   - message: The message to send
@@ -226,15 +162,10 @@ final class WatchConnectivityService: NSObject, ObservableObject {
         }
     }
 
+    /// The iPhone sends only timer sync payloads (ADR-006); anything else comes from an
+    /// older app version.
     private func handleReceivedMessage(_ dictionary: [String: Any]) {
-        do {
-            let message = try WatchMessageCoder.decode(dictionary)
-            DispatchQueue.main.async { [weak self] in
-                self?.onMessageReceived?(message)
-            }
-        } catch {
-            Logger.watchConnectivity.error("Failed to decode message from iPhone: \(error.localizedDescription)")
-        }
+        Logger.watchConnectivity.info("Ignoring a non-timer-sync message from iPhone")
     }
 
     #endif

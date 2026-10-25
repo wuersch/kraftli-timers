@@ -1,6 +1,6 @@
 # ADR-005: HealthKit is the sole control channel while a mirrored session is active
 
-**Status**: Accepted
+**Status**: Superseded by [ADR-006](ADR-006-single-owner-timer-state.md) (2026-10-25)
 **Date**: 2026-06-13
 
 ## Context

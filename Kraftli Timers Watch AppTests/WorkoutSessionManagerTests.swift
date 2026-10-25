@@ -40,7 +40,6 @@ struct WorkoutSessionManagerTests {
         await Self.drainMainQueue()
 
         #expect(manager.sessionState == .idle)
-        #expect(manager.lastTransitionDate == nil)
     }
 
     @Test @MainActor func staleRunningCallback_doesNotResurrectSession() async throws {

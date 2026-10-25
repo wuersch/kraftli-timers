@@ -2,17 +2,16 @@
 //  WatchCountdownCoordinator.swift
 //  Kraftli Timers Watch App
 //
-//  Coordinates pre-workout countdown on Apple Watch.
-//  Handles joining a countdown in progress when started from iPhone.
+//  Displays the pre-workout 3-2-1-GO countdown on Apple Watch.
 //
 
 import Foundation
 
-/// Coordinates a pre-workout countdown on Apple Watch.
+/// Displays a 3-2-1-GO countdown toward a workout's shared start date.
 ///
-/// Unlike the iOS coordinator, this version:
-/// - Does not play audio (unreliable when wrist is down)
-/// - Handles joining a countdown in progress (when iPhone leads)
+/// Display only (ADR-006): the timer model already follows the workout's `TimerState`,
+/// which starts the clock at `startDate` on both devices. Unlike the iOS coordinator,
+/// this version plays no audio (unreliable when the wrist is down).
 @Observable
 @MainActor
 final class WatchCountdownCoordinator {
@@ -28,46 +27,17 @@ final class WatchCountdownCoordinator {
 
     private var countdownTask: Task<Void, Never>?
 
-    /// Stored so `finishNow()` can fire the start when the user taps to skip
-    /// the remaining countdown. The `Date?` is the start anchor: `nil` on natural
-    /// completion (start at local now), or the shared `scheduledStartTime` on skip.
-    private var completion: ((Date?) -> Void)?
-
-    /// The absolute time this countdown is counting toward. Passed to `completion`
-    /// by `finishNow()` so a tap-to-skip anchors to the shared leader time (ADR-005,
-    /// finding 5) instead of starting early at local now.
-    private var scheduledStartTime: Date?
-
     // MARK: - Public Methods
 
-    /// Starts a countdown that completes at the specified absolute time.
-    ///
-    /// If the scheduled start time is in the past, the countdown is skipped
-    /// and completion is called immediately. Otherwise, the watch joins
-    /// the countdown at whatever position matches the current time.
-    ///
-    /// - Parameters:
-    ///   - scheduledStartTime: The absolute time when the timer should start.
-    ///   - completion: Called when countdown completes and timer should start. Receives the
-    ///     start anchor: `nil` on natural completion, or `scheduledStartTime` on tap-to-skip.
-    func startCountdown(
-        scheduledStartTime: Date,
-        completion: @escaping (Date?) -> Void
-    ) {
-        // Cancel any existing countdown
+    /// Counts down to `scheduledStartTime`, joining at whatever position matches the
+    /// current time. Does nothing if that time has already passed.
+    func startCountdown(scheduledStartTime: Date) {
         cancelCountdown()
 
         let timeUntilStart = scheduledStartTime.timeIntervalSince(Date())
-
-        // If we're already past the start time, skip countdown entirely
-        guard timeUntilStart > 0 else {
-            completion(nil)
-            return
-        }
+        guard timeUntilStart > 0 else { return }
 
         isCountingDown = true
-        self.completion = completion
-        self.scheduledStartTime = scheduledStartTime
 
         countdownTask = Task { [weak self] in
             guard let self else { return }
@@ -92,21 +62,13 @@ final class WatchCountdownCoordinator {
 
             guard !Task.isCancelled else { return }
 
-            // Show "GO" (represented as 0)
+            // Show "GO" (represented as 0) briefly; the workout clock is already running.
             self.countdownValue = 0
-
-            // Brief display of "GO" before starting
             try? await Task.sleep(for: .milliseconds(400))
 
             guard !Task.isCancelled else { return }
-
             self.countdownValue = nil
             self.isCountingDown = false
-            self.scheduledStartTime = nil
-
-            // Natural completion: anchor at local now (≈ scheduled + GO display), matching the
-            // iPhone's natural countdown path, so both devices stay in lockstep.
-            completion(nil)
         }
     }
 
@@ -116,29 +78,12 @@ final class WatchCountdownCoordinator {
         countdownTask = nil
         countdownValue = nil
         isCountingDown = false
-        completion = nil
-        scheduledStartTime = nil
     }
 
-    /// Skips the remaining countdown and starts immediately (tap-to-start).
-    ///
-    /// Mirrors Apple's Workout app: tapping during the 3-2-1 jumps straight to
-    /// the workout. Fires the stored completion exactly once; cancelling the
-    /// task first makes the in-flight `countdownTask`'s own `completion()` call
-    /// short-circuit on its `Task.isCancelled` guard, so there's no double-fire.
+    /// Hides the remaining countdown (tap on the countdown screen). The workout still
+    /// starts at its shared start date, so a skip can't run the Watch ahead of the iPhone.
     func finishNow() {
         guard isCountingDown else { return }
-        countdownTask?.cancel()
-        countdownTask = nil
-        countdownValue = nil
-        isCountingDown = false
-        let startNow = completion
-        let anchor = scheduledStartTime
-        completion = nil
-        scheduledStartTime = nil
-        // Skip the animation, not the synchronized start: anchor to the shared scheduled time
-        // (ADR-005, finding 5) so a tap before `scheduled` doesn't start the Watch ahead of the
-        // leader. The standalone caller ignores this anchor (no leader to sync with).
-        startNow?(anchor)
+        cancelCountdown()
     }
 }

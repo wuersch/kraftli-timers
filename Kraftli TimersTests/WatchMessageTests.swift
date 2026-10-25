@@ -9,97 +9,37 @@ import Testing
 
 struct WatchMessageTests {
 
-    // MARK: - StartTimerMessage.isExpired
+    // MARK: - WatchMessageCoder
 
-    @Test func isExpired_noScheduledStartTime_neverExpires() {
-        let message = StartTimerMessage(
-            timerKind: .emom,
-            totalDuration: 600,
-            exerciseName: "Burpees",
-            scheduledStartTime: nil
+    @Test func coderRoundTrip_workoutSessionEnded_preservesAllFields() throws {
+        let original = WorkoutSessionEndedMessage(
+            healthKitWorkoutUUID: UUID(),
+            correlationID: UUID(),
+            averageHeartRate: 142,
+            maxHeartRate: 171,
+            activeCalories: 118
         )
 
-        #expect(message.isExpired(asOf: Date.distantFuture) == false)
+        let decoded = try WatchMessageCoder.decode(WatchMessageCoder.encode(original))
+
+        #expect(decoded as? WorkoutSessionEndedMessage == original)
     }
 
-    @Test func isExpired_workoutStillRunning_isFalse() {
-        let scheduled = Date(timeIntervalSince1970: 1_000_000)
-        let message = StartTimerMessage(
-            timerKind: .amrap,
-            totalDuration: 600,
-            exerciseName: "Pull-ups",
-            scheduledStartTime: scheduled
-        )
+    @Test func coderRoundTrip_workoutSessionEnded_nilFields() throws {
+        let original = WorkoutSessionEndedMessage(healthKitWorkoutUUID: nil)
 
-        // Halfway through the workout
-        #expect(message.isExpired(asOf: scheduled.addingTimeInterval(300)) == false)
+        let decoded = try WatchMessageCoder.decode(WatchMessageCoder.encode(original))
+
+        #expect(decoded as? WorkoutSessionEndedMessage == original)
     }
 
-    @Test func isExpired_exactlyAtWorkoutEnd_isFalse() {
-        let scheduled = Date(timeIntervalSince1970: 1_000_000)
-        let message = StartTimerMessage(
-            timerKind: .emom,
-            totalDuration: 600,
-            exerciseName: "Burpees",
-            scheduledStartTime: scheduled
-        )
+    /// A message type from an older app version (e.g. the retired `startTimer`) fails to decode
+    /// instead of being misread.
+    @Test func decode_unknownMessageType_throws() {
+        let dictionary: [String: Any] = ["messageType": "startTimer", "payload": [String: Any]()]
 
-        // Boundary: `now > scheduled + duration` is strict
-        #expect(message.isExpired(asOf: scheduled.addingTimeInterval(600)) == false)
-    }
-
-    @Test func isExpired_pastWorkoutEnd_isTrue() {
-        let scheduled = Date(timeIntervalSince1970: 1_000_000)
-        let message = StartTimerMessage(
-            timerKind: .emom,
-            totalDuration: 600,
-            exerciseName: "Burpees",
-            scheduledStartTime: scheduled
-        )
-
-        #expect(message.isExpired(asOf: scheduled.addingTimeInterval(601)) == true)
-    }
-
-    // MARK: - WatchMessageCoder round-trip (application context payload format)
-
-    @Test func coderRoundTrip_startTimerMessage_preservesAllFields() throws {
-        let scheduled = Date(timeIntervalSince1970: 1_700_000_000.5)
-        let correlationID = UUID()
-        let original = StartTimerMessage(
-            timerKind: .emom,
-            totalDuration: 1200,
-            intervalCount: 100,
-            exerciseName: "6-Count Burpees",
-            displayOnly: true,
-            scheduledStartTime: scheduled,
-            correlationID: correlationID
-        )
-
-        let encoded = try WatchMessageCoder.encode(original)
-        let decoded = try WatchMessageCoder.decode(encoded)
-
-        let roundTripped = try #require(decoded as? StartTimerMessage)
-        #expect(roundTripped == original)
-    }
-
-    @Test func coderRoundTrip_stopTimerMessage_preservesCorrelationID() throws {
-        let correlationID = UUID()
-        let original = StopTimerMessage(correlationID: correlationID)
-
-        let encoded = try WatchMessageCoder.encode(original)
-        let decoded = try WatchMessageCoder.decode(encoded)
-
-        let roundTripped = try #require(decoded as? StopTimerMessage)
-        #expect(roundTripped == original)
-    }
-
-    @Test func coderRoundTrip_stopTimerMessage_nilCorrelationID() throws {
-        let original = StopTimerMessage(correlationID: nil)
-
-        let encoded = try WatchMessageCoder.encode(original)
-        let decoded = try WatchMessageCoder.decode(encoded)
-
-        let roundTripped = try #require(decoded as? StopTimerMessage)
-        #expect(roundTripped == original)
+        #expect(throws: WatchMessageError.self) {
+            try WatchMessageCoder.decode(dictionary)
+        }
     }
 }

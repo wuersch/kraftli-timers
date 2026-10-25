@@ -1,6 +1,6 @@
 # ADR-003: Cross-device timer anchoring via HealthKit's canonical transition date
 
-**Status**: Accepted
+**Status**: Superseded by [ADR-006](ADR-006-single-owner-timer-state.md) (2026-10-25)
 **Date**: 2026-05-26
 
 ## Context

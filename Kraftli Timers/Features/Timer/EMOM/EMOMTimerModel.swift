@@ -11,9 +11,8 @@ import Foundation
 ///
 /// All timing comes from the state: the model derives the displayed values from
 /// `state.elapsed(at: now())` on every tick and keeps no stopwatch of its own.
-/// `apply(_:)` adopts a state published by the workout's owner; the `start` /
-/// `pause` / `resume` methods are local shortcuts that change the state through
-/// `TimerStateReducer`, so both paths follow the same rules.
+/// `apply(_:)` adopts each state the `TimerSessionController` renders — the model
+/// never changes the state itself.
 @Observable
 public class EMOMTimerModel: WorkoutTimer {
     // MARK: - Published Properties (MainActor isolated)
@@ -172,67 +171,6 @@ public class EMOMTimerModel: WorkoutTimer {
 
     // MARK: - Public Methods
     @MainActor
-    func start() {
-        guard !isRunning else { return }
-
-        let date = now()
-        if let state, state.isPaused, !state.isFinished(at: date) {
-            self.state = reduce(state, .resume, at: date, now: date)
-        } else {
-            state = makeLocalState(startDate: date)
-            didComplete = false
-            lastCompletedInterval = -1
-            lastWarningTriggered = false
-        }
-        feedbackProvider.onStart()
-        refresh(at: date, playsFeedback: false)
-    }
-
-    @MainActor
-    func pause() {
-        guard isRunning, let state else { return }
-
-        let date = now()
-        self.state = reduce(state, .pause, at: date, now: date)
-        refresh(at: date, playsFeedback: false)
-    }
-
-    /// Pauses at the supplied `date` instead of the local clock.
-    @MainActor
-    func pause(at date: Date) {
-        guard isRunning, let state else { return }
-
-        // Allow a date slightly ahead of the local clock (it came from another device).
-        self.state = reduce(state, .pause, at: date, now: max(now(), date))
-        refresh(at: now(), playsFeedback: false)
-    }
-
-    /// Resumes at the supplied `date` instead of the local clock. Does not replay start
-    /// feedback (remote-driven) and keeps interval/warning state so no sounds repeat.
-    @MainActor
-    func resume(at date: Date) {
-        guard !isRunning, let state, state.isPaused else { return }
-
-        self.state = reduce(state, .resume, at: date, now: max(now(), date))
-        refresh(at: now(), playsFeedback: false)
-    }
-
-    /// Starts anchored to the supplied absolute `date` (which may lie in the past), so a
-    /// late-joining mirror shows the leader's elapsed time instead of starting from zero.
-    /// Pre-seeds the interval and warning trackers so joining mid-workout doesn't replay
-    /// feedback. Does not play start feedback (remote-driven start).
-    @MainActor
-    func start(at date: Date) {
-        guard !isRunning else { return }
-
-        let localState = makeLocalState(startDate: date)
-        state = localState
-        didComplete = false
-        seedTrackers(elapsed: localState.elapsed(at: now()))
-        refresh(at: now(), playsFeedback: false)
-    }
-
-    @MainActor
     func reset() {
         timerCoordinator.stop()
         state = nil
@@ -249,28 +187,6 @@ public class EMOMTimerModel: WorkoutTimer {
     }
 
     // MARK: - Private Methods
-
-    /// A state for a workout this model runs on its own (no remote owner).
-    @MainActor
-    private func makeLocalState(startDate: Date) -> TimerState {
-        TimerState(
-            workoutID: UUID(),
-            owner: .current,
-            config: TimerConfig(
-                timerKindRaw: TimerKind.emom.rawValue,
-                totalDuration: totalDuration,
-                intervalCount: _totalIntervals,
-                exerciseName: ""
-            ),
-            startDate: startDate
-        )
-    }
-
-    /// Applies one local action through the shared reducer.
-    private func reduce(_ state: TimerState, _ action: TimerIntent.Action, at date: Date, now: Date) -> TimerState {
-        let intent = TimerIntent(workoutID: state.workoutID, baseRevision: state.revision, action: action, at: date)
-        return TimerStateReducer.apply([intent], to: state, now: now)
-    }
 
     /// Sets the interval/warning trackers as if they had followed the workout up to `elapsed`.
     @MainActor

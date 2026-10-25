@@ -74,8 +74,4 @@ final class SystemSoundFeedback: FeedbackProvider {
         completionPlayer?.currentTime = 0
         completionPlayer?.play()
     }
-
-    func onStart() {
-        // no start sound for now
-    }
 }

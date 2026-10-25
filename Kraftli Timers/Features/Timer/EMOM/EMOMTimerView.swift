@@ -310,13 +310,13 @@ struct EMOMTimerView: View {
             onWorkoutCompleted: { data in
                 var augmented = data
                 // Whoever owns the timer saves the Health workout (ADR-006 §1).
-                augmented.watchHandledWorkout = timerSession.renderedState?.owner == .watch
+                augmented.ownedByWatch = timerSession.renderedState?.owner == .watch
                 augmented.correlationID = workoutID
                 onWorkoutCompleted?(augmented)
             },
             // Backgrounding pauses only a workout the iPhone owns. A Watch-owned one keeps
             // running there, and the display catches up from the state on foreground.
-            isMirroredSessionActive: { timerSession.role != .owner },
+            pausesInBackground: { timerSession.role == .owner },
             onForeground: { timerSession.checkCompletion() }
         )
         .onAppear {

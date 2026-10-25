@@ -15,10 +15,6 @@ struct Kraftli_Timers_Watch_AppApp: App {
 
     let modelContainer: ModelContainer
 
-    /// Coordinates message handling with iPhone.
-    /// Created at app startup to ensure handlers are ready before any messages arrive.
-    @State private var messageCoordinator = WatchMessageCoordinator()
-
     init() {
         // Load exercise reference data from JSON (in-memory, not persisted)
         ExerciseRepository.load()
@@ -52,14 +48,9 @@ struct Kraftli_Timers_Watch_AppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(messageCoordinator)
                 .environment(appDelegate.workoutSessionManager)
                 .environment(WatchTimerRuntime.shared.timerSession)
                 .environment(WatchTimerRuntime.shared.starter)
-                .onAppear {
-                    // Wire session manager so coordinator can end orphaned sessions
-                    messageCoordinator.sessionManager = appDelegate.workoutSessionManager
-                }
                 .task {
                     // Run data maintenance after the UI is up, never in App.init: the
                     // Watch is routinely background-cold-launched and can be suspended

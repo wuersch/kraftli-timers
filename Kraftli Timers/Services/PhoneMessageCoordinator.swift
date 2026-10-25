@@ -2,57 +2,34 @@
 //  PhoneMessageCoordinator.swift
 //  Kraftli Timers
 //
-//  Coordinates incoming Watch messages on iPhone, mirroring the Watch's
-//  WatchMessageCoordinator pattern. Created once at app startup so the
-//  message handler exists for the whole app lifetime — messages that arrive
-//  after a timer view is dismissed (e.g. a queued WorkoutSessionEndedMessage)
-//  are no longer dropped.
+//  Handles the Watch's end-of-workout message on iPhone. Created once at app
+//  startup so the handler exists for the whole app lifetime — a message that
+//  arrives after a timer view is dismissed (e.g. a queued
+//  WorkoutSessionEndedMessage) is never dropped.
+//
+//  Timer state itself travels through `TimerSyncTransport` (ADR-006); the only
+//  legacy `WatchMessage` left is `WorkoutSessionEndedMessage`.
 //
 
 import Foundation
 import SwiftData
 import os
 
-/// Routes messages from the Watch to the active timer's sync service and
-/// applies app-level effects that must not depend on a view being alive.
+/// Links the Watch's HealthKit workout to the iPhone's `WorkoutLog` and publishes
+/// the workout's HealthKit summary for the summary screen.
 ///
 /// This is the *only* writer of `WatchConnectivityService.onMessageReceived`.
-/// `DefaultTimerSyncService` instances are side-effect-free; the currently
-/// presented timer registers its service here so control messages reach its
-/// Combine publishers.
 @Observable
 final class PhoneMessageCoordinator {
-    /// The sync service of the currently presented timer runner, if any.
-    /// Set when a timer is presented, cleared when dismissed.
-    var activeSyncService: DefaultTimerSyncService?
+    /// The most recent HealthKit summary from the Watch. The timer screen shows the
+    /// one whose `correlationID` matches its workout. Assigning an equal message (a
+    /// dual-delivery duplicate) is not a change, so observers see each summary once.
+    private(set) var lastWorkoutSessionEnded: WorkoutSessionEndedMessage?
 
     /// Model context for WorkoutLog updates. Updating the log with the Watch's
     /// HealthKit UUID happens here — not in the view — so a message arriving
     /// after the runner view is gone still lands.
     var modelContext: ModelContext?
-
-    /// Correlation ID of the currently presented timer. Used to validate an
-    /// incoming `StopTimerMessage` — only a stop matching the active timer (or
-    /// with nil correlation) is applied, so a stale queued stop can't kill a
-    /// later workout. Mirror of `WatchMessageCoordinator.activeCorrelationID`.
-    var activeCorrelationID: UUID?
-
-    /// Deduplication: dual delivery (sendMessage + transferUserInfo) may deliver
-    /// the same WorkoutSessionEndedMessage twice. Skip identical messages within
-    /// a short window.
-    private var lastHandledSessionEnded: WorkoutSessionEndedMessage?
-    private var lastHandledSessionEndedDate: Date?
-    private static let deduplicationWindow: TimeInterval = 10
-
-    /// Deduplication for inbound `StopTimerMessage` (dual delivery may arrive
-    /// twice). Identity-based, like the Watch side: a *different* stop within the
-    /// window is a new, legitimate command and still applies.
-    private var lastHandledStop: StopTimerMessage?
-    private var lastHandledStopDate: Date?
-
-    /// Correlation IDs of timers already stopped, so a duplicate stop redelivered
-    /// long after the fast path is still recognized as already-handled.
-    private var stoppedCorrelationIDs: Set<UUID> = []
 
     /// - Parameter modelContext: Wired at construction (from `App.init`) so a `WorkoutSessionEndedMessage`
     ///   can link the Watch's HealthKit UUID even on a background WatchConnectivity launch, where no
@@ -68,73 +45,16 @@ final class PhoneMessageCoordinator {
     /// Routes an incoming message. Internal so tests can invoke it directly.
     @MainActor
     func handleMessage(_ message: WatchMessage) {
-        if let stopMessage = message as? StopTimerMessage {
-            handleStopTimerMessage(stopMessage)
+        guard let endedMessage = message as? WorkoutSessionEndedMessage else {
+            Logger.timerSync.warning("Ignoring unexpected Watch message: \(message.messageType.rawValue)")
             return
         }
-
-        if let endedMessage = message as? WorkoutSessionEndedMessage {
-            // Attempt the UUID link on *every* delivery, before the dedup gate. The link is
-            // idempotent (no-ops once set), so a dual-delivery twin can still complete a link the
-            // first delivery couldn't (e.g. it arrived before modelContext was wired) — the dedup
-            // gate below must not drop that retry. The gate guards only the one-shot publisher forward.
-            updateLogWithWatchUUID(endedMessage)
-
-            if let last = lastHandledSessionEnded,
-               let lastDate = lastHandledSessionEndedDate,
-               last == endedMessage,
-               Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
-                Logger.timerSync.debug("Skipping duplicate WorkoutSessionEndedMessage")
-                return
-            }
-            lastHandledSessionEnded = endedMessage
-            lastHandledSessionEndedDate = Date()
-        }
-
-        activeSyncService?.handleMessage(message)
-    }
-
-    // MARK: - Stop Timer Handling
-
-    /// Handles a reliable stop from the Watch (the user cancelled on the wrist).
-    ///
-    /// Arrives via `transferUserInfo` (queued/reliable) and/or `sendMessage`
-    /// (immediate). Correlation-ID matching prevents a stale stop from killing a
-    /// new timer that started after the original one. Mirrors the Watch's
-    /// `WatchMessageCoordinator.handleStopTimerMessage`.
-    @MainActor
-    private func handleStopTimerMessage(_ message: StopTimerMessage) {
-        // Deduplicate within a short window (stop may arrive via both delivery
-        // paths). Identity-based: a *different* stop within the window is a new,
-        // legitimate command and must still apply.
-        if let last = lastHandledStop,
-           let lastDate = lastHandledStopDate,
-           last == message,
-           Date().timeIntervalSince(lastDate) < Self.deduplicationWindow {
-            Logger.timerSync.debug("Skipping duplicate StopTimerMessage")
-            return
-        }
-        lastHandledStop = message
-        lastHandledStopDate = Date()
-
-        if let stoppedID = message.correlationID {
-            stoppedCorrelationIDs.insert(stoppedID)
-        }
-
-        guard let activeSyncService else {
-            // No timer view active. The iPhone owns no HK session in the iPhone-led
-            // case (the Watch owns it and ends it on cancel; MirroredWorkoutObserver
-            // clears itself via its .ended/disconnect delegates), so there's nothing
-            // to tear down — record the correlation and return.
-            Logger.timerSync.info("StopTimerMessage received with no active timer, nothing to dismiss")
-            return
-        }
-
-        if message.correlationID == nil || message.correlationID == activeCorrelationID {
-            Logger.timerSync.info("StopTimerMessage matches active timer, forwarding stop")
-            activeSyncService.handleMessage(TimerControlMessage(action: .stop))
-        } else {
-            Logger.timerSync.info("StopTimerMessage correlationID mismatch (stop: \(message.correlationID?.uuidString ?? "nil"), active: \(self.activeCorrelationID?.uuidString ?? "nil")), ignoring stale stop")
+        // Attempt the UUID link on *every* delivery. The link is idempotent (no-op once set), so a
+        // dual-delivery twin can still complete a link the first delivery couldn't (e.g. it arrived
+        // before modelContext was wired).
+        updateLogWithWatchUUID(endedMessage)
+        if lastWorkoutSessionEnded != endedMessage {
+            lastWorkoutSessionEnded = endedMessage
         }
     }
 

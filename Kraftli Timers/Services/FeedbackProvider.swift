@@ -14,5 +14,4 @@ protocol FeedbackProvider {
     func onIntervalComplete()
     func onWarning()
     func onWorkoutComplete()
-    func onStart()
 }

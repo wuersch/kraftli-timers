@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 import HealthKit
 import os
 
@@ -18,12 +17,6 @@ struct TimerRunnerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
     @Environment(PhoneMessageCoordinator.self) private var messageCoordinator
-
-    /// Service for syncing timer to Apple Watch.
-    /// @State so the instance survives SwiftUI re-creating this struct —
-    /// the coordinator forwards messages to the registered instance, and a
-    /// fresh one per re-init would silently stop receiving them.
-    @State private var timerSyncService: TimerSyncService
 
     /// Service for saving workouts to HealthKit.
     private let healthKitService: any HealthKitService
@@ -65,11 +58,9 @@ struct TimerRunnerView: View {
 
     init(
         preset: TimerPreset,
-        timerSyncService: TimerSyncService = DefaultTimerSyncService(),
         healthKitService: any HealthKitService = DefaultHealthKitService()
     ) {
         self.preset = preset
-        self._timerSyncService = State(initialValue: timerSyncService)
         self.healthKitService = healthKitService
     }
 
@@ -121,23 +112,10 @@ struct TimerRunnerView: View {
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .onReceive(timerSyncService.workoutSessionEndedReceived) { endedMessage in
+            // The Watch's HealthKit summary (heart rate, calories) for this workout.
+            .onChange(of: messageCoordinator.lastWorkoutSessionEnded) { _, endedMessage in
+                guard let endedMessage, endedMessage.correlationID == correlationID else { return }
                 handleWorkoutSessionEnded(endedMessage)
-            }
-            .onAppear {
-                // Register with the app-level coordinator so Watch messages
-                // reach this timer's publishers. The correlation ID lets the
-                // coordinator match an inbound StopTimerMessage to this workout.
-                messageCoordinator.activeSyncService = timerSyncService as? DefaultTimerSyncService
-                messageCoordinator.activeCorrelationID = correlationID
-            }
-            .onDisappear {
-                // Only clear if we're still the registered service — a newly
-                // presented timer may already have taken over.
-                if messageCoordinator.activeSyncService === timerSyncService as? DefaultTimerSyncService {
-                    messageCoordinator.activeSyncService = nil
-                    messageCoordinator.activeCorrelationID = nil
-                }
             }
         }
     }
@@ -265,7 +243,7 @@ struct TimerRunnerView: View {
             duration: completionData.durationSeconds,
             reps: completionData.repsCompleted,
             rounds: completionData.roundsCompleted,
-            watchHandledWorkout: completionData.watchHandledWorkout
+            ownedByWatch: completionData.ownedByWatch
         )
 
         // Merge Watch data if it arrived during the delay
@@ -282,10 +260,11 @@ struct TimerRunnerView: View {
 
     /// Creates a closure that logs the completed workout to HealthKit and SwiftData.
     ///
-    /// The flow depends on who handled the HealthKit workout:
-    /// - **iPhone-only (Scenario A)**: Save to HealthKit on iPhone, then SwiftData with UUID.
-    /// - **Watch handled (Scenario C/D)**: Skip iPhone HealthKit save (Watch already saved).
-    ///   Save to SwiftData without UUID initially; Watch sends UUID via `workoutSessionEnded`.
+    /// The iPhone always writes the `WorkoutLog` of a workout it started. The Health save
+    /// follows the workout's owner (ADR-006 §1):
+    /// - **iPhone owner**: Save to HealthKit on iPhone, then SwiftData with UUID.
+    /// - **Watch owner**: Skip the iPhone HealthKit save (the Watch saves it). Save to
+    ///   SwiftData without UUID initially; the Watch sends its UUID via `workoutSessionEnded`.
     ///
     /// If HealthKit fails, the workout is still saved locally to SwiftData.
     private func makeLoggingClosure() -> (WorkoutCompletionData) -> Void {
@@ -325,10 +304,10 @@ struct TimerRunnerView: View {
                 }
 
                 // 2. Save to HealthKit (if iPhone is handling it)
-                if completionData.watchHandledWorkout {
-                    // Watch handled HKWorkoutSession — skip iPhone save to avoid duplicates.
-                    // Watch will send its UUID via workoutSessionEnded message.
-                    Logger.healthKit.info("Watch handled workout session, skipping iPhone HealthKit save")
+                if completionData.ownedByWatch {
+                    // The Watch owned the workout and saves it to Health — skip ours to avoid
+                    // duplicates. Its UUID arrives via the workoutSessionEnded message.
+                    Logger.healthKit.info("Watch owned the workout, skipping iPhone HealthKit save")
                 } else if healthKit.isAvailable {
                     // iPhone-only: save duration (no calories — those require Watch sensors)
                     let endDate = Date()

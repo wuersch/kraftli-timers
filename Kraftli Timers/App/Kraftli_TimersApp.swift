@@ -13,7 +13,8 @@ import os
 struct Kraftli_TimersApp: App {
     let modelContainer: ModelContainer
     @State private var settings = AppSettings()
-    @State private var mirroredWorkoutObserver: MirroredWorkoutObserver
+    /// Holds the Watch's mirrored workout session for the HealthKit sync channel.
+    private let mirroredWorkoutObserver: MirroredWorkoutObserver
 
     /// The app's one timer session (ADR-006). One instance for the app's lifetime, because
     /// its WatchConnectivity transport is the only receiver of timer sync payloads.
@@ -66,7 +67,7 @@ struct Kraftli_TimersApp: App {
 
         let healthKitService = DefaultHealthKitService()
         let mirroredWorkoutObserver = MirroredWorkoutObserver()
-        _mirroredWorkoutObserver = State(initialValue: mirroredWorkoutObserver)
+        self.mirroredWorkoutObserver = mirroredWorkoutObserver
 
         // Timer sync (ADR-006): publish on WatchConnectivity and, while the Watch mirrors a
         // workout, on the HealthKit session's data channel.
@@ -105,7 +106,6 @@ struct Kraftli_TimersApp: App {
             ZStack {
                 ContentView()
                     .environment(settings)
-                    .environment(mirroredWorkoutObserver)
                     .environment(phoneMessageCoordinator)
                     .environment(timerSession)
                     .environment(workoutStarter)

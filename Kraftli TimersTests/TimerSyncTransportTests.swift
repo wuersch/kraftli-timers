@@ -46,7 +46,7 @@ struct TimerSyncTransportTests {
     }
 
     @Test func payload_ignoresLegacyWatchMessageDictionaries() throws {
-        let legacy = try WatchMessageCoder.encode(StopTimerMessage(correlationID: UUID()))
+        let legacy = try WatchMessageCoder.encode(WorkoutSessionEndedMessage(healthKitWorkoutUUID: UUID()))
 
         #expect(TimerSyncPayload(dictionary: legacy) == nil)
     }

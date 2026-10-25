@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 **Date**: 2026-10-25
-**Supersedes (on acceptance)**: [ADR-003](ADR-003-cross-device-timer-anchoring.md),
+**Supersedes**: [ADR-003](ADR-003-cross-device-timer-anchoring.md),
 [ADR-004](ADR-004-application-context-timer-command.md),
 [ADR-005](ADR-005-mirrored-control-arbitration.md)
 

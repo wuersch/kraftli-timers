@@ -28,28 +28,10 @@ struct AMRAPTimerModelTests {
             feedbackProvider: SilentFeedback()
         )
 
-        model.start()
+        let driver = StateDriver(amrap: model, now: { Date() })
+        driver.start()
 
         #expect(model.isRunning == true)
-        model.reset()
-    }
-
-    /// A mirror joining late anchors to the leader's start date and shows the
-    /// matching elapsed position instead of starting from zero.
-    @Test @MainActor func startAt_pastAnchor_showsLeaderElapsedTime() {
-        let fakeNow = Date(timeIntervalSince1970: 1_000_000)
-        let model = AMRAPTimerModel(
-            totalDuration: 300,
-            timerProvider: MockTimerProvider(),
-            feedbackProvider: SilentFeedback(),
-            now: { fakeNow }
-        )
-
-        // Leader started 90 s ago
-        model.start(at: fakeNow.addingTimeInterval(-90))
-
-        #expect(model.isRunning == true)
-        #expect(model.totalTimeRemaining == 210)
         model.reset()
     }
 
@@ -60,8 +42,9 @@ struct AMRAPTimerModelTests {
             feedbackProvider: SilentFeedback()
         )
 
-        model.start()
-        model.pause()
+        let driver = StateDriver(amrap: model, now: { Date() })
+        driver.start()
+        driver.pause()
 
         #expect(model.isRunning == false)
         model.reset()
@@ -88,7 +71,6 @@ struct AMRAPTimerModelTests {
         state.roundCount = 2
         model.apply(state)
         #expect(model.roundsCompleted == 2)
-        model.pause()
         model.reset()
 
         #expect(model.isRunning == false)
@@ -116,94 +98,6 @@ struct AMRAPTimerModelTests {
         #expect(model.elapsedTime == 0)
     }
 
-    // MARK: - Cross-device anchoring / pause-resume drift (ADR-003)
-
-    /// Two independent models fed the SAME canonical pause/resume dates stay in sync across
-    /// many cycles, even when the "phone" processes each event a fixed latency after the "Watch".
-    @Test @MainActor func canonicalDatePauseResume_keepsDevicesInSync() {
-        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
-        let clock = { fakeNow }
-
-        let watch = AMRAPTimerModel(
-            totalDuration: 600,
-            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
-        )
-        let phone = AMRAPTimerModel(
-            totalDuration: 600,
-            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
-        )
-
-        watch.start()
-        phone.start()
-
-        let latency: TimeInterval = 0.3
-        for _ in 0..<20 {
-            fakeNow += 1
-            let pauseDate = fakeNow
-            watch.pause(at: pauseDate)
-            fakeNow += latency
-            phone.pause(at: pauseDate)
-
-            #expect(watch.totalTimeRemaining == phone.totalTimeRemaining)
-
-            fakeNow += 1
-            let resumeDate = fakeNow
-            watch.resume(at: resumeDate)
-            fakeNow += latency
-            phone.resume(at: resumeDate)
-        }
-
-        fakeNow += 1
-        let finalDate = fakeNow
-        watch.pause(at: finalDate)
-        phone.pause(at: finalDate)
-        #expect(watch.totalTimeRemaining == phone.totalTimeRemaining)
-
-        watch.reset()
-        phone.reset()
-    }
-
-    /// Regression doc: re-anchoring resume from each device's LOCAL clock (`start()`) drifts and
-    /// accumulates, unlike the canonical-date `resume(at:)`.
-    @Test @MainActor func localClockResume_accumulatesDrift() {
-        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
-        let clock = { fakeNow }
-
-        let watch = AMRAPTimerModel(
-            totalDuration: 600,
-            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
-        )
-        let phone = AMRAPTimerModel(
-            totalDuration: 600,
-            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
-        )
-
-        watch.start()
-        phone.start()
-
-        let latency: TimeInterval = 0.3
-        for _ in 0..<20 {
-            fakeNow += 1
-            let pauseDate = fakeNow
-            watch.pause(at: pauseDate)
-            phone.pause(at: pauseDate)
-
-            fakeNow += 1
-            watch.start()
-            fakeNow += latency
-            phone.start()
-        }
-
-        fakeNow += 1
-        let finalDate = fakeNow
-        watch.pause(at: finalDate)
-        phone.pause(at: finalDate)
-        #expect(abs(watch.totalTimeRemaining - phone.totalTimeRemaining) > 2)
-
-        watch.reset()
-        phone.reset()
-    }
-
     // MARK: - Completion signal & tick guards (issue #47)
 
     /// Reaching zero while running sets the explicit `didComplete` signal.
@@ -215,7 +109,8 @@ struct AMRAPTimerModelTests {
             timerProvider: provider, feedbackProvider: SilentFeedback(), now: { fakeNow }
         )
 
-        model.start()
+        let driver = StateDriver(amrap: model, now: { fakeNow })
+        driver.start()
         #expect(model.didComplete == false)
 
         fakeNow += 61  // past the natural end
@@ -240,8 +135,9 @@ struct AMRAPTimerModelTests {
             timerProvider: provider, feedbackProvider: spy, now: { fakeNow }
         )
 
-        model.start()
-        model.pause(at: start.addingTimeInterval(60))  // date at the natural end
+        let driver = StateDriver(amrap: model, now: { fakeNow })
+        driver.start()
+        driver.pause(at: start.addingTimeInterval(60))  // date at the natural end
 
         #expect(model.didComplete == false)
 
@@ -295,7 +191,8 @@ struct AMRAPTimerModelTests {
             timerProvider: provider, feedbackProvider: spy, now: { fakeNow }
         )
 
-        model.start()
+        let driver = StateDriver(amrap: model, now: { fakeNow })
+        driver.start()
         fakeNow += 10
         provider.simulateTick()
         await Self.drainMainQueue()
@@ -303,7 +200,7 @@ struct AMRAPTimerModelTests {
 
         // A tick fires (enqueues its update Task) and the user pauses before it runs.
         provider.simulateTick()
-        model.pause()
+        driver.pause()
         fakeNow += 100  // clock moves on
         await Self.drainMainQueue()  // the stray update() now runs — must do nothing
 
@@ -320,7 +217,8 @@ struct AMRAPTimerModelTests {
             timerProvider: provider, feedbackProvider: SilentFeedback(), now: { fakeNow }
         )
 
-        model.start()
+        let driver = StateDriver(amrap: model, now: { fakeNow })
+        driver.start()
         fakeNow += 61
         provider.simulateTick()
         await Self.drainMainQueue()

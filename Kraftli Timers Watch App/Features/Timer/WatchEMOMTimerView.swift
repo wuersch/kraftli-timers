@@ -94,11 +94,9 @@ struct WatchEMOMTimerView: View {
             config: WatchWorkoutConfig(
                 timerKind: .emom,
                 totalDuration: totalDuration,
-                intervalCount: intervalCount,
                 exerciseName: exerciseName,
-                displayOnly: startedOnPhone,
-                scheduledStartTime: nil,
-                correlationID: workoutID,
+                workoutID: workoutID,
+                startedOnPhone: startedOnPhone,
                 makeWorkoutLog: { healthKitUUID in
                     WorkoutLog(
                         exerciseName: exerciseName,
@@ -172,7 +170,7 @@ struct WatchEMOMTimerView: View {
     private func beginCountdown(until startDate: Date) {
         guard countdownStartDate == nil else { return }
         countdownStartDate = startDate
-        countdown.startCountdown(scheduledStartTime: startDate) { _ in }
+        countdown.startCountdown(scheduledStartTime: startDate)
     }
 
     /// The workout was stopped elsewhere (the iPhone, or a stop sent while starting).
