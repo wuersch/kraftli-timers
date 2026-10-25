@@ -40,6 +40,12 @@ final class HealthKitTimerSyncTransport: TimerSyncTransport {
         send(.intents(intents))
     }
 
+    func requestStart(_ request: StartRequest) {
+        // Before the Watch has started a session there is nothing to send over;
+        // this only reaches the Watch if a session from an earlier workout is still up.
+        send(.startRequest(request))
+    }
+
     /// Delivers data received from the remote session. Called by the session's delegate owner.
     func receive(_ data: [Data]) {
         for item in data {

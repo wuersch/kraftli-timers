@@ -13,7 +13,14 @@ import os
 struct Kraftli_TimersApp: App {
     let modelContainer: ModelContainer
     @State private var settings = AppSettings()
-    @State private var mirroredWorkoutObserver = MirroredWorkoutObserver()
+    @State private var mirroredWorkoutObserver: MirroredWorkoutObserver
+
+    /// The app's one timer session (ADR-006). One instance for the app's lifetime, because
+    /// its WatchConnectivity transport is the only receiver of timer sync payloads.
+    @State private var timerSession: TimerSessionController
+
+    /// Starts iPhone-initiated workouts through the Watch handshake (ADR-006 §4).
+    @State private var workoutStarter: PhoneWorkoutStarter
 
     /// Routes Watch messages for the whole app lifetime.
     /// Created in `init` (with the model context already wired) so the handler exists before any
@@ -22,9 +29,6 @@ struct Kraftli_TimersApp: App {
 
     // Capture launch screen preference once at startup (not reactive to mid-session changes)
     @State private var showLaunchScreen: Bool
-
-    /// HealthKit service for workout operations and mirrored session handling.
-    private let healthKitService: any HealthKitService = DefaultHealthKitService()
 
     init() {
         // Load exercise reference data from JSON (in-memory, not persisted)
@@ -60,6 +64,38 @@ struct Kraftli_TimersApp: App {
             initialValue: PhoneMessageCoordinator(modelContext: modelContainer.mainContext)
         )
 
+        let healthKitService = DefaultHealthKitService()
+        let mirroredWorkoutObserver = MirroredWorkoutObserver()
+        _mirroredWorkoutObserver = State(initialValue: mirroredWorkoutObserver)
+
+        // Timer sync (ADR-006): publish on WatchConnectivity and, while the Watch mirrors a
+        // workout, on the HealthKit session's data channel.
+        let healthKitTransport = HealthKitTimerSyncTransport { mirroredWorkoutObserver.currentSession }
+        mirroredWorkoutObserver.onRemoteData = { healthKitTransport.receive($0) }
+        mirroredWorkoutObserver.onSessionConnected = { healthKitTransport.sessionDidConnect() }
+        let timerSession = TimerSessionController(
+            transport: CompositeTimerSyncTransport(transports: [
+                WatchConnectivityTimerSyncTransport(),
+                healthKitTransport
+            ])
+        )
+        _timerSession = State(initialValue: timerSession)
+        _workoutStarter = State(initialValue: PhoneWorkoutStarter(
+            controller: timerSession,
+            isWatchAppAvailable: { WatchConnectivityService.shared.isWatchAppAvailable },
+            launchWatchApp: { config in
+                let kind = TimerKind(rawValue: config.timerKindRaw) ?? .emom
+                try await healthKitService.startWorkoutOnWatch(activityType: kind.healthKitActivityType)
+            }
+        ))
+
+        // Receive the Watch's mirrored workout session. Set here rather than in a view's
+        // onAppear, so a session mirrored during a background launch isn't missed.
+        healthKitService.setupMirroringHandler { session in
+            Logger.healthKit.info("Received mirrored workout session from Watch")
+            mirroredWorkoutObserver.setSession(session)
+        }
+
         // Activate WatchConnectivity *after* the coordinator's message handler is registered.
         WatchConnectivityService.shared.activate()
     }
@@ -71,6 +107,8 @@ struct Kraftli_TimersApp: App {
                     .environment(settings)
                     .environment(mirroredWorkoutObserver)
                     .environment(phoneMessageCoordinator)
+                    .environment(timerSession)
+                    .environment(workoutStarter)
 
                 if showLaunchScreen {
                     LaunchScreenView {
@@ -87,16 +125,6 @@ struct Kraftli_TimersApp: App {
                     in: modelContainer.mainContext,
                     deletesDuplicates: true
                 )
-            }
-            .onAppear {
-                // Set up mirrored workout session handler (Scenario D: Watch-initiated workouts).
-                // When Watch starts a workout and mirrors to iPhone, this handler receives
-                // the session. We store it in MirroredWorkoutObserver so iPhone can observe
-                // state changes (pause/resume/end) — even when WCSession messages are lost.
-                healthKitService.setupMirroringHandler { session in
-                    Logger.healthKit.info("Received mirrored workout session from Watch")
-                    mirroredWorkoutObserver.setSession(session)
-                }
             }
         }
         .modelContainer(modelContainer)

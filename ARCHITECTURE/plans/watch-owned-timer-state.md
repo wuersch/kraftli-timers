@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — steps 1–4 done; next: slice 5A (iPhone EMOM on the controller)
+**Status**: In progress — steps 1–4 and slice 5A done; next: slice 5B (Watch as EMOM owner)
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -100,7 +100,7 @@ message can't run alongside it, because both use the iPhone's single application
 nothing becomes visible until the views render from the controller (step 7). The same work is
 therefore done as end-to-end slices, EMOM first, so real devices can be tested as early as possible.
 
-#### 5A. iPhone EMOM on the controller
+#### 5A. iPhone EMOM on the controller ✅
 - Move `workoutSessionMirroringStartHandler` setup into `Kraftli_TimersApp.init` (finding 4).
 - iPhone start flow: Watch available (`isPaired && isWatchAppInstalled`)? → `StartRequest`
   (workout ID + config; needs a payload case and the WC transport) + `startWatchApp` →
@@ -113,6 +113,24 @@ therefore done as end-to-end slices, EMOM first, so real devices can be tested a
   `startDate − now`. The iPhone stops publishing the legacy start/stop context.
 - Health-save decision = `state.owner == .phone`. `watchHandledWorkout` is no longer used for EMOM.
 - Snap-back hint from `lastRollbackDate`; "Watch disconnected" indicator from `hasUnconfirmedChanges`.
+- *Done as:* `Kraftli_TimersApp.init` creates the app's one `TimerSessionController` (WC + HK
+  transports) and a `PhoneWorkoutStarter` (`Services/PhoneWorkoutStarter.swift`), which runs the
+  handshake and injects both into the environment. `StartRequest` (workout ID, config, `requestedAt`)
+  is a new `TimerSyncPayload` case. The composite delivers it once through its own `onStartRequest`
+  callback, never through `onPayload`. The controller gained `requestStart(_:)`, `workoutID` and
+  `isAwaitingOwner`. A takeover is simply `startAsOwner` with the same workout ID. `CountdownCoordinator`
+  is unchanged; its completion now only starts the hint timer, because the model already follows the
+  state. Notices use the hint line ("Synced with Watch", "Watch not available — running on iPhone").
+  Disconnected shows an `applewatch.slash` icon next to the total time. Pulled forward from 5E: a
+  backgrounded iPhone pauses only a workout it owns. `FakeLink` moved to `TestSupport/` and models
+  the single context slot for snapshots *and* start requests.
+- **Watch out in 5B:** (1) A stop sent during "Starting on Watch…" is an intent with `baseRevision 0`
+  (`transferUserInfo`). It can reach the Watch before its controller owns the workout, and the inbox
+  drops it then. Buffer intents for the requested workout ID until `startAsOwner`, then apply them.
+  (2) The start request stays in the iPhone's application context until the next snapshot replaces
+  it. Ignore requests whose `requestedAt` is older than the handshake timeout plus a margin, so a
+  later cold launch doesn't start a stale workout. (3) With 5A alone, the old Watch code ignores
+  the request, so an iPhone EMOM runs iPhone-only after 5 s. This is expected.
 
 #### 5B. Watch as EMOM owner
 - `StartRequest` + `handle(_ workoutConfiguration:)` → start the HK session, wait for `.running`,

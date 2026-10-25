@@ -54,6 +54,20 @@ nonisolated struct TimerConfig: Codable, Equatable, Sendable {
     let exerciseName: String
 }
 
+// MARK: - StartRequest
+
+/// The iPhone's request that the Watch start and own a workout (ADR-006 §4).
+///
+/// The Watch answers by publishing revision 1 of the workout's `TimerState`. If no
+/// answer arrives in time, the iPhone owns the workout itself and the Watch yields.
+nonisolated struct StartRequest: Codable, Equatable, Sendable {
+    let workoutID: UUID
+    let config: TimerConfig
+    /// When the iPhone asked. The request is also the persisted application context,
+    /// so a Watch launched much later can tell a stale request from a fresh one.
+    let requestedAt: Date
+}
+
 // MARK: - TimerState
 
 /// The complete state of one workout timer, owned by exactly one device.

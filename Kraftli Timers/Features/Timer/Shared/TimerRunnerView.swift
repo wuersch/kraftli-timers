@@ -158,8 +158,9 @@ struct TimerRunnerView: View {
         if summaryData == nil {
             // Timer is showing - call cleanup first
             timerCleanup?()
-        } else {
-            // Summary is showing - timer already completed, just tell Watch to dismiss
+        } else if preset.kind == .amrap {
+            // Summary is showing - timer already completed, just tell Watch to dismiss.
+            // (EMOM runs on the timer session, which ended with the timer; ADR-006.)
             timerSyncService.sendTimerControl(.stop) { result in
                 if case .failure(let error) = result {
                     Logger.timerSync.warning("sendTimerControl(.stop) on summary dismiss failed: \(error.localizedDescription)")
@@ -201,11 +202,8 @@ struct TimerRunnerView: View {
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
                 showRepsInCenter: settings.emomShowRepsInCenter,
-                syncService: timerSyncService,
-                healthKitService: healthKitService,
                 exerciseName: preset.exerciseInfo?.name ?? "Workout",
-                syncIntervalCount: preset.targetReps,
-                correlationID: correlationID,
+                workoutID: correlationID,
                 autoStart: true,
                 isSwipeDisabled: $isSwipeDisabled,
                 showHint: $showHint,
@@ -381,6 +379,7 @@ struct TimerRunnerView: View {
     )
     .environment(AppSettings())
     .environment(PhoneMessageCoordinator())
+    .previewTimerSession()
 }
 
 #Preview("AMRAP") {
@@ -395,4 +394,5 @@ struct TimerRunnerView: View {
     )
     .environment(AppSettings())
     .environment(PhoneMessageCoordinator())
+    .previewTimerSession()
 }
