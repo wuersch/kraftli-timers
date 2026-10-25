@@ -1,7 +1,23 @@
 # ADR-002: HealthKit Integration with Two-Channel Watch Communication
 
-**Status**: Accepted
+**Status**: Accepted (timer sync and Health-save ownership amended by [ADR-006](ADR-006-single-owner-timer-state.md), 2026-10-25)
 **Date**: 2026-02-03
+
+> **Update (2026-10-25, ADR-006):** The HealthKit channel (`startWatchApp`, `HKWorkoutSession`,
+> `HKLiveWorkoutBuilder`) and `WorkoutSessionEndedMessage` correlation stand as decided here. What
+> changed:
+> - **Who saves to Health:** the device that *owns* the workout's timer state, not the device it
+>   was started on. An iPhone-started workout is saved by the Watch only if the Watch confirmed
+>   it (the handshake); otherwise the iPhone owns and saves it. `watchHandledWorkout` (set when
+>   `startWatchApp` returned) is replaced by `ownedByWatch`, derived from the confirmed owner, which
+>   resolves the "can't verify Watch started the session" consequence below.
+> - **Timer sync:** WatchConnectivity no longer carries start/pause/stop/round events
+>   (`StartTimerMessage`, `TimerControlMessage`, `StopTimerMessage` are removed). The owner
+>   publishes `TimerState` snapshots over WatchConnectivity *and* the mirrored session's data
+>   channel; the viewer sends intents.
+> - **Pause/resume:** no longer goes through `mirroredWorkout.pause()/resume()`. The owner pauses
+>   its own `HKWorkoutSession` as a consequence of the state; mirrored-session transitions don't
+>   drive the timer. The "Pause/Resume Strategy" section below is historical.
 
 ## Context
 

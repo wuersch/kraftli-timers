@@ -227,8 +227,9 @@ Audio cues for workout timing without watching the screen.
 ### Screen & Background Handling
 
 - Screen stays on during active timer (`.idleTimerDisabled`)
-- Timer pauses when app moves to background
-- Timer resumes when app returns to foreground
+- An iPhone-only workout pauses when the app moves to the background
+- A workout run by the Watch keeps running when the iPhone app is backgrounded or locked; the
+  iPhone shows the correct time again as soon as it returns to the foreground
 
 ---
 
@@ -302,24 +303,36 @@ Full CRUD operations for timer presets directly on Apple Watch.
 
 #### iPhone → Watch Timer Sync
 
-When you start a timer on iPhone, the Watch automatically shows the same timer.
+When you start a timer on iPhone, it runs on your Watch too, and both show the same time.
 
 **How It Works**
 1. Start any timer on iPhone
-2. If Watch app is open, timer instantly appears on Watch
-3. Watch runs in "display-only" mode (iPhone logs the workout)
-4. Single source of truth prevents duplicate workout logs
+2. The iPhone opens the Watch app and shows "Starting on Watch…" (usually under a second when the
+   Watch app is open, a few seconds when it has to launch)
+3. The Watch runs the workout (heart rate, calories, Apple Health save); the iPhone follows it
+4. Pause, resume, rounds and stop work on either device and show up on the other
+5. If the Watch doesn't answer within 5 seconds, the workout runs on iPhone only, with the
+   note "Watch not available — running on iPhone"
+6. Without a paired Watch (or without the Watch app), the timer starts immediately on iPhone
+
+**While Disconnected**
+- Taps on the iPhone take effect immediately and reach the Watch when it is back in range;
+  a small Watch-slash icon next to the total time shows that changes are still on their way
+- AMRAP rounds counted on both devices add up
+- If both devices paused or resumed differently while apart, the Watch's state wins and the
+  iPhone shows "Synced with Watch"
 
 **Architecture**
-- `WatchMessage` protocol for typed message passing
-- `StartTimerMessage` carries timer configuration
-- `TimerSyncService` abstracts WatchConnectivity from views
-- `displayOnly` flag on watch timers skips logging
+- One device owns each workout's `TimerState` and publishes it; the other renders it
+  (ADR-006, ADR-007)
+- `TimerSessionController` on each device; `PhoneWorkoutStarter` / `WatchWorkoutStarter` run
+  the start handshake
+- Snapshots travel over the mirrored HealthKit session and WatchConnectivity at once
 
 **Limitations**
-- Watch app must be open/active to receive sync
-- Apple doesn't allow programmatic app launch on Watch
-- Timers run independently (not continuously synced)
+- A workout started on the Watch is not shown on iPhone (backlog)
+- If the Watch app starts after the 5-second timeout, it follows the iPhone's workout without
+  recording heart rate
 
 #### Synchronized Countdown
 
@@ -327,19 +340,20 @@ When starting a timer, both iPhone and Watch display a synchronized 3-2-1-GO cou
 
 **How It Works**
 1. Tap to start timer on iPhone
-2. Both devices show 3-2-1-GO countdown with beeps
-3. Timer starts simultaneously on both devices
+2. Once the Watch has confirmed (or the iPhone runs the workout alone), both devices count
+   down 3-2-1-GO; the iPhone plays beeps
+3. Both count down to the same start time, so the timer starts at the same instant on both
 4. "Get ready" pulsing text during countdown
 
 **Implementation**
-- `CountdownCoordinator` manages countdown sequence
-- `scheduledStartTime` enables precise synchronization
-- Countdown beeps play on each number
+- The owner sets the workout's `startDate` (now + 3 s); each device counts down to it
+- `CountdownCoordinator` (iPhone) / `WatchCountdownCoordinator` only display the countdown
+- Tapping the Watch countdown hides it; the timer still starts at the shared start time
 
 #### Data Model
 - Shares `TimerPreset`, `Exercise`, `WorkoutLog` models with iOS
 - CloudKit sync for persistent data
-- WatchConnectivity for real-time timer sync
+- Timer state synced as snapshots over WatchConnectivity and the mirrored HealthKit session
 
 ---
 
@@ -353,7 +367,7 @@ Workouts are saved to Apple Health, with Watch providing heart rate and calorie 
 |----------|-------------|-----------------|
 | A: iPhone only | Timer on iPhone, no Watch | iPhone saves duration only |
 | B: Watch only | Timer started on Watch directly | Watch saves with heart rate + calories |
-| C: iPhone leads | Timer started on iPhone, Watch follows | Watch runs HKWorkoutSession, iPhone skips HK save |
+| C: iPhone starts, Watch runs it | Timer started on iPhone, Watch confirms within 5 s | Watch owns the timer and saves; iPhone skips its HK save |
 | D: Watch leads | Timer started on Watch, iPhone may mirror | Watch saves, iPhone receives UUID for correlation |
 
 #### Functionality
@@ -361,8 +375,9 @@ Workouts are saved to Apple Health, with Watch providing heart rate and calorie 
 - No user-facing toggle — always attempts HealthKit (graceful failure if denied)
 - Watch collects heart rate and active energy via `HKLiveWorkoutBuilder`
 - Workout session pauses/resumes with timer pause/resume
-- iPhone-led workouts launch Watch app via `startWatchApp(toHandle:)`
-- Duplicate prevention: only one device saves to HealthKit per workout
+- iPhone-started workouts launch Watch app via `startWatchApp(toHandle:)`
+- Duplicate prevention: the device that owns the workout's timer saves it to HealthKit
+  (iPhone if the Watch didn't confirm in time — scenario A)
 - SwiftData `WorkoutLog` correlated with HealthKit entry via UUID
 
 #### Data Logged
@@ -418,6 +433,9 @@ Workouts are saved to Apple Health, with Watch providing heart rate and calorie 
 - "INTERVAL" label with large monospaced time (MM:SS)
 - "TOTAL" label with total time below
 - Hint text: "Tap to start" / "Tap to pause"
+- **Watch sync**: "Starting on Watch…" (pulsing Watch icon) until the Watch confirms; short
+  notices in the hint line ("Watch not available — running on iPhone", "Synced with Watch");
+  Watch-slash icon next to the total time while changes haven't reached the Watch
 - Bottom hint: "Swipe down to close"
 - Confetti animation on completion
 - **Gestures**: Tap to start/pause, swipe down to close
@@ -432,8 +450,9 @@ Workouts are saved to Apple Health, with Watch providing heart rate and calorie 
 - Large round counter in center with "ROUNDS" label
 - "TOTAL" label with total time below
 - Hint text: "Tap to start" / "Tap to count · Hold to pause"
+- **Watch sync**: same as EMOM ("Starting on Watch…", notices, Watch-slash icon)
 - Confetti animation on completion
-- **Gestures**: Tap to start/increment, long-press to pause, swipe down to close
+- **Gestures**: Tap to start/increment (resume while paused), long-press to pause/resume, swipe down to close
 
 ### Stats View
 

@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — steps 1–4 and slices 5A, 5B, 5D, 5E (code) done; device checkpoints A (5C) and B pending on the user's devices; next: step 6 (documentation, version bump)
+**Status**: In progress — steps 1–4 and slices 5A, 5B, 5D, 5E (code) done; step 6 docs done; device checkpoints A (5C) and B pending on the user's devices; then the version bump (step 6, last commit)
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -231,7 +231,7 @@ therefore done as end-to-end slices, EMOM first, so real devices can be tested a
     Health workout.
   - **ADRs:** ADR-003/004/005 marked *Superseded by ADR-006*.
 
-### 6. Documentation
+### 6. Documentation (docs ✅, version bump pending)
 - `ARCHITECTURE/architecture.md`: the HealthKit/sync section and the component tables.
 - `SPEC/scope.md`: the "iPhone → Watch Timer Sync" and "Synchronized Countdown" sections. Their
   limitations text is already outdated (it says Apple doesn't allow programmatic Watch launch).
