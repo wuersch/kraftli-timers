@@ -256,21 +256,61 @@ struct AMRAPTimerModelTests {
         #expect(model.totalTimeRemaining == 0)
     }
 
-    /// Finding 14: a `pause(at:)` whose canonical date lands at/after the natural end clamps
-    /// remaining to 0, but must NOT be treated as completion (no didComplete → no log/confetti).
-    @Test @MainActor func pauseAt_clampingToZero_doesNotComplete() {
+    /// Finding 14, under ADR-006: a pause landing at/after the natural end is ignored by the
+    /// reducer (the time had already run out), sets no completion by itself, and the next tick
+    /// completes the workout normally — exactly once.
+    @Test @MainActor func pauseAt_naturalEnd_isIgnored_andTickCompletes() async {
         let start = Date(timeIntervalSince1970: 1_000_000)
+        var fakeNow = start
+        let provider = MockTimerProvider()
+        let spy = SpyFeedbackProvider()
         let model = AMRAPTimerModel(
             totalDuration: 60,
-            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: { start }
+            timerProvider: provider, feedbackProvider: spy, now: { fakeNow }
         )
 
         model.start()
-        model.pause(at: start.addingTimeInterval(60))  // canonical date at the natural end
+        model.pause(at: start.addingTimeInterval(60))  // date at the natural end
 
-        #expect(model.totalTimeRemaining == 0)
         #expect(model.didComplete == false)
-        #expect(model.isRunning == false)
+
+        fakeNow += 61
+        provider.simulateTick()
+        await Self.drainMainQueue()
+
+        #expect(model.didComplete == true)
+        #expect(model.totalTimeRemaining == 0)
+        #expect(spy.workoutCompleteCount == 1)
+    }
+
+    // MARK: - State-driven rendering (ADR-006)
+
+    /// Adopting the owner's state shows its elapsed time and its round count.
+    @Test @MainActor func apply_adoptsOwnerTimeAndRounds() {
+        let fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let model = AMRAPTimerModel(
+            totalDuration: 300,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: { fakeNow }
+        )
+        var state = TimerState(
+            workoutID: UUID(),
+            owner: .watch,
+            config: TimerConfig(
+                timerKindRaw: TimerKind.amrap.rawValue,
+                totalDuration: 300,
+                intervalCount: nil,
+                exerciseName: "Pull-ups"
+            ),
+            startDate: fakeNow.addingTimeInterval(-90)
+        )
+        state.roundCount = 4
+
+        model.apply(state)
+
+        #expect(model.isRunning == true)
+        #expect(model.totalTimeRemaining == 210)
+        #expect(model.roundsCompleted == 4)
+        model.reset()
     }
 
     /// Finding 15: a tick that enqueues its update() Task just before `pause()` runs must be a

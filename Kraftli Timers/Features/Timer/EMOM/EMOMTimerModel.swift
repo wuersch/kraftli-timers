@@ -7,20 +7,27 @@
 
 import Foundation
 
+/// Renders an EMOM workout from a `TimerState` (ADR-006).
+///
+/// All timing comes from the state: the model derives the displayed values from
+/// `state.elapsed(at: now())` on every tick and keeps no stopwatch of its own.
+/// `apply(_:)` adopts a state published by the workout's owner; the `start` /
+/// `pause` / `resume` methods are local shortcuts that change the state through
+/// `TimerStateReducer`, so both paths follow the same rules.
 @Observable
 public class EMOMTimerModel: WorkoutTimer {
     // MARK: - Published Properties (MainActor isolated)
     @MainActor private(set) var totalTimeRemaining: TimeInterval
     @MainActor private(set) var intervalTimeRemaining: TimeInterval
     @MainActor private(set) var isRunning: Bool = false
-    /// Explicit completion signal — set true only in `update()` when the timer reaches zero while
-    /// running, so a `pause(at:)` clamp or stray tick can't trigger the completion path.
+    /// Explicit completion signal — set true only when the workout reaches zero (observed on a
+    /// tick, or adopted from a completed state), never by a pause or a stop.
     @MainActor private(set) var didComplete = false
 
     // Precise values for smooth progress animations
     @MainActor private var preciseTotalTimeRemaining: TimeInterval
     @MainActor private var preciseIntervalTimeRemaining: TimeInterval
-    
+
     // MARK: - Private Properties
     private let intervalWarningThreshold: TimeInterval
     private let _totalDuration: TimeInterval
@@ -31,12 +38,12 @@ public class EMOMTimerModel: WorkoutTimer {
     /// Wall-clock source. Injectable so tests can drive time deterministically.
     private let now: () -> Date
 
-    private var totalStartDate: Date?
-    private var pausedTotalTime: TimeInterval?
+    /// The timing source of truth. nil until the workout starts (and after `reset()`).
+    @MainActor private var state: TimerState?
 
     private var lastWarningTriggered = false
     private var lastCompletedInterval: Int = -1
-    
+
     // MARK: - Computed Properties
     @MainActor
     var overallProgress: Double {
@@ -47,12 +54,12 @@ public class EMOMTimerModel: WorkoutTimer {
     var intervalProgress: Double {
         preciseIntervalTimeRemaining / intervalDuration
     }
-    
+
     @MainActor
     var isIntervalWarning: Bool {
         intervalTimeRemaining <= intervalWarningThreshold
     }
-    
+
     @MainActor
     var completedIntervals: Int {
         // Scale the elapsed *fraction* by the rep count. The denominator is the exact
@@ -68,7 +75,7 @@ public class EMOMTimerModel: WorkoutTimer {
     var currentInterval: Int {
         min(completedIntervals + 1, totalIntervals)
     }
-    
+
     @MainActor
     var totalIntervals: Int {
         _totalIntervals
@@ -87,7 +94,7 @@ public class EMOMTimerModel: WorkoutTimer {
     var completedRounds: Int? {
         nil
     }
-    
+
     // MARK: - Initialization
     init(
         totalDuration: TimeInterval = 20 * 60,
@@ -117,7 +124,7 @@ public class EMOMTimerModel: WorkoutTimer {
         self.preciseTotalTimeRemaining = totalDuration
         self.preciseIntervalTimeRemaining = intervalDuration
     }
-    
+
     // Convenience initializer: Rep-based (Busy Dad Style)
     convenience init(
         totalReps: Int,
@@ -137,89 +144,98 @@ public class EMOMTimerModel: WorkoutTimer {
             feedbackProvider: feedbackProvider
         )
     }
-    
+
+    // MARK: - State-Driven API (ADR-006)
+
+    /// Adopts a state published by the workout's owner and re-renders.
+    ///
+    /// A state that continues the current one (same workout, same elapsed time — e.g. a
+    /// pause or resume) keeps the interval/warning trackers. A state that jumps (another
+    /// workout, a late join, a conflict rollback) re-seeds them from the new elapsed time,
+    /// so feedback for already-passed intervals is never replayed. No start feedback plays.
+    @MainActor
+    func apply(_ newState: TimerState) {
+        let date = now()
+        let jumped = state.map {
+            $0.workoutID != newState.workoutID
+                || abs($0.elapsed(at: date) - newState.elapsed(at: date)) > 0.5
+        } ?? true
+        if state?.workoutID != newState.workoutID {
+            didComplete = false
+        }
+        state = newState
+        if jumped {
+            seedTrackers(elapsed: newState.elapsed(at: date))
+        }
+        refresh(at: date, playsFeedback: false)
+    }
+
     // MARK: - Public Methods
     @MainActor
     func start() {
         guard !isRunning else { return }
 
-        didComplete = false
-        isRunning = true
+        let date = now()
+        if let state, state.isPaused, !state.isFinished(at: date) {
+            self.state = reduce(state, .resume, at: date, now: date)
+        } else {
+            state = makeLocalState(startDate: date)
+            didComplete = false
+            lastCompletedInterval = -1
+            lastWarningTriggered = false
+        }
         feedbackProvider.onStart()
-        startTimer()
+        refresh(at: date, playsFeedback: false)
     }
 
     @MainActor
     func pause() {
-        guard isRunning else { return }
+        guard isRunning, let state else { return }
 
-        pausedTotalTime = preciseTotalTimeRemaining  // Keep sub-second precision for smooth resume
-        isRunning = false
-        timerCoordinator.stop()
-        totalStartDate = nil  // Drop the anchor so a stray enqueued tick can't recompute from it.
+        let date = now()
+        self.state = reduce(state, .pause, at: date, now: date)
+        refresh(at: date, playsFeedback: false)
     }
 
-    /// Pauses using the authoritative `date` (HealthKit's canonical transition time) rather
-    /// than the local clock, so both devices freeze at the identical `remaining`.
+    /// Pauses at the supplied `date` instead of the local clock.
     @MainActor
     func pause(at date: Date) {
-        guard isRunning, let totalStart = totalStartDate else {
-            // No anchor to measure against — fall back to the local-clock freeze.
-            pause()
-            return
-        }
+        guard isRunning, let state else { return }
 
-        // Recompute the frozen display from the shared `date` (not the last, possibly-stale tick).
-        let elapsed = max(0, date.timeIntervalSince(totalStart))
-        setDisplayFields(totalElapsed: elapsed)
-        pausedTotalTime = preciseTotalTimeRemaining
-        isRunning = false
-        timerCoordinator.stop()
-        totalStartDate = nil  // Drop the anchor so a stray enqueued tick can't recompute from it.
+        // Allow a date slightly ahead of the local clock (it came from another device).
+        self.state = reduce(state, .pause, at: date, now: max(now(), date))
+        refresh(at: now(), playsFeedback: false)
     }
 
-    /// Resumes by re-anchoring `totalStartDate` from the shared `date` and the frozen
-    /// `remaining`, so both devices adopt the identical absolute anchor. Does not replay
-    /// start feedback (remote-driven) and preserves interval/warning state so no sounds repeat.
+    /// Resumes at the supplied `date` instead of the local clock. Does not replay start
+    /// feedback (remote-driven) and keeps interval/warning state so no sounds repeat.
     @MainActor
     func resume(at date: Date) {
-        guard !isRunning else { return }  // Already running → no toggle, no feedback bounce.
+        guard !isRunning, let state, state.isPaused else { return }
 
-        let remaining = pausedTotalTime ?? preciseTotalTimeRemaining
-        let anchor = date.addingTimeInterval(-(totalDuration - remaining))
-        totalStartDate = timerCoordinator.start(startDate: anchor) { [weak self] in
-            self?.update()
-        }
-        pausedTotalTime = nil
-        isRunning = true
+        self.state = reduce(state, .resume, at: date, now: max(now(), date))
+        refresh(at: now(), playsFeedback: false)
     }
 
     /// Starts anchored to the supplied absolute `date` (which may lie in the past), so a
     /// late-joining mirror shows the leader's elapsed time instead of starting from zero.
-    /// Pre-seeds the interval and warning trackers from the elapsed time so joining
-    /// mid-workout doesn't replay interval/warning feedback. Does not play start feedback
-    /// (remote-driven start).
+    /// Pre-seeds the interval and warning trackers so joining mid-workout doesn't replay
+    /// feedback. Does not play start feedback (remote-driven start).
     @MainActor
     func start(at date: Date) {
         guard !isRunning else { return }
 
+        let localState = makeLocalState(startDate: date)
+        state = localState
         didComplete = false
-        let elapsed = max(0, now().timeIntervalSince(date))
-        setDisplayFields(totalElapsed: elapsed)
-        lastCompletedInterval = Int(elapsed * Double(_totalIntervals) / totalDuration)
-        let intervalElapsed = elapsed.truncatingRemainder(dividingBy: intervalDuration)
-        lastWarningTriggered = (intervalDuration - intervalElapsed) <= intervalWarningThreshold
-
-        totalStartDate = timerCoordinator.start(startDate: date) { [weak self] in
-            self?.update()
-        }
-        pausedTotalTime = nil
-        isRunning = true
+        seedTrackers(elapsed: localState.elapsed(at: now()))
+        refresh(at: now(), playsFeedback: false)
     }
 
     @MainActor
     func reset() {
         timerCoordinator.stop()
+        state = nil
         isRunning = false
 
         totalTimeRemaining = totalDuration
@@ -227,30 +243,104 @@ public class EMOMTimerModel: WorkoutTimer {
         preciseTotalTimeRemaining = totalDuration
         preciseIntervalTimeRemaining = intervalDuration
 
-        pausedTotalTime = nil
-        totalStartDate = nil
         didComplete = false
         lastCompletedInterval = -1
         lastWarningTriggered = false
     }
-    
+
     // MARK: - Private Methods
+
+    /// A state for a workout this model runs on its own (no remote owner).
     @MainActor
-    private func startTimer() {
-        // Start total timer
-        totalStartDate = timerCoordinator.start(
-            pausedTime: pausedTotalTime,
-            totalDuration: totalDuration
-        ) { [weak self] in
-            self?.update()
+    private func makeLocalState(startDate: Date) -> TimerState {
+        TimerState(
+            workoutID: UUID(),
+            owner: .current,
+            config: TimerConfig(
+                timerKindRaw: TimerKind.emom.rawValue,
+                totalDuration: totalDuration,
+                intervalCount: _totalIntervals,
+                exerciseName: ""
+            ),
+            startDate: startDate
+        )
+    }
+
+    /// Applies one local action through the shared reducer.
+    private func reduce(_ state: TimerState, _ action: TimerIntent.Action, at date: Date, now: Date) -> TimerState {
+        let intent = TimerIntent(workoutID: state.workoutID, baseRevision: state.revision, action: action, at: date)
+        return TimerStateReducer.apply([intent], to: state, now: now)
+    }
+
+    /// Sets the interval/warning trackers as if they had followed the workout up to `elapsed`.
+    @MainActor
+    private func seedTrackers(elapsed: TimeInterval) {
+        lastCompletedInterval = Int(elapsed * Double(_totalIntervals) / totalDuration)
+        let intervalElapsed = elapsed.truncatingRemainder(dividingBy: intervalDuration)
+        lastWarningTriggered = (intervalDuration - intervalElapsed) <= intervalWarningThreshold
+    }
+
+    /// Re-renders from the state at `date`: display fields, running flag, ticking,
+    /// interval/warning feedback (on ticks only) and completion.
+    @MainActor
+    private func refresh(at date: Date, playsFeedback: Bool) {
+        guard let state else { return }
+        let wasRunning = isRunning
+        let elapsed = state.elapsed(at: date)
+        setDisplayFields(totalElapsed: elapsed)
+
+        let finished = state.isFinished(at: date)
+        isRunning = !state.isPaused && !finished
+
+        if playsFeedback && isRunning && elapsed > 0 {
+            // Detect interval transitions (use precise timing). Derive the count from the
+            // exact totalDuration rather than the lossy intervalDuration, matching the
+            // count properties above (behaviorally identical, just consistent).
+            let elapsedIntervalCount = Int(elapsed * Double(_totalIntervals) / totalDuration)
+            if elapsedIntervalCount > lastCompletedInterval {
+                lastCompletedInterval = elapsedIntervalCount
+                lastWarningTriggered = false
+                if elapsedIntervalCount > 0 {
+                    feedbackProvider.onIntervalComplete()
+                }
+            }
+
+            // Warning sound at threshold (use precise timing)
+            if preciseIntervalTimeRemaining <= intervalWarningThreshold && !lastWarningTriggered {
+                feedbackProvider.onWarning()
+                lastWarningTriggered = true
+            }
         }
 
-        pausedTotalTime = nil
+        // Completion: time ran out (a stop is not a completion).
+        let completed: Bool = switch state.finish {
+        case .completed: true
+        case .stopped: false
+        case nil: finished
+        }
+        if completed {
+            intervalTimeRemaining = 0
+            preciseIntervalTimeRemaining = 0
+            lastWarningTriggered = false
+            if !didComplete {
+                didComplete = true
+                if wasRunning {
+                    feedbackProvider.onWorkoutComplete()
+                }
+            }
+        }
+
+        if isRunning, !timerCoordinator.isActive {
+            timerCoordinator.start(startDate: state.startDate) { [weak self] in
+                self?.update()
+            }
+        } else if !isRunning {
+            timerCoordinator.stop()
+        }
     }
-    
+
     /// Recomputes the four displayed remaining-time fields from the elapsed time.
-    /// Pure display math — no feedback, no interval/warning counter mutation — so it can be
-    /// reused by `pause(at:)` to freeze against the canonical date without firing sounds.
+    /// Pure display math — no feedback, no interval/warning counter mutation.
     @MainActor
     private func setDisplayFields(totalElapsed: TimeInterval) {
         // Calculate precise values for smooth progress animations
@@ -267,47 +357,9 @@ public class EMOMTimerModel: WorkoutTimer {
 
     @MainActor
     private func update() {
-        // Ignore a stray tick enqueued before stop()/pause(): the timer is no longer running, so
-        // recomputing would undo an anchored freeze or fire interval/warning/completion on a paused timer.
-        guard isRunning, let totalStart = totalStartDate else {
-            return
-        }
-
-        let totalElapsed = now().timeIntervalSince(totalStart)
-
-        setDisplayFields(totalElapsed: totalElapsed)
-
-        // Derive interval time from total elapsed (single source of truth)
-        if preciseTotalTimeRemaining > 0 {
-            // Detect interval transitions (use precise timing). Derive the count from the
-            // exact totalDuration rather than the lossy intervalDuration, matching the
-            // count properties above (behaviorally identical, just consistent).
-            let elapsedIntervalCount = Int(totalElapsed * Double(_totalIntervals) / totalDuration)
-            if elapsedIntervalCount > lastCompletedInterval {
-                lastCompletedInterval = elapsedIntervalCount
-                lastWarningTriggered = false
-                if elapsedIntervalCount > 0 {
-                    feedbackProvider.onIntervalComplete()
-                }
-            }
-
-            // Warning sound at threshold (use precise timing)
-            if preciseIntervalTimeRemaining <= intervalWarningThreshold && !lastWarningTriggered {
-                feedbackProvider.onWarning()
-                lastWarningTriggered = true
-            }
-        } else {
-            // Workout complete
-            timerCoordinator.stop()
-            isRunning = false
-            totalTimeRemaining = 0
-            intervalTimeRemaining = 0
-            preciseTotalTimeRemaining = 0
-            preciseIntervalTimeRemaining = 0
-            lastWarningTriggered = false
-            didComplete = true
-            feedbackProvider.onWorkoutComplete()
-        }
+        // Ignore a stray tick enqueued before a pause: the timer is no longer running, so
+        // re-rendering would fire interval/warning/completion on a paused timer.
+        guard isRunning else { return }
+        refresh(at: now(), playsFeedback: true)
     }
 }
-

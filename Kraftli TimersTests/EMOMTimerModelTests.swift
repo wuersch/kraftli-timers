@@ -350,21 +350,165 @@ struct EMOMTimerModelTests {
         #expect(model.totalTimeRemaining == 0)
     }
 
-    /// Finding 14: a `pause(at:)` whose canonical date lands at/after the natural end clamps
-    /// remaining to 0, but must NOT be treated as completion (no didComplete → no log/confetti).
-    @Test @MainActor func pauseAt_clampingToZero_doesNotComplete() {
+    /// Finding 14, under ADR-006: a pause landing at/after the natural end is ignored by the
+    /// reducer (the time had already run out), sets no completion by itself, and the next tick
+    /// completes the workout normally — exactly once.
+    @Test @MainActor func pauseAt_naturalEnd_isIgnored_andTickCompletes() async {
         let start = Date(timeIntervalSince1970: 1_000_000)
+        var fakeNow = start
+        let provider = MockTimerProvider()
+        let spy = SpyFeedbackProvider()
         let model = EMOMTimerModel(
             totalDuration: 60, intervalCount: 6,
-            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: { start }
+            timerProvider: provider, feedbackProvider: spy, now: { fakeNow }
         )
 
         model.start()
-        model.pause(at: start.addingTimeInterval(60))  // canonical date at the natural end
+        model.pause(at: start.addingTimeInterval(60))  // date at the natural end
 
-        #expect(model.totalTimeRemaining == 0)
         #expect(model.didComplete == false)
+
+        fakeNow += 61
+        provider.simulateTick()
+        await Self.drainMainQueue()
+
+        #expect(model.didComplete == true)
+        #expect(model.totalTimeRemaining == 0)
+        #expect(spy.workoutCompleteCount == 1)
+    }
+
+    // MARK: - State-driven rendering (ADR-006)
+
+    private static func makeState(
+        startDate: Date, duration: TimeInterval = 600, intervals: Int = 10
+    ) -> TimerState {
+        TimerState(
+            workoutID: UUID(),
+            owner: .watch,
+            config: TimerConfig(
+                timerKindRaw: TimerKind.emom.rawValue,
+                totalDuration: duration,
+                intervalCount: intervals,
+                exerciseName: "Burpees"
+            ),
+            startDate: startDate
+        )
+    }
+
+    /// Two models fed the same state show identical values, however late each one applies it —
+    /// the core ADR-006 guarantee that replaces per-device anchoring.
+    @Test @MainActor func apply_sameState_rendersIdenticallyOnBothDevices() {
+        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let clock = { fakeNow }
+        let watch = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
+        )
+        let phone = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: clock
+        )
+        var state = Self.makeState(startDate: fakeNow.addingTimeInterval(-90))
+
+        watch.apply(state)
+        fakeNow += 0.7  // the phone receives the snapshot later
+        phone.apply(state)
+        watch.apply(state)  // re-render both at the same instant
+
+        #expect(watch.totalTimeRemaining == phone.totalTimeRemaining)
+        #expect(watch.intervalTimeRemaining == phone.intervalTimeRemaining)
+        #expect(watch.isRunning && phone.isRunning)
+
+        // A pause published by the owner freezes both at the same value.
+        state = TimerStateReducer.apply(
+            [TimerIntent(workoutID: state.workoutID, baseRevision: state.revision, action: .pause, at: fakeNow)],
+            to: state, now: fakeNow
+        )
+        fakeNow += 2
+        watch.apply(state)
+        fakeNow += 3
+        phone.apply(state)
+
+        #expect(watch.totalTimeRemaining == phone.totalTimeRemaining)
+        #expect(!watch.isRunning && !phone.isRunning)
+    }
+
+    /// Adopting a state mid-workout (late join) doesn't replay past interval feedback or play
+    /// start feedback; the next boundary still fires.
+    @Test @MainActor func apply_lateJoin_doesNotReplayFeedback() async {
+        var fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let provider = MockTimerProvider()
+        let spy = SpyFeedbackProvider()
+        let model = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: provider, feedbackProvider: spy, now: { fakeNow }
+        )
+
+        model.apply(Self.makeState(startDate: fakeNow.addingTimeInterval(-90)))
+        provider.simulateTick()
+        await Self.drainMainQueue()
+
+        #expect(spy.startCount == 0)
+        #expect(spy.intervalCompleteCount == 0)
+
+        fakeNow += 31  // elapsed 121 s → past the 120 s boundary
+        provider.simulateTick()
+        await Self.drainMainQueue()
+        #expect(spy.intervalCompleteCount == 1)
+        model.reset()
+    }
+
+    /// A state still in its countdown renders the full duration and is running (ticking toward
+    /// the shared start).
+    @Test @MainActor func apply_countdownState_showsFullDuration() {
+        let fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let model = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: { fakeNow }
+        )
+
+        model.apply(Self.makeState(startDate: fakeNow.addingTimeInterval(2)))
+
+        #expect(model.totalTimeRemaining == 600)
+        #expect(model.currentInterval == 1)
+        model.reset()
+    }
+
+    /// A stopped state ends the timer without the completion signal.
+    @Test @MainActor func apply_stoppedState_isNotCompletion() {
+        let fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let model = EMOMTimerModel(
+            totalDuration: 600, intervalCount: 10,
+            timerProvider: MockTimerProvider(), feedbackProvider: SilentFeedback(), now: { fakeNow }
+        )
+        var state = Self.makeState(startDate: fakeNow.addingTimeInterval(-30))
+        state.finish = .stopped(at: fakeNow)
+
+        model.apply(state)
+
         #expect(model.isRunning == false)
+        #expect(model.didComplete == false)
+        #expect(model.totalTimeRemaining == 570)
+    }
+
+    /// A completed state adopted late sets the completion signal without the completion sound
+    /// (the viewer never saw the timer run out).
+    @Test @MainActor func apply_completedState_signalsCompletionSilently() {
+        let fakeNow = Date(timeIntervalSince1970: 1_000_000)
+        let spy = SpyFeedbackProvider()
+        let model = EMOMTimerModel(
+            totalDuration: 60, intervalCount: 6,
+            timerProvider: MockTimerProvider(), feedbackProvider: spy, now: { fakeNow }
+        )
+        var state = Self.makeState(startDate: fakeNow.addingTimeInterval(-100), duration: 60, intervals: 6)
+        state.finish = .completed(at: fakeNow.addingTimeInterval(-40))
+
+        model.apply(state)
+
+        #expect(model.didComplete == true)
+        #expect(model.totalTimeRemaining == 0)
+        #expect(model.intervalTimeRemaining == 0)
+        #expect(spy.workoutCompleteCount == 0)
     }
 
     /// Finding 15: a tick that enqueues its update() Task just before `pause()` runs must be a
