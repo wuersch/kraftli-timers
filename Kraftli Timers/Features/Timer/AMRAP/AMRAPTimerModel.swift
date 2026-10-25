@@ -7,14 +7,23 @@
 
 import Foundation
 
+/// Renders an AMRAP workout from a `TimerState` (ADR-006).
+///
+/// All timing comes from the state: the model derives the displayed values from
+/// `state.elapsed(at: now())` on every tick and keeps no stopwatch of its own.
+/// `apply(_:)` adopts a state published by the workout's owner; the `start` /
+/// `pause` / `resume` methods are local shortcuts that change the state through
+/// `TimerStateReducer`, so both paths follow the same rules.
 @Observable
 class AMRAPTimerModel: WorkoutTimer {
     // MARK: - Published Properties (MainActor isolated)
     @MainActor private(set) var totalTimeRemaining: TimeInterval
     @MainActor private(set) var isRunning = false
+    /// Rounds counted on this device. `apply(_:)` adopts the owner's count; local taps
+    /// still increment it directly until the views move to the session controller.
     @MainActor private(set) var roundsCompleted = 0
-    /// Explicit completion signal — set true only in `update()` when the timer reaches zero while
-    /// running, so a `pause(at:)` clamp or stray tick can't trigger the completion path.
+    /// Explicit completion signal — set true only when the workout reaches zero (observed on a
+    /// tick, or adopted from a completed state), never by a pause or a stop.
     @MainActor private(set) var didComplete = false
 
     // MARK: - Private Properties
@@ -24,8 +33,8 @@ class AMRAPTimerModel: WorkoutTimer {
     /// Wall-clock source. Injectable so tests can drive time deterministically.
     private let now: () -> Date
 
-    private var startDate: Date?
-    private var pausedTime: TimeInterval?
+    /// The timing source of truth. nil until the workout starts (and after `reset()`).
+    @MainActor private var state: TimerState?
 
     // MARK: - Computed Properties
     @MainActor
@@ -62,56 +71,61 @@ class AMRAPTimerModel: WorkoutTimer {
         self.now = now
     }
 
+    // MARK: - State-Driven API (ADR-006)
+
+    /// Adopts a state published by the workout's owner and re-renders, including its
+    /// round count. No start feedback plays.
+    @MainActor
+    func apply(_ newState: TimerState) {
+        if state?.workoutID != newState.workoutID {
+            didComplete = false
+        }
+        state = newState
+        roundsCompleted = newState.roundCount
+        refresh(at: now())
+    }
+
     // MARK: - Public Methods
     @MainActor
     func start() {
         guard !isRunning else { return }
 
-        didComplete = false
-        isRunning = true
-        startTimer()
+        let date = now()
+        if let state, state.isPaused, !state.isFinished(at: date) {
+            self.state = reduce(state, .resume, at: date, now: date)
+        } else {
+            state = makeLocalState(startDate: date)
+            didComplete = false
+        }
+        refresh(at: date)
     }
 
     @MainActor
     func pause() {
-        guard isRunning else { return }
+        guard isRunning, let state else { return }
 
-        pausedTime = totalTimeRemaining
-        isRunning = false
-        timerCoordinator.stop()
-        startDate = nil  // Drop the anchor so a stray enqueued tick can't recompute from it.
+        let date = now()
+        self.state = reduce(state, .pause, at: date, now: date)
+        refresh(at: date)
     }
 
-    /// Pauses using the authoritative `date` (HealthKit's canonical transition time) rather
-    /// than the local clock, so both devices freeze at the identical `remaining`.
+    /// Pauses at the supplied `date` instead of the local clock.
     @MainActor
     func pause(at date: Date) {
-        guard isRunning, let start = startDate else {
-            pause()
-            return
-        }
+        guard isRunning, let state else { return }
 
-        let remaining = max(0, totalDuration - date.timeIntervalSince(start))
-        totalTimeRemaining = remaining
-        pausedTime = remaining
-        isRunning = false
-        timerCoordinator.stop()
-        startDate = nil  // Drop the anchor so a stray enqueued tick can't recompute from it.
+        // Allow a date slightly ahead of the local clock (it came from another device).
+        self.state = reduce(state, .pause, at: date, now: max(now(), date))
+        refresh(at: now())
     }
 
-    /// Resumes by re-anchoring `startDate` from the shared `date` and the frozen `remaining`,
-    /// so both devices adopt the identical absolute anchor. Only acts while paused.
+    /// Resumes at the supplied `date` instead of the local clock. Only acts while paused.
     @MainActor
     func resume(at date: Date) {
-        guard !isRunning else { return }
+        guard !isRunning, let state, state.isPaused else { return }
 
-        let remaining = pausedTime ?? totalTimeRemaining
-        let anchor = date.addingTimeInterval(-(totalDuration - remaining))
-        startDate = timerCoordinator.start(startDate: anchor) { [weak self] in
-            self?.update()
-        }
-        pausedTime = nil
-        isRunning = true
+        self.state = reduce(state, .resume, at: date, now: max(now(), date))
+        refresh(at: now())
     }
 
     /// Starts anchored to the supplied absolute `date` (which may lie in the past), so a
@@ -121,24 +135,18 @@ class AMRAPTimerModel: WorkoutTimer {
     func start(at date: Date) {
         guard !isRunning else { return }
 
+        state = makeLocalState(startDate: date)
         didComplete = false
-        let elapsed = max(0, now().timeIntervalSince(date))
-        totalTimeRemaining = max(0, totalDuration - elapsed)
-        startDate = timerCoordinator.start(startDate: date) { [weak self] in
-            self?.update()
-        }
-        pausedTime = nil
-        isRunning = true
+        refresh(at: now())
     }
 
     @MainActor
     func reset() {
         timerCoordinator.stop()
+        state = nil
         isRunning = false
         totalTimeRemaining = totalDuration
         roundsCompleted = 0
-        pausedTime = nil
-        startDate = nil
         didComplete = false
     }
 
@@ -154,34 +162,69 @@ class AMRAPTimerModel: WorkoutTimer {
     }
 
     // MARK: - Private Methods
+
+    /// A state for a workout this model runs on its own (no remote owner).
     @MainActor
-    private func startTimer() {
-        startDate = timerCoordinator.start(
-            pausedTime: pausedTime,
-            totalDuration: totalDuration
-        ) { [weak self] in
-            self?.update()
+    private func makeLocalState(startDate: Date) -> TimerState {
+        TimerState(
+            workoutID: UUID(),
+            owner: .current,
+            config: TimerConfig(
+                timerKindRaw: TimerKind.amrap.rawValue,
+                totalDuration: totalDuration,
+                intervalCount: nil,
+                exerciseName: ""
+            ),
+            startDate: startDate
+        )
+    }
+
+    /// Applies one local action through the shared reducer.
+    private func reduce(_ state: TimerState, _ action: TimerIntent.Action, at date: Date, now: Date) -> TimerState {
+        let intent = TimerIntent(workoutID: state.workoutID, baseRevision: state.revision, action: action, at: date)
+        return TimerStateReducer.apply([intent], to: state, now: now)
+    }
+
+    /// Re-renders from the state at `date`: remaining time, running flag, ticking and completion.
+    @MainActor
+    private func refresh(at date: Date) {
+        guard let state else { return }
+        let wasRunning = isRunning
+        totalTimeRemaining = max(0, totalDuration - state.elapsed(at: date))
+
+        let finished = state.isFinished(at: date)
+        isRunning = !state.isPaused && !finished
+
+        // Completion: time ran out (a stop is not a completion).
+        let completed: Bool = switch state.finish {
+        case .completed: true
+        case .stopped: false
+        case nil: finished
+        }
+        if completed {
+            totalTimeRemaining = 0
+            if !didComplete {
+                didComplete = true
+                if wasRunning {
+                    feedbackProvider.onWorkoutComplete()
+                }
+            }
         }
 
-        pausedTime = nil
+        if isRunning, !timerCoordinator.isActive {
+            timerCoordinator.start(startDate: state.startDate) { [weak self] in
+                self?.update()
+            }
+        } else if !isRunning {
+            timerCoordinator.stop()
+        }
     }
 
     @MainActor
     private func update() {
-        // Ignore a stray tick enqueued before stop()/pause(): the timer is no longer running, so
-        // recomputing from the clock would undo an anchored freeze or fire completion on a paused timer.
-        guard isRunning, let start = startDate else { return }
-
-        let timeElapsed: TimeInterval = now().timeIntervalSince(start)
-
-        totalTimeRemaining = max(0, totalDuration - timeElapsed)
-
-        if totalTimeRemaining <= 0 {
-            timerCoordinator.stop()
-            isRunning = false
-            totalTimeRemaining = 0
-            didComplete = true
-            feedbackProvider.onWorkoutComplete()
-        }
+        // Ignore a stray tick enqueued before a pause: the timer is no longer running, so
+        // re-rendering would fire completion on a paused timer.
+        guard isRunning else { return }
+        refresh(at: now())
     }
 }

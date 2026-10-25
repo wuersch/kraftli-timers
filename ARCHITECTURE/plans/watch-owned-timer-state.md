@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — step 1 done, step 2 next
+**Status**: In progress — steps 1–2 done, step 3 next
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -40,7 +40,7 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
 - Tests: elapsed with pauses, countdown boundary, completion clamp, intent batch accept/reject,
   round commutation, stop-when-stale, intent dedup, revision ordering.
 
-### 2. Timer models render from state
+### 2. Timer models render from state ✅
 - `EMOMTimerModel` / `AMRAPTimerModel` gain `apply(_ state: TimerState)`. The tick computes display
   fields from `reducer.elapsed(at: now())` instead of the private `totalStartDate` /
   `pausedTotalTime`.
@@ -50,6 +50,9 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
 - Countdown display (3-2-1-GO) is derived from `startDate − now` on both devices. `CountdownCoordinator`
   and `WatchCountdownCoordinator` shrink to display + beep, no longer driving the start.
 - Tests: port the existing model tests to state-driven equivalents; add jump/no-replay tests.
+- *Done as:* the models run on an internal `TimerState`; their old `start`/`pause`/`resume(at:)`/`start(at:)`
+  methods are thin wrappers over the reducer so the current views keep working. **Deferred to step 7:**
+  the countdown coordinators still drive the start, and AMRAP rounds are still counted in the model.
 
 ### 3. Transport: `TimerStateChannel`
 - Protocol with `publish(_ state:)`, `send(_ intents:)`, and async streams for incoming
@@ -110,6 +113,7 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
   limitations text is already outdated (it says Apple doesn't allow programmatic Watch launch).
   Add the "Starting on Watch…" step.
 - ADR-003/004/005 → Superseded. ADR-002: note that the owner, not the start location, saves to Health.
+- Bump `MARKETING_VERSION` of the iOS and Watch app targets (Debug + Release) from 1.5.3 to 1.6.0 as the branch's last commit.
 
 ## Device test matrix (real iPhone 17 Pro + Watch)
 

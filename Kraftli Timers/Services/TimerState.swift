@@ -30,6 +30,15 @@ import Foundation
 nonisolated enum DeviceRole: String, Codable, Sendable {
     case watch
     case phone
+
+    /// The device this code is running on.
+    static var current: DeviceRole {
+        #if os(watchOS)
+        .watch
+        #else
+        .phone
+        #endif
+    }
 }
 
 // MARK: - TimerConfig
@@ -105,7 +114,17 @@ nonisolated struct TimerState: Codable, Equatable, Sendable {
 
     /// Creates revision 1 of a new workout, whose countdown starts at `now`.
     init(workoutID: UUID, owner: DeviceRole, config: TimerConfig, now: Date) {
-        let startDate = now.addingTimeInterval(Self.countdownDuration)
+        self.init(
+            workoutID: workoutID,
+            owner: owner,
+            config: config,
+            startDate: now.addingTimeInterval(Self.countdownDuration)
+        )
+    }
+
+    /// Creates revision 1 of a new workout whose clock starts at `startDate`
+    /// (which may lie in the past, e.g. when joining a running workout).
+    init(workoutID: UUID, owner: DeviceRole, config: TimerConfig, startDate: Date) {
         self.workoutID = workoutID
         self.owner = owner
         self.config = config
