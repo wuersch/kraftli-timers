@@ -84,7 +84,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "4C74D6BC2F1CE4E6009A425D"
             BuildableName = "Kraftli Timers Watch App.app"
-            BlueprintName = "Kraftli Timers Watch App"
             ReferencedContainer = "container:Kraftli Timers.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -101,7 +100,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "4C74D6BC2F1CE4E6009A425D"
             BuildableName = "Kraftli Timers Watch App.app"
-            BlueprintName = "Kraftli Timers Watch App"
             ReferencedContainer = "container:Kraftli Timers.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
