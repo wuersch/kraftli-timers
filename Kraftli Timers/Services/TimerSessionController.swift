@@ -73,12 +73,18 @@ final class TimerSessionController {
     /// Called with every new `renderedState`, e.g. to feed a timer model's `apply(_:)`.
     @ObservationIgnored var onRenderedStateChange: ((TimerState) -> Void)?
 
+    /// Called with every new `confirmedState`, e.g. to notice that the other device owns
+    /// the workout (the Watch's yield rule).
+    @ObservationIgnored var onConfirmedStateChange: ((TimerState) -> Void)?
+
     // MARK: - Dependencies
 
     @ObservationIgnored private let transport: CompositeTimerSyncTransport
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let schedulesCompletion: Bool
     @ObservationIgnored private var completionTask: Task<Void, Never>?
+    /// Intents received while waiting to own the workout, applied once it starts.
+    @ObservationIgnored private var earlyIntents: [TimerIntent] = []
 
     /// - Parameters:
     ///   - transport: The channels to the other device.
@@ -100,9 +106,16 @@ final class TimerSessionController {
     // MARK: - Lifecycle
 
     /// Takes ownership of a new workout and publishes its first snapshot.
+    ///
+    /// Intents that arrived for this workout while this device was still waiting to own it
+    /// (e.g. a stop sent during "Starting on Watch…") are applied right after.
     func startAsOwner(_ state: TimerState) {
+        let early = workoutID == state.workoutID ? earlyIntents : []
         reset(for: state.workoutID, role: .owner)
         commit(state)
+        if !early.isEmpty {
+            apply(early)
+        }
     }
 
     /// Starts following a workout owned by the other device. Rendering begins with
@@ -127,6 +140,7 @@ final class TimerSessionController {
         workoutID = nil
         confirmedState = nil
         pendingIntents = []
+        earlyIntents = []
         renderedState = nil
     }
 
@@ -155,6 +169,7 @@ final class TimerSessionController {
         self.workoutID = workoutID
         confirmedState = nil
         pendingIntents = []
+        earlyIntents = []
         renderedState = nil
     }
 
@@ -203,6 +218,7 @@ final class TimerSessionController {
         transport.publish(state)
         render()
         scheduleCompletionCheck()
+        onConfirmedStateChange?(state)
     }
 
     private func receive(_ payload: TimerSyncPayload) {
@@ -212,13 +228,31 @@ final class TimerSessionController {
         case (.viewer, .state(let state)):
             adoptConfirmed(state)
         case (.owner, .state(let state)):
-            // Two owners for one workout can only come from a crossed start handshake,
-            // which step 5's yield rule resolves. Until then, keep our own state.
-            Logger.timerSync.warning("Owner received a snapshot (revision \(state.revision)) for its own workout; ignoring")
-        case (.viewer, .intents), (nil, _), (_, .startRequest):
+            // Two owners for one workout can only come from a crossed start handshake. The
+            // iPhone arbitrates (ADR-006 §4): a Watch owner yields to an iPhone-owned snapshot.
+            if state.owner == .phone, confirmedState?.owner == .watch {
+                yield(to: state)
+            } else {
+                Logger.timerSync.warning("Owner received a snapshot (revision \(state.revision)) for its own workout; ignoring")
+            }
+        case (.viewer, .intents(let intents)):
+            // Only a device waiting to own the workout gets intents: keep them for `startAsOwner`.
+            if isAwaitingOwner {
+                earlyIntents.append(contentsOf: intents)
+            }
+        case (nil, _), (_, .startRequest):
             // Start requests arrive through `onStartRequest`, never here.
             break
         }
+    }
+
+    /// Owner → viewer after a crossed handshake: the other device's state wins.
+    private func yield(to state: TimerState) {
+        Logger.timerSync.info("Yielding workout \(state.workoutID) to the iPhone's snapshot")
+        completionTask?.cancel()
+        completionTask = nil
+        role = .viewer
+        adoptConfirmed(state)
     }
 
     /// Viewer: takes a newer snapshot from the owner and re-predicts pending intents on top.
@@ -228,6 +262,7 @@ final class TimerSessionController {
         pendingIntents.removeAll { state.handledIntentIDs.contains($0.id) }
         confirmedState = state
         render()
+        onConfirmedStateChange?(state)
 
         // A rollback: what we showed depended on our own pause/resume, and the owner's newer
         // state contradicts it — the owner won (ADR-007 §3). This can surface before the owner

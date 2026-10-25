@@ -7,44 +7,57 @@
 
 import SwiftUI
 import SwiftData
-import HealthKit
-import Combine
-import os
 
+/// Runs an EMOM workout through the Watch's `TimerSessionController` (ADR-006).
+///
+/// - **Watch-started:** the Watch owns the workout from the first moment.
+/// - **iPhone-started:** `WatchWorkoutStarter` has already received the request. The Watch
+///   owns the workout once its HealthKit session runs, or follows the iPhone if the iPhone
+///   took over first.
+///
+/// Either way, every rendered state goes to `timerModel.apply(_:)`, and the buttons become
+/// controller actions. The HealthKit session pauses and resumes with the model's
+/// `isRunning` (`watchTimerLifecycle`), which itself comes from the state.
 struct WatchEMOMTimerView: View {
     // MARK: - Properties
     @State private var timerModel: EMOMTimerModel
     @State private var countdown = WatchCountdownCoordinator()
     @State private var hasLoggedWorkout = false
-    @State private var cancellables = Set<AnyCancellable>()
     @State private var page: WorkoutPage = .metrics
     @State private var didStart = false
+    /// The start date the countdown was begun for, so the workout counts down once.
+    @State private var countdownStartDate: Date?
+    /// Set once this view tears its workout down, so its own stop isn't handled twice.
+    @State private var isEnding = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     /// Shared workout session manager injected from WorkoutAppDelegate.
     @Environment(WorkoutSessionManager.self) private var sessionManager
+    @Environment(TimerSessionController.self) private var timerSession
+    @Environment(WatchWorkoutStarter.self) private var starter
 
     private let exerciseName: String
     private let totalDuration: TimeInterval
     private let intervalCount: Int
 
-    /// When true, skip workout logging (timer was started from iPhone).
-    private let displayOnly: Bool
+    /// Identifies the workout on both devices; the iPhone's `WorkoutLog.id` for iPhone-started ones.
+    private let workoutID: UUID
 
-    /// Service for syncing timer controls with iPhone.
+    /// True for workouts started on the iPhone: the iPhone writes the `WorkoutLog`.
+    private let startedOnPhone: Bool
+
+    /// Sends the HealthKit summary (`WorkoutSessionEndedMessage`) to the iPhone.
     private let syncService: WatchTimerSyncService
-
-    /// Scheduled start time from iPhone for synchronized countdown.
-    private let scheduledStartTime: Date?
-
-    /// Correlation ID from iPhone's StartTimerMessage, echoed back in
-    /// WorkoutSessionEndedMessage for exact WorkoutLog matching.
-    private let correlationID: UUID?
 
     // MARK: - Computed Properties
     private var isCompleted: Bool {
         timerModel.totalTimeRemaining <= 0
+    }
+
+    /// True while waiting to own (or follow) an iPhone-started workout.
+    private var isStarting: Bool {
+        timerSession.isAwaitingOwner && timerSession.workoutID == workoutID
     }
 
     /// Static timer kind — drives the accent color and the top-left glyph.
@@ -66,7 +79,16 @@ struct WatchEMOMTimerView: View {
         sessionManager.activeCalories.map { "\(Int($0))" } ?? "--"
     }
 
-    /// Lazily built coordinator that delegates shared workout lifecycle logic.
+    private var config: TimerConfig {
+        TimerConfig(
+            timerKindRaw: TimerKind.emom.rawValue,
+            totalDuration: totalDuration,
+            intervalCount: intervalCount,
+            exerciseName: exerciseName
+        )
+    }
+
+    /// Ends the HealthKit session and logs or reports the workout.
     private var coordinator: WatchWorkoutCoordinator {
         WatchWorkoutCoordinator(
             config: WatchWorkoutConfig(
@@ -74,9 +96,9 @@ struct WatchEMOMTimerView: View {
                 totalDuration: totalDuration,
                 intervalCount: intervalCount,
                 exerciseName: exerciseName,
-                displayOnly: displayOnly,
-                scheduledStartTime: scheduledStartTime,
-                correlationID: correlationID,
+                displayOnly: startedOnPhone,
+                scheduledStartTime: nil,
+                correlationID: workoutID,
                 makeWorkoutLog: { healthKitUUID in
                     WorkoutLog(
                         exerciseName: exerciseName,
@@ -97,20 +119,18 @@ struct WatchEMOMTimerView: View {
         totalDuration: TimeInterval = 20 * 60,
         intervalCount: Int = 20,
         exerciseName: String = "EMOM Workout",
-        displayOnly: Bool = false,
+        workoutID: UUID = UUID(),
+        startedOnPhone: Bool = false,
         syncService: WatchTimerSyncService = DefaultWatchTimerSyncService(),
-        scheduledStartTime: Date? = nil,
-        correlationID: UUID? = nil,
         timerProvider: TimerProvider = FoundationTimerProvider(),
         feedbackProvider: FeedbackProvider = SilentFeedback()
     ) {
         self.totalDuration = totalDuration
         self.intervalCount = intervalCount
         self.exerciseName = exerciseName
-        self.displayOnly = displayOnly
+        self.workoutID = workoutID
+        self.startedOnPhone = startedOnPhone
         self.syncService = syncService
-        self.scheduledStartTime = scheduledStartTime
-        self.correlationID = correlationID
         self.timerModel = EMOMTimerModel(
             totalDuration: totalDuration,
             intervalCount: intervalCount,
@@ -119,10 +139,58 @@ struct WatchEMOMTimerView: View {
         )
     }
 
+    // MARK: - Actions
+
+    private func togglePause() {
+        guard !countdown.isCountingDown, let state = timerSession.renderedState,
+              timerSession.workoutID == workoutID, !isCompleted else { return }
+        if state.isPaused {
+            timerSession.resume()
+            // Resuming brings the running timer back into view.
+            withAnimation { page = .metrics }
+        } else {
+            timerSession.pause()
+        }
+    }
+
+    /// The End button: stop the workout on both devices, then close.
+    private func endWorkout() {
+        guard !isEnding else { return }
+        timerSession.stop()
+        tearDown()
+    }
+
+    /// Ends (and saves) the HealthKit session, reports to the iPhone and closes the screen.
+    private func tearDown() {
+        isEnding = true
+        coordinator.stopAndCleanup(timer: timerModel, countdown: countdown, dismiss: dismiss)
+        starter.workoutEnded()
+    }
+
+    /// Shows the 3-2-1-GO countdown toward the shared start date. The model already
+    /// follows the state; the countdown only displays (a tap hides it early).
+    private func beginCountdown(until startDate: Date) {
+        guard countdownStartDate == nil else { return }
+        countdownStartDate = startDate
+        countdown.startCountdown(scheduledStartTime: startDate) { _ in }
+    }
+
+    /// The workout was stopped elsewhere (the iPhone, or a stop sent while starting).
+    private func finishChanged(_ finish: TimerState.Finish?) {
+        guard case .stopped(let stoppedAt) = finish, !isEnding else { return }
+        if let startDate = timerSession.renderedState?.startDate, stoppedAt <= startDate {
+            // Cancelled before the workout began: nothing worth saving to Health.
+            sessionManager.discardSession()
+        }
+        tearDown()
+    }
+
     // MARK: - Body
     var body: some View {
         Group {
-            if countdown.isCountingDown {
+            if isStarting {
+                startingView
+            } else if countdown.isCountingDown {
                 WatchCountdownView(countdown: countdown)
             } else {
                 TabView(selection: $page) {
@@ -131,20 +199,8 @@ struct WatchEMOMTimerView: View {
                     WatchTimerControlsPage(
                         isRunning: timerModel.isRunning,
                         isCompleted: isCompleted,
-                        onStop: {
-                            coordinator.handleStop(timer: timerModel, countdown: countdown, dismiss: dismiss)
-                        },
-                        onPlayPause: {
-                            let isResuming = !timerModel.isRunning && !isCompleted
-                            coordinator.handlePlayPause(
-                                timer: timerModel,
-                                countdown: countdown,
-                                isCompleted: isCompleted,
-                                startTimerWithWorkoutSession: { coordinator.startTimerWithWorkoutSession(timer: timerModel) }
-                            )
-                            // Resuming brings the running timer back into view.
-                            if isResuming { withAnimation { page = .metrics } }
-                        }
+                        onStop: { endWorkout() },
+                        onPlayPause: { togglePause() }
                     )
                     .tag(WorkoutPage.controls)
 
@@ -158,39 +214,43 @@ struct WatchEMOMTimerView: View {
         .watchTimerLifecycle(
             timer: timerModel,
             sessionManager: sessionManager,
-            onPause: { timerModel.pause() }
+            onPause: { timerSession.pause() }
         )
         .onAppear {
             // Run setup exactly once. onAppear can fire again when the view
             // re-appears (e.g. starting the HKWorkoutSession promotes the app
-            // to the foreground workout scene). Without this guard the
-            // standalone auto-start would relaunch its `now+3` countdown on
-            // every re-appear — looping forever, never reaching the timer — and
-            // would also stack duplicate control subscriptions.
+            // to the foreground workout scene).
             guard !didStart else { return }
             didStart = true
 
-            coordinator.setupControlSubscription(cancellables: &cancellables) { action in
-                coordinator.handleRemoteControl(
-                    action,
-                    timer: timerModel,
-                    countdown: countdown,
-                    isCompleted: isCompleted,
-                    dismiss: dismiss
-                )
+            timerSession.onRenderedStateChange = { [timerModel] state in
+                timerModel.apply(state)
             }
-            coordinator.startCountdownIfNeeded(countdown: countdown) { anchor in
-                coordinator.startTimerWithWorkoutSession(timer: timerModel, at: anchor)
+            if startedOnPhone {
+                // The request was handled before this view existed; catch up with its state.
+                if let state = timerSession.renderedState, timerSession.workoutID == workoutID {
+                    timerModel.apply(state)
+                    beginCountdown(until: state.startDate)
+                }
+            } else {
+                starter.startOnWatch(workoutID: workoutID, config: config)
             }
         }
-        .onChange(of: sessionManager.sessionState) { _, newState in
-            coordinator.reconcileSessionState(
-                newState,
-                timer: timerModel,
-                isCompleted: isCompleted,
-                isCountingDown: countdown.isCountingDown,
-                transitionDate: sessionManager.lastTransitionDate ?? Date()
-            )
+        // The owner's first snapshot fixes the start date: count down toward it.
+        .onChange(of: timerSession.renderedState?.startDate) { _, startDate in
+            guard let startDate, timerSession.workoutID == workoutID else { return }
+            beginCountdown(until: startDate)
+        }
+        .onChange(of: timerSession.renderedState?.finish) { _, finish in
+            finishChanged(finish)
+        }
+        .onChange(of: timerSession.workoutID) { _, newID in
+            // The starter gave up on this workout (no owner in time): close the screen.
+            guard newID == nil, !isEnding else { return }
+            isEnding = true
+            countdown.cancelCountdown()
+            timerModel.reset()
+            dismiss()
         }
         .onChange(of: timerModel.didComplete) { _, didComplete in
             // Key off the model's explicit completion signal, not isCompleted (totalTimeRemaining
@@ -201,6 +261,17 @@ struct WatchEMOMTimerView: View {
                 await coordinator.handleWorkoutCompleted(modelContext: modelContext)
             }
         }
+    }
+
+    // MARK: - Starting View
+    private var startingView: some View {
+        VStack(spacing: 8) {
+            ProgressView()
+            Text("Starting…")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Metrics Page
@@ -270,4 +341,7 @@ struct WatchEMOMTimerView: View {
             intervalCount: 5
         )
     }
+    .environment(WatchTimerRuntime.shared.sessionManager)
+    .environment(WatchTimerRuntime.shared.timerSession)
+    .environment(WatchTimerRuntime.shared.starter)
 }
