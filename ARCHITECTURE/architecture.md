@@ -123,6 +123,8 @@ enum TimePeriod: String, CaseIterable {
 - `@Environment(\.modelContext)` for CRUD operations
 - `@Environment(AppSettings.self)` for user preferences
 - `@Environment(WorkoutSessionManager.self)` for shared workout session (Watch)
+- `@Environment(TimerSessionController.self)` for the app's one timer session (both devices)
+- `@Environment(PhoneWorkoutStarter.self)` / `@Environment(WatchWorkoutStarter.self)` for starting workouts
 - `@WKApplicationDelegateAdaptor` for receiving workout configs from iPhone (Watch)
 - `@MainActor` isolation for thread safety
 
@@ -132,38 +134,60 @@ User preferences are managed via `AppSettings`, an `@Observable` class with `@Ap
 
 See [ADR-001: Settings Pattern](decisions/ADR-001-settings-pattern.md) for full decision rationale and implementation details.
 
-## HealthKit Architecture
+## Timer Sync & HealthKit Architecture
 
-Workouts are saved to Apple Health using two parallel communication channels between iPhone and Watch:
+A workout that runs on both devices has **exactly one owner** of its timer state (ADR-006). The
+owner publishes the whole state as a versioned snapshot; the other device is a **viewer** that
+renders the newest snapshot and sends its taps as **intents** (ADR-007).
 
-**HealthKit channel** — workout session lifecycle:
-- iPhone calls `HKHealthStore.startWatchApp(toHandle:)` to launch the Watch app with an `HKWorkoutConfiguration`
-- Watch's `WorkoutAppDelegate` receives the config and starts an `HKWorkoutSession` + `HKLiveWorkoutBuilder`
-- The session keeps Watch sensors active (heart rate, calories) and the app alive in the background
-- Mirrored sessions allow either device to pause/resume
+**The state** — `TimerState` (`Services/TimerState.swift`, shared):
+- `startDate`, `pausedAt`, `accumulatedPause`, `roundCount`, `finish`, plus `revision`, `owner`
+  and the immutable `TimerConfig`
+- Everything on screen is derived from the state and the local clock (`elapsed(at:)`), so both
+  devices compute the same remaining time from the same absolute dates
+- The 3-2-1 countdown is implicit: `now < startDate`
+- Only `TimerStateReducer` changes it — a pure function the owner uses to apply intents and the
+  viewer uses to predict its own pending intents
 
-**WatchConnectivity channel** — timer UI sync:
-- Reuses the existing `WatchMessage` protocol for start/pause/resume/stop commands
-- Carries round/rep increments so both devices stay in sync
-- Delivers the HealthKit workout UUID back to iPhone via `WorkoutSessionEndedMessage` for SwiftData correlation
-- Uses **dual delivery** for critical messages: `sendMessage` (immediate) + `transferUserInfo` (reliable queued), with deduplication on the receiving side
-- A **correlation ID** (UUID) flows from `TimerRunnerView` → `StartTimerMessage` → Watch → `WorkoutSessionEndedMessage` → iPhone, enabling exact `WorkoutLog` matching by ID instead of a fragile "most recent" heuristic
+**Ownership:**
 
-The channels are separate because `startWatchApp` is the only way to programmatically launch the Watch app, while WatchConnectivity handles the real-time UI state that HealthKit doesn't need to know about.
+| Situation | Owner |
+|-----------|-------|
+| Started on iPhone, Watch confirms within 5 s | Watch |
+| Started on iPhone, no Watch / Watch app not installed | iPhone (no wait) |
+| Started on iPhone, Watch launch fails or times out | iPhone (a late Watch yields) |
+| Started on Watch | Watch |
 
-**Pause/resume** — mirrored HK session preferred:
-- When a mirrored `HKWorkoutSession` is available, pause/resume goes through `mirroredWorkout.pause()`/`.resume()` (HealthKit propagates state to the Watch automatically)
-- Falls back to WatchConnectivity `TimerControlMessage` only when no mirrored session exists
-- This avoids redundant state changes from both channels arriving at the Watch
+The Watch is preferred because it runs the primary `HKWorkoutSession` (heart rate, calories,
+background runtime). **Whoever owns the timer also saves the Health workout**, so each workout is
+saved exactly once. The device that *started* the workout writes the SwiftData `WorkoutLog`.
 
-**Duplicate prevention** — each workout is saved to HealthKit exactly once:
-- iPhone-only (no Watch): iPhone saves directly
-- Watch-only or Watch-initiated: Watch saves via `HKLiveWorkoutBuilder`
-- iPhone-initiated with Watch: Watch runs the session and saves; iPhone tracks `watchHandledWorkout` and skips its own save
+**Start handshake** (iPhone-started, `PhoneWorkoutStarter` ↔ `WatchWorkoutStarter`):
+1. iPhone sends a `StartRequest` (workout ID + config) and calls
+   `HKHealthStore.startWatchApp(toHandle:)`; the UI shows "Starting on Watch…"
+2. Watch starts its `HKWorkoutSession`, takes ownership (revision 1, `startDate = now + 3 s`) and
+   starts mirroring; both devices count down to the same instant
+3. No answer within 5 s (or a failed launch) → the iPhone owns the workout; its snapshot replaces
+   the request, and a Watch that starts late yields (discards its session, follows as a viewer)
 
-A shared `WorkoutSessionManager` on Watch (injected via `@Environment`) ensures only one `HKWorkoutSession` runs at a time.
+**Transports** — `CompositeTimerSyncTransport` publishes on every channel; `TimerSyncInbox` keeps
+only the highest revision of the expected workout and drops seen intents, so duplicates, reordering
+and redelivery are harmless:
+- HealthKit mirrored-session data (`sendToRemoteWorkoutSession`) while a workout is mirrored
+- WatchConnectivity: snapshots as application context + `sendMessage`; intents via `sendMessage` +
+  `transferUserInfo`; the final snapshot also via `transferUserInfo`
+- On reconnect the owner republishes its latest snapshot; the viewer resends pending intents
 
-See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md) for the full architecture decision.
+**HealthKit's pause/resume** is a consequence of the state (the owner pauses its session when
+`pausedAt` changes), not a control channel. Mirrored-session state never drives the timer.
+
+**After the workout** the Watch sends `WorkoutSessionEndedMessage` (Health UUID, heart rate,
+calories; `sendMessage` + `transferUserInfo`). `PhoneMessageCoordinator` links the UUID to the
+`WorkoutLog` whose ID is the workout ID and publishes it for the summary screen.
+
+See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md),
+[ADR-006: Single-owner timer state](decisions/ADR-006-single-owner-timer-state.md) and
+[ADR-007: Optimistic viewer control](decisions/ADR-007-optimistic-viewer-control.md).
 
 ## Key Components
 
@@ -185,8 +209,8 @@ See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md)
 ### Timer Models
 | Model | Purpose |
 |-------|---------|
-| `EMOMTimerModel` | EMOM timer logic with interval tracking (@Observable) |
-| `AMRAPTimerModel` | AMRAP timer logic with round counting (@Observable) |
+| `EMOMTimerModel` | Renders an EMOM `TimerState`: interval display and feedback (@Observable) |
+| `AMRAPTimerModel` | Renders an AMRAP `TimerState`: remaining time and rounds (@Observable) |
 | `TimerSessionState` | Shared hint/confetti state management (@Observable) |
 
 ### Services
@@ -202,6 +226,13 @@ See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md)
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
 | `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |
+| `TimerState` / `TimerStateReducer` | Shared: replicated timer state and the only code that changes it |
+| `TimerSessionController` | Shared: one device's role (owner/viewer), confirmed state, pending intents (@Observable) |
+| `TimerSyncTransport` | Shared: payloads, inbox filtering, composite + WatchConnectivity channels |
+| `HealthKitTimerSyncTransport` | Shared: payloads over the mirrored `HKWorkoutSession` data channel |
+| `PhoneWorkoutStarter` | iPhone: start handshake with the Watch, fallback to iPhone ownership (@Observable) |
+| `PhoneMessageCoordinator` | iPhone: links the Watch's Health UUID to the `WorkoutLog`, publishes its summary |
+| `MirroredWorkoutObserver` | iPhone: holds the Watch's mirrored session for the HealthKit channel |
 | `AppSettings` | User preferences (@Observable + @AppStorage) |
 
 ### UI Components
@@ -227,7 +258,7 @@ See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md)
 | `DragHandleView` | Swipe-to-dismiss handle |
 | `SwipeHintOverlay` | "Swipe down to close" hint |
 | `SwipeToDismissModifier` | Swipe gesture handling |
-| `TimerLifecycleModifier` | Background pause, idle timer |
+| `TimerLifecycleModifier` | Background pause (iPhone-owned workouts only), idle timer, completion |
 
 ### watchOS Components
 | Component | Purpose |
@@ -242,10 +273,10 @@ See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md)
 ### watchOS Services
 | Service | Purpose |
 |---------|---------|
-| `TimerSyncService` | iPhone: WatchConnectivity for iPhone → Watch timer sync |
-| `WatchTimerSyncService` | Watch: WatchConnectivity for Watch → iPhone messages (protocol → default → silent) |
-| `WatchMessageCoordinator` | Watch: routes incoming WC messages to the appropriate service |
-| `WatchWorkoutCoordinator` | Watch: shared workout lifecycle logic used by both EMOM and AMRAP timer views |
+| `WatchTimerRuntime` | Watch: app-lifetime owner of session manager, timer session and starter (shared instance) |
+| `WatchWorkoutStarter` | Watch: answers start requests, takes ownership or yields, Watch-started workouts (@Observable) |
+| `WatchTimerSyncService` | Watch: sends `WorkoutSessionEndedMessage` to iPhone (protocol → default → silent) |
+| `WatchWorkoutCoordinator` | Watch: end-of-workout logic shared by EMOM and AMRAP (end session, log or report) |
 | `WorkoutSessionManager` | HKWorkoutSession/HKLiveWorkoutBuilder lifecycle (@Observable) |
 | `WorkoutAppDelegate` | WKApplicationDelegate: receives workout configs from iPhone |
 
