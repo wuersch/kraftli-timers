@@ -58,6 +58,20 @@ final class MirroredWorkoutObserver: NSObject {
         session != nil
     }
 
+    // MARK: - Timer Sync (ADR-006)
+
+    /// The mirrored session, for sending data over its HealthKit channel
+    /// (`HealthKitTimerSyncTransport`).
+    var currentSession: HKWorkoutSession? {
+        session
+    }
+
+    /// Called on the main actor with data the Watch sent over the mirrored session.
+    @ObservationIgnored var onRemoteData: (([Data]) -> Void)?
+
+    /// Called when a (new) mirrored session is stored, e.g. after a reconnect.
+    @ObservationIgnored var onSessionConnected: (() -> Void)?
+
     // MARK: - Private State
 
     private var session: HKWorkoutSession?
@@ -89,6 +103,7 @@ final class MirroredWorkoutObserver: NSObject {
         }
 
         Logger.workoutSession.info("Mirrored session stored, initial state: \(String(describing: session.state))")
+        onSessionConnected?()
     }
 
     /// Clear the stored session (e.g., when workout ends).
@@ -163,6 +178,17 @@ extension MirroredWorkoutObserver: HKWorkoutSessionDelegate {
             }
             Logger.workoutSession.error("Mirrored session failed: \(error.localizedDescription)")
             sessionState = .ended
+        }
+    }
+
+    nonisolated func workoutSession(
+        _ workoutSession: HKWorkoutSession,
+        didReceiveDataFromRemoteWorkoutSession data: [Data]
+    ) {
+        Task { @MainActor in
+            // Data from a replaced session belongs to a previous workout.
+            guard workoutSession === self.session else { return }
+            self.onRemoteData?(data)
         }
     }
 
