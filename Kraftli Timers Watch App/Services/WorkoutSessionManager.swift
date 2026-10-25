@@ -59,6 +59,20 @@ final class WorkoutSessionManager: NSObject {
         case ended
     }
 
+    // MARK: - Timer Sync (ADR-006)
+
+    /// The primary session, for sending data over its HealthKit channel
+    /// (`HealthKitTimerSyncTransport`).
+    var currentSession: HKWorkoutSession? {
+        session
+    }
+
+    /// Called on the main actor with data the iPhone sent over the mirrored session.
+    @ObservationIgnored var onRemoteData: (([Data]) -> Void)?
+
+    /// Called once mirroring to the iPhone has started, so the owner can publish its snapshot.
+    @ObservationIgnored var onSessionConnected: (() -> Void)?
+
     // MARK: - Private State
 
     private let healthStore = HKHealthStore()
@@ -214,6 +228,7 @@ final class WorkoutSessionManager: NSObject {
     func startMirroring() async throws {
         try await session?.startMirroringToCompanionDevice()
         Logger.workoutSession.info("Started mirroring to companion device")
+        onSessionConnected?()
     }
 
     /// Recover an active workout session after app crash or restart.
@@ -354,6 +369,17 @@ extension WorkoutSessionManager: HKWorkoutSessionDelegate {
             }
             Logger.workoutSession.error("Workout session failed: \(error.localizedDescription)")
             cleanupSession()
+        }
+    }
+
+    nonisolated func workoutSession(
+        _ workoutSession: HKWorkoutSession,
+        didReceiveDataFromRemoteWorkoutSession data: [Data]
+    ) {
+        Task { @MainActor in
+            // Data from a torn-down session belongs to a previous workout.
+            guard workoutSession === self.session else { return }
+            self.onRemoteData?(data)
         }
     }
 

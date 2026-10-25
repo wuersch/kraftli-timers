@@ -35,6 +35,58 @@ final class WatchConnectivityService: NSObject, ObservableObject {
         session?.activate()
     }
 
+    // MARK: - Timer Sync (ADR-006)
+
+    /// Called on the main queue for every received timer sync payload (snapshot or intents).
+    /// Owned by `WatchConnectivityTimerSyncTransport`; legacy `WatchMessage`s keep using
+    /// `onMessageReceived`.
+    var onTimerSyncPayload: ((TimerSyncPayload) -> Void)?
+
+    /// Called on the main queue when the counterpart becomes reachable again.
+    var onReachable: (() -> Void)?
+
+    /// Sends a raw dictionary for immediate delivery if the counterpart is reachable. Best-effort.
+    func sendMessage(dictionary: [String: Any]) {
+        guard let session, session.activationState == .activated, session.isReachable else { return }
+        session.sendMessage(dictionary, replyHandler: nil) { error in
+            Logger.watchConnectivity.debug("Timer sync sendMessage failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Publishes a raw dictionary as the application context (latest-wins, persisted).
+    func updateApplicationContext(dictionary: [String: Any]) {
+        guard let session, session.activationState == .activated else {
+            Logger.watchConnectivity.warning("Cannot update application context: session not activated")
+            return
+        }
+        do {
+            try session.updateApplicationContext(dictionary)
+        } catch {
+            Logger.watchConnectivity.error("Failed to update application context: \(error.localizedDescription)")
+        }
+    }
+
+    /// Queues a raw dictionary for guaranteed, in-order background delivery.
+    func transferUserInfo(dictionary: [String: Any]) {
+        guard let session, session.activationState == .activated else {
+            Logger.watchConnectivity.warning("Cannot transfer user info: session not activated")
+            return
+        }
+        session.transferUserInfo(dictionary)
+    }
+
+    /// Routes a received dictionary: timer sync payloads to `onTimerSyncPayload`,
+    /// everything else to the legacy `WatchMessage` decoder.
+    private func route(_ dictionary: [String: Any]) {
+        if let payload = TimerSyncPayload(dictionary: dictionary) {
+            DispatchQueue.main.async { [weak self] in
+                self?.onTimerSyncPayload?(payload)
+            }
+        } else {
+            handleReceivedMessage(dictionary)
+        }
+    }
+
     #if os(iOS)
     /// Sends a message to Watch for immediate delivery.
     ///
@@ -193,24 +245,26 @@ extension WatchConnectivityService: WCSessionDelegate {
             self.isReachable = session.isReachable
         }
 
-        #if os(watchOS)
         // Consume any application context that arrived while the app wasn't
-        // running — the cold-launch path: startWatchApp(toHandle:) opens the
-        // app, and the persisted context holds the current timer command.
-        // Duplicates with the sendMessage fast path are absorbed by the
-        // coordinator's dedup.
+        // running — the cold-launch path: e.g. startWatchApp(toHandle:) opens the
+        // Watch app, and the persisted context holds the current timer command or
+        // snapshot. Duplicates with the sendMessage fast path are absorbed by the
+        // coordinator's dedup (legacy) or the timer sync inbox (ADR-006).
         if activationState == .activated {
             let context = session.receivedApplicationContext
             if !context.isEmpty {
-                handleReceivedMessage(context)
+                route(context)
             }
         }
-        #endif
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
+        let reachable = session.isReachable
         DispatchQueue.main.async {
-            self.isReachable = session.isReachable
+            self.isReachable = reachable
+            if reachable {
+                self.onReachable?()
+            }
         }
     }
 
@@ -220,41 +274,30 @@ extension WatchConnectivityService: WCSessionDelegate {
         // Reactivate for switching watches
         session.activate()
     }
-
-    func session(
-        _ session: WCSession,
-        didReceiveMessage message: [String: Any],
-        replyHandler: @escaping ([String: Any]) -> Void
-    ) {
-        handleReceivedMessage(message)
-        // Send empty reply to acknowledge receipt
-        replyHandler([:])
-    }
-
-    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        handleReceivedMessage(userInfo)
-    }
     #endif
 
-    #if os(watchOS)
     func session(
         _ session: WCSession,
         didReceiveMessage message: [String: Any],
         replyHandler: @escaping ([String: Any]) -> Void
     ) {
-        handleReceivedMessage(message)
+        route(message)
         // Send empty reply to acknowledge receipt
         replyHandler([:])
     }
 
+    /// Messages sent without a reply handler (the timer sync fast path) arrive here.
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        route(message)
+    }
+
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        handleReceivedMessage(userInfo)
+        route(userInfo)
     }
 
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        handleReceivedMessage(applicationContext)
+        route(applicationContext)
     }
-    #endif
 }
 
 // MARK: - Errors

@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — steps 1–2 done, step 3 next
+**Status**: In progress — steps 1–3 done, step 4 next
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -54,7 +54,7 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
   methods are thin wrappers over the reducer so the current views keep working. **Deferred to step 7:**
   the countdown coordinators still drive the start, and AMRAP rounds are still counted in the model.
 
-### 3. Transport: `TimerStateChannel`
+### 3. Transport: `TimerSyncTransport` ✅
 - Protocol with `publish(_ state:)`, `send(_ intents:)`, and async streams for incoming
   snapshots and intents.
 - Implementations: HK mirrored-session data (`sendToRemoteWorkoutSession` /
@@ -63,6 +63,16 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
 - Message coding stays in `WatchMessageCoder` (new message types `timerState`, `timerIntents`,
   `startRequest`).
 - Tests with in-memory fake channels: duplicates, reordering, drops, late delivery.
+- *Done as:* `TimerSyncPayload` (state or intents, JSON-encoded once) travels under its own
+  WatchConnectivity key (`timerSync`), separate from the legacy `WatchMessageCoder` path, which stays
+  untouched until step 7. Incoming payloads are delivered through callbacks (`onPayload`,
+  `onReconnect`) to match the codebase's existing style, not async streams. The pure
+  `TimerSyncInbox` does the filtering (expected workout only, higher revisions only, unseen intents
+  only). `WatchConnectivityService` is now symmetric (context, user info and reply-less messages in
+  both directions), and `MirroredWorkoutObserver` / `WorkoutSessionManager` forward session data.
+- **Watch out in step 5:** the application context is one slot per direction. The legacy
+  `StartTimerMessage`/`StopTimerMessage` context and the new snapshots must not both be published
+  from the iPhone. The legacy path has to go when the iPhone starts publishing.
 
 ### 4. `TimerSessionController` (one per device, @Observable, @MainActor)
 - Holds the role (owner/viewer), the confirmed snapshot and the pending intents. It exposes the
