@@ -112,6 +112,8 @@
 				Services/PresetMaintenance.swift,
 				Services/SilentFeedback.swift,
 				Services/TimerProvider.swift,
+				Services/TimerState.swift,
+				Services/TimerStateReducer.swift,
 				Services/WatchConnectivityService.swift,
 				Services/WatchMessage.swift,
 				Services/WorkoutLoggingService.swift,
