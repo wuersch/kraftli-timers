@@ -43,9 +43,8 @@ enum TimerPresentation: Identifiable, Equatable {
         startedOnPhone: Bool = false
     )
 
-    // The correlation ID is part of the identity: a new iPhone-led start for the
-    // same preset must re-create the timer view (fresh scheduledStartTime), not
-    // reuse the already-started one.
+    // The workout ID is the identity: a new start for the same preset must
+    // re-create the timer view, not reuse the already-started one.
     var id: String {
         switch self {
         case .emom(_, _, _, let workoutID, _):
@@ -54,21 +53,12 @@ enum TimerPresentation: Identifiable, Equatable {
             return "amrap-\(workoutID.uuidString)"
         }
     }
-
-    /// Extracts the correlation ID from the timer presentation.
-    var correlationID: UUID? {
-        switch self {
-        case .emom(_, _, _, let workoutID, _): return workoutID
-        case .amrap(_, _, let workoutID, _): return workoutID
-        }
-    }
 }
 
 // MARK: - WatchPresetListView
 
 struct WatchPresetListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(WatchMessageCoordinator.self) private var messageCoordinator
     @Environment(WatchWorkoutStarter.self) private var workoutStarter
     @Query(sort: \TimerPreset.sortOrder) private var presets: [TimerPreset]
 
@@ -89,11 +79,7 @@ struct WatchPresetListView: View {
         }
         .navigationTitle("Timers")
         .onAppear {
-            // Consume any message that arrived before the view existed (race fix)
-            if let message = messageCoordinator.pendingStartTimer {
-                messageCoordinator.pendingStartTimer = nil
-                handleStartTimer(message)
-            }
+            // Consume a request that arrived before the view existed (cold launch).
             if let request = workoutStarter.requestedWorkout {
                 presentRequestedWorkout(request)
             }
@@ -101,12 +87,6 @@ struct WatchPresetListView: View {
         .onChange(of: workoutStarter.requestedWorkout) { _, request in
             guard let request else { return }
             presentRequestedWorkout(request)
-        }
-        .onChange(of: messageCoordinator.pendingStartTimer) { _, newMessage in
-            // Handle messages arriving while the view is already visible
-            guard let message = newMessage else { return }
-            messageCoordinator.pendingStartTimer = nil
-            handleStartTimer(message)
         }
         .fullScreenCover(item: $activeTimer) { timer in
             switch timer {
@@ -125,17 +105,6 @@ struct WatchPresetListView: View {
                     workoutID: workoutID,
                     startedOnPhone: startedOnPhone
                 )
-            }
-        }
-        .onChange(of: activeTimer) { _, newValue in
-            // Tell the coordinator a timer is on screen, so a stale legacy stop can't end
-            // its workout. Timers run on the timer session now, not a legacy sync service.
-            if let timer = newValue {
-                messageCoordinator.isTimerPresented = true
-                messageCoordinator.activeCorrelationID = timer.correlationID
-            } else {
-                messageCoordinator.isTimerPresented = false
-                messageCoordinator.activeCorrelationID = nil
             }
         }
         .sheet(item: $activeEditor) { editor in
@@ -238,13 +207,6 @@ struct WatchPresetListView: View {
     }
 
     // MARK: - Message Handling
-
-    /// Handles a legacy timer start message from iPhone. Both timer kinds now start
-    /// through a `StartRequest` (ADR-006), so the message no longer presents anything.
-    @MainActor
-    private func handleStartTimer(_ message: StartTimerMessage) {
-        Logger.timerSync.info("Ignoring legacy StartTimerMessage: \(message.exerciseName)")
-    }
 
     /// Presents an iPhone-started workout the starter accepted (ADR-006).
     private func presentRequestedWorkout(_ request: StartRequest) {

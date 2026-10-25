@@ -45,7 +45,7 @@ nonisolated enum DeviceRole: String, Codable, Sendable {
 
 /// The immutable setup of a workout, fixed when it starts.
 nonisolated struct TimerConfig: Codable, Equatable, Sendable {
-    /// Raw `TimerKind` value. Stored raw (like `StartTimerMessage`) so this type
+    /// Raw `TimerKind` value. Stored raw so this type
     /// stays independent of the MainActor-isolated `TimerKind` conformances.
     let timerKindRaw: String
     let totalDuration: TimeInterval

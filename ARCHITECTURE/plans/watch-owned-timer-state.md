@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — steps 1–4 and slices 5A, 5B, 5D done; 5C (device checkpoint A) pending on the user's devices; next: 5E
+**Status**: In progress — steps 1–4 and slices 5A, 5B, 5D, 5E (code) done; device checkpoints A (5C) and B pending on the user's devices; next: step 6 (documentation, version bump)
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -190,7 +190,7 @@ therefore done as end-to-end slices, EMOM first, so real devices can be tested a
   stop context. The Watch ignores a legacy `StartTimerMessage`, and `WatchPresetListView` no longer
   creates a legacy sync service. The code itself is deleted in 5E.
 
-#### 5E. Remove old paths, completion and logging
+#### 5E. Remove old paths, completion and logging ✅ (code; checkpoint B pending)
 - Delete: `TimerControlMessage`, `StopTimerMessage`, `StartTimerMessage` (incl. `displayOnly`),
   `WatchSyncHandler`, both reconcile functions, the ADR-005 gates, `MirroredWorkoutObserver`'s timer
   role (it keeps only the session handle for the data channel), `watchHandledWorkout`, the
@@ -203,6 +203,33 @@ therefore done as end-to-end slices, EMOM first, so real devices can be tested a
   owner never reports, the starting device logs from its predicted state when the time runs out
   (ADR-007 §4).
 - 🔍 **Device test checkpoint B** (full matrix).
+- *Done as:*
+  - **Deleted:** `StartTimerMessage`, `TimerControlMessage`/`TimerControlAction`,
+    `StopTimerMessage` and `TimerStartedOnWatchMessage`. The coder now knows only
+    `WorkoutSessionEndedMessage`. Also deleted: iPhone `TimerSyncService` and `WatchSyncHandler`,
+    the Watch's `WatchMessageCoordinator` (with its tests), the legacy WC send API on iPhone, and
+    `lastTransitionDate` on both devices.
+  - **`MirroredWorkoutObserver`:** no longer `@Observable` and no longer in the environment. It only
+    holds the session for the data channel.
+  - **Models and `WorkoutTimer`:** lost `start/pause/pause(at:)/resume(at:)/start(at:)`, and the dead
+    `FeedbackProvider.onStart`. Model tests drive the models through `TestSupport/StateDriver`. The
+    ADR-003 drift tests and `start(at:)` tests went with the APIs; `apply_*` tests cover the same
+    guarantees.
+  - **Watch coordinators:** `WatchWorkoutCoordinator` keeps only `stopAndCleanup` and
+    `handleWorkoutCompleted`. Its config uses `workoutID`/`startedOnPhone` instead of
+    `correlationID`/`displayOnly`/`scheduledStartTime`. `WatchCountdownCoordinator` only displays;
+    no completion or anchor.
+  - **`PhoneMessageCoordinator`:** handles only `WorkoutSessionEndedMessage`. It links the Health
+    UUID and publishes `lastWorkoutSessionEnded`, which `TimerRunnerView` observes per
+    `correlationID`. Equal values don't trigger `onChange`, so its dedup state is gone.
+  - **Renames:** `watchHandledWorkout` → `ownedByWatch` (derived from `state.owner`).
+    `TimerLifecycleModifier.isMirroredSessionActive` → `pausesInBackground`.
+  - **Completion:** the owner's completion check sets `finish`. The final snapshot now also goes
+    through `transferUserInfo`, and `WorkoutSessionEndedMessage` already used it. A viewer whose
+    owner never reports completes from its own rendering when the time runs out, as before.
+    Logging rules are unchanged: the starting device writes the `WorkoutLog`, the owner the
+    Health workout.
+  - **ADRs:** ADR-003/004/005 marked *Superseded by ADR-006*.
 
 ### 6. Documentation
 - `ARCHITECTURE/architecture.md`: the HealthKit/sync section and the component tables.

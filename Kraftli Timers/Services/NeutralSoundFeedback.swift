@@ -73,8 +73,4 @@ final class NeutralSoundFeedback: FeedbackProvider {
             self?.beepPlayer?.play()
         }
     }
-
-    func onStart() {
-        // No start sound
-    }
 }

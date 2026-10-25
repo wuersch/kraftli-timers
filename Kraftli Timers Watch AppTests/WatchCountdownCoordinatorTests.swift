@@ -2,17 +2,9 @@
 //  WatchCountdownCoordinatorTests.swift
 //  Kraftli Timers Watch AppTests
 //
-//  Regression tests for the joined-countdown skip anchor (ADR-005, issue #44
-//  finding 5). Tapping the countdown screen calls `finishNow()`. For an
-//  iPhone-led ("joined") countdown the skip must start the Watch anchored to the
-//  *shared* `scheduledStartTime`, not at local now — otherwise a tap before the
-//  scheduled start runs the Watch ahead of the leader and ends the HK session
-//  early. Natural completion keeps the `nil` anchor (start at local now), which
-//  matches the iPhone's natural countdown path and stays in lockstep.
-//
-//  These cover the synchronous, deterministic paths (skip + already-past). The
-//  natural-completion timing path is driven by Task.sleep and is left to manual
-//  verification.
+//  The Watch countdown only displays 3-2-1-GO toward the shared start date (ADR-006);
+//  the timer itself follows the workout's state. These cover the synchronous paths.
+//  The timing path is driven by Task.sleep and is left to manual verification.
 //
 
 import Foundation
@@ -21,45 +13,38 @@ import Testing
 
 struct WatchCountdownCoordinatorTests {
 
-    /// Tap-to-skip during a joined countdown fires the completion with the shared
-    /// scheduled start time, so the Watch anchors to the leader rather than to the
-    /// (earlier) tap moment.
-    @Test @MainActor func finishNow_whileCountingDown_passesScheduledAnchor() {
+    @Test @MainActor func startCountdown_futureStart_countsDown() {
         let coordinator = WatchCountdownCoordinator()
-        let scheduled = Date().addingTimeInterval(3)
-        var capturedAnchors: [Date?] = []
 
-        coordinator.startCountdown(scheduledStartTime: scheduled) { anchor in
-            capturedAnchors.append(anchor)
-        }
+        coordinator.startCountdown(scheduledStartTime: Date().addingTimeInterval(3))
+
         #expect(coordinator.isCountingDown)
+        coordinator.cancelCountdown()
+    }
+
+    /// Tap-to-skip hides the countdown; the workout still starts at its shared start date.
+    @Test @MainActor func finishNow_whileCountingDown_hidesCountdown() {
+        let coordinator = WatchCountdownCoordinator()
+        coordinator.startCountdown(scheduledStartTime: Date().addingTimeInterval(3))
 
         coordinator.finishNow()
 
-        #expect(capturedAnchors == [scheduled])
         #expect(!coordinator.isCountingDown)
+        #expect(coordinator.countdownValue == nil)
     }
 
-    /// `finishNow()` is a no-op when no countdown is in progress (guards against a
-    /// stray tap firing a start with no stored completion).
     @Test @MainActor func finishNow_whenNotCountingDown_doesNothing() {
         let coordinator = WatchCountdownCoordinator()
         coordinator.finishNow()
         #expect(!coordinator.isCountingDown)
     }
 
-    /// A scheduled time already in the past skips the countdown and completes
-    /// immediately with a `nil` anchor (start at local now — the late-join case
-    /// is handled by the caller, not by a future-dated anchor here).
-    @Test @MainActor func startCountdown_pastScheduledTime_completesImmediatelyWithNilAnchor() {
+    /// A start date already in the past (e.g. a late join) shows no countdown at all.
+    @Test @MainActor func startCountdown_pastStart_showsNothing() {
         let coordinator = WatchCountdownCoordinator()
-        var capturedAnchors: [Date?] = []
 
-        coordinator.startCountdown(scheduledStartTime: Date().addingTimeInterval(-5)) { anchor in
-            capturedAnchors.append(anchor)
-        }
+        coordinator.startCountdown(scheduledStartTime: Date().addingTimeInterval(-5))
 
-        #expect(capturedAnchors == [Date?.none])
         #expect(!coordinator.isCountingDown)
     }
 }

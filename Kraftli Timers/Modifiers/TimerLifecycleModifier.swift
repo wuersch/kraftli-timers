@@ -13,13 +13,12 @@ struct WorkoutCompletionData {
     let repsCompleted: Int?
     let roundsCompleted: Int?
 
-    /// When true, the Watch handled the HKWorkoutSession (Scenario C/D).
-    /// iPhone should skip its own HealthKit save to avoid duplicates.
-    var watchHandledWorkout: Bool = false
+    /// True when the Watch owned the workout (ADR-006 §1): it saved the Health workout,
+    /// so the iPhone must not save a duplicate.
+    var ownedByWatch: Bool = false
 
-    /// Pre-generated ID for the WorkoutLog, used for correlation with Watch's
-    /// HealthKit UUID. Set when an iPhone-initiated workout sent a `StartTimerMessage`
-    /// with this ID; Watch echoes it back in `WorkoutSessionEndedMessage`.
+    /// The workout ID, used as the WorkoutLog's ID. The Watch echoes it back in
+    /// `WorkoutSessionEndedMessage` to link its HealthKit workout to this log.
     var correlationID: UUID?
 }
 
@@ -40,12 +39,12 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     let onDisappear: () -> Void
     /// Called when the workout completes (timer reaches zero). Used for logging.
     let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
-    /// Whether an HK mirrored session is currently the authoritative control channel.
-    /// While true the background auto-pause is skipped (ADR-005): the timer is wall-clock
-    /// anchored and the still-running Watch/HK session, not scenePhase, drives pause/resume.
-    let isMirroredSessionActive: () -> Bool
-    /// Called when the app returns to the foreground (scenePhase `.active`). Used to
-    /// re-snap local state to the live mirrored session after a background interval.
+    /// Whether going to the background pauses the workout. True only for a workout this
+    /// iPhone owns; one the Watch owns keeps running there, and the display catches up
+    /// from its state on foreground (ADR-006).
+    let pausesInBackground: () -> Bool
+    /// Called when the app returns to the foreground (scenePhase `.active`), e.g. to
+    /// complete an owned workout whose time ran out while suspended.
     let onForeground: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -63,17 +62,10 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .background:
-                    // ADR-005: while a mirrored HK session is active it is the sole control
-                    // channel and the timer is wall-clock anchored, so don't local-pause on
-                    // background — the iPhone would freeze and fall behind the still-running
-                    // Watch by the whole background duration. The display self-corrects from
-                    // `startDate` on foreground.
-                    if timer.isRunning && !isMirroredSessionActive() {
+                    if timer.isRunning && pausesInBackground() {
                         onPause()
                     }
                 case .active:
-                    // Re-snap to the live mirrored session state (a Watch pause/resume during
-                    // background may not have moved local state).
                     onForeground()
                 default:
                     break
@@ -81,7 +73,7 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
             }
             .onChange(of: timer.didComplete) { _, didComplete in
                 // Key off the model's explicit completion signal, not a zero-crossing of
-                // totalTimeRemaining — a pause(at:) clamp or stray tick must not "complete" the workout.
+                // totalTimeRemaining — a stopped workout or stray tick must not "complete" it.
                 guard didComplete else { return }
                 session.onTimerCompleted()
                 let completionData = WorkoutCompletionData(
@@ -103,15 +95,15 @@ extension View {
     ///   - onPause: Called when timer should pause (e.g., app backgrounded)
     ///   - onDisappear: Called when view disappears
     ///   - onWorkoutCompleted: Called when workout completes (timer reaches zero)
-    ///   - isMirroredSessionActive: When true, skip the background auto-pause (ADR-005)
-    ///   - onForeground: Called on scenePhase `.active` to reconcile with the live session
+    ///   - pausesInBackground: Whether backgrounding the app pauses the workout
+    ///   - onForeground: Called on scenePhase `.active`
     func timerLifecycle<T: WorkoutTimer>(
         timer: T,
         session: TimerSessionState,
         onPause: @escaping () -> Void,
         onDisappear: @escaping () -> Void,
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
-        isMirroredSessionActive: @escaping () -> Bool = { false },
+        pausesInBackground: @escaping () -> Bool = { true },
         onForeground: @escaping () -> Void = { }
     ) -> some View {
         modifier(TimerLifecycleModifier(
@@ -120,7 +112,7 @@ extension View {
             onPause: onPause,
             onDisappear: onDisappear,
             onWorkoutCompleted: onWorkoutCompleted,
-            isMirroredSessionActive: isMirroredSessionActive,
+            pausesInBackground: pausesInBackground,
             onForeground: onForeground
         ))
     }

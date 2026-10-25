@@ -1,6 +1,6 @@
 # ADR-004: Application context as the canonical timer-command channel
 
-**Status**: Accepted
+**Status**: Superseded by [ADR-006](ADR-006-single-owner-timer-state.md) (2026-10-25)
 **Date**: 2026-06-11
 
 ## Context

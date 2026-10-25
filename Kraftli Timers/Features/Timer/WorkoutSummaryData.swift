@@ -29,9 +29,9 @@ struct WorkoutSummaryData: Identifiable {
     /// Number of rounds completed (AMRAP only).
     let rounds: Int?
 
-    /// Whether the Apple Watch was involved in this workout session.
+    /// Whether the Apple Watch owned this workout and recorded its health metrics.
     /// When true, placeholder cards are shown for health metrics until data arrives.
-    let watchHandledWorkout: Bool
+    let ownedByWatch: Bool
 
     /// Average heart rate during the workout (beats per minute).
     var averageHeartRate: Double?

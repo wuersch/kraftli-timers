@@ -107,7 +107,7 @@ struct WorkoutSummaryContent: View {
             }
             .cardStyle()
             .padding(.horizontal, 20)
-        } else if data.watchHandledWorkout {
+        } else if data.ownedByWatch {
             // Placeholder while waiting for Watch data
             HStack(spacing: 16) {
                 Image(systemName: "flame.fill")
@@ -194,7 +194,7 @@ struct WorkoutSummaryContent: View {
             }
             .cardStyle()
             .padding(.horizontal, 20)
-        } else if data.watchHandledWorkout {
+        } else if data.ownedByWatch {
             // Placeholder while waiting for Watch data
             HStack(spacing: 16) {
                 Image(systemName: "heart.fill")
@@ -258,7 +258,7 @@ struct WorkoutSummaryContent: View {
                 }
                 .foregroundStyle(.green)
             }
-        } else if !data.watchHandledWorkout {
+        } else if !data.ownedByWatch {
             // No Watch was involved — show hint to connect
             HStack(spacing: 8) {
                 Image(systemName: "applewatch")
@@ -289,7 +289,7 @@ struct WorkoutSummaryContent: View {
             duration: 20 * 60,
             reps: 100,
             rounds: nil,
-            watchHandledWorkout: true,
+            ownedByWatch: true,
             averageHeartRate: 152,
             maxHeartRate: 174,
             activeCalories: 156
@@ -306,7 +306,7 @@ struct WorkoutSummaryContent: View {
             duration: 15 * 60,
             reps: nil,
             rounds: 8,
-            watchHandledWorkout: true,
+            ownedByWatch: true,
             averageHeartRate: 145,
             maxHeartRate: 168,
             activeCalories: 120
@@ -323,7 +323,7 @@ struct WorkoutSummaryContent: View {
             duration: 20 * 60,
             reps: 100,
             rounds: nil,
-            watchHandledWorkout: true
+            ownedByWatch: true
         )
     )
     .preferredColorScheme(.dark)
@@ -337,7 +337,7 @@ struct WorkoutSummaryContent: View {
             duration: 15 * 60,
             reps: nil,
             rounds: 8,
-            watchHandledWorkout: false
+            ownedByWatch: false
         )
     )
     .preferredColorScheme(.dark)

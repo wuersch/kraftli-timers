@@ -206,7 +206,9 @@ final class CompositeTimerSyncTransport: TimerSyncTransport {
 
 /// Carries timer sync payloads over WatchConnectivity:
 /// - snapshots → application context (latest-wins, persisted: covers cold launches
-///   and relaunches) plus `sendMessage` when reachable (low latency);
+///   and relaunches) plus `sendMessage` when reachable (low latency); the final
+///   snapshot (with `finish`) also through `transferUserInfo`, so the end of a workout
+///   reaches a viewer that was out of reach when it happened (ADR-006 §3);
 /// - intents → `sendMessage` when reachable plus `transferUserInfo` (queued,
 ///   survives disconnects; duplicates are dropped by the inbox);
 /// - start requests → like snapshots, so a Watch app launched by `startWatchApp`
@@ -228,6 +230,9 @@ final class WatchConnectivityTimerSyncTransport: TimerSyncTransport {
         guard let dictionary = encode(.state(state)) else { return }
         connectivity.updateApplicationContext(dictionary: dictionary)
         connectivity.sendMessage(dictionary: dictionary)
+        if state.finish != nil {
+            connectivity.transferUserInfo(dictionary: dictionary)
+        }
     }
 
     func send(_ intents: [TimerIntent]) {
