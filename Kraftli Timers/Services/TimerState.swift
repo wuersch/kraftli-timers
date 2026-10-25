@@ -102,6 +102,10 @@ nonisolated struct TimerState: Codable, Equatable, Sendable {
     /// pause/resume conflicts only if this moved past its base revision — round
     /// taps on the owner don't count as conflicts (ADR-007).
     var pauseStateRevision: Int
+    /// The intent that last changed the paused/running state, if any. A viewer's
+    /// follow-up pause/resume built on that same intent is not a conflict, even if
+    /// it arrives separately (ADR-007).
+    var pauseStateIntentID: UUID?
 
     /// AMRAP rounds completed, as an absolute count.
     var roundCount: Int
@@ -134,6 +138,7 @@ nonisolated struct TimerState: Codable, Equatable, Sendable {
         self.accumulatedPause = 0
         self.lastTransitionAt = startDate
         self.pauseStateRevision = 1
+        self.pauseStateIntentID = nil
         self.roundCount = 0
         self.finish = nil
         self.handledIntentIDs = []
@@ -196,18 +201,24 @@ nonisolated struct TimerIntent: Codable, Equatable, Sendable, Identifiable {
     let action: Action
     /// When the user acted.
     let at: Date
+    /// For pause/resume: the sender's own earlier pause/resume this one follows, if it
+    /// wasn't confirmed yet. Lets the owner tell "the viewer's own chain" apart from a
+    /// real conflict when queued intents arrive in separate deliveries.
+    let previousPauseIntentID: UUID?
 
     init(
         id: UUID = UUID(),
         workoutID: UUID,
         baseRevision: Int,
         action: Action,
-        at: Date
+        at: Date,
+        previousPauseIntentID: UUID? = nil
     ) {
         self.id = id
         self.workoutID = workoutID
         self.baseRevision = baseRevision
         self.action = action
         self.at = at
+        self.previousPauseIntentID = previousPauseIntentID
     }
 }

@@ -213,9 +213,10 @@ struct TimerStateTests {
     }
 
     @Test func offlineBatch_pauseThenResume_appliesBoth() {
+        let pause = intent(.pause, at: 13, base: 1)
         let batch = [
-            intent(.pause, at: 13, base: 1),
-            intent(.resume, at: 23, base: 1),
+            pause,
+            TimerIntent(workoutID: workoutID, baseRevision: 1, action: .resume, at: at(23), previousPauseIntentID: pause.id),
         ]
 
         let result = TimerStateReducer.apply(batch, to: makeState(), now: at(30))
@@ -227,9 +228,10 @@ struct TimerStateTests {
 
     @Test func offlineBatch_isRejectedAsAWhole_onConflict() {
         let ownerPaused = applying(.pause, at: 11, to: makeState())
+        let viewerPause = intent(.pause, at: 13, base: 1)
         let batch = [
-            intent(.pause, at: 13, base: 1),
-            intent(.resume, at: 23, base: 1),
+            viewerPause,
+            TimerIntent(workoutID: workoutID, baseRevision: 1, action: .resume, at: at(23), previousPauseIntentID: viewerPause.id),
             intent(.incrementRound, at: 12, base: 1),
         ]
 
@@ -239,6 +241,39 @@ struct TimerStateTests {
         #expect(result.pausedAt == at(11))
         #expect(result.roundCount == 1)
         #expect(result.handledIntentIDs.count == 4)
+    }
+
+    /// Queued intents may arrive in separate deliveries: the viewer's resume, chained to its
+    /// own already-applied pause, must not be mistaken for a conflict.
+    @Test func chainedResume_arrivingSeparately_isNotAConflict() {
+        let viewerPause = intent(.pause, at: 13, base: 1)
+        let viewerResume = TimerIntent(
+            workoutID: workoutID, baseRevision: 1, action: .resume, at: at(23),
+            previousPauseIntentID: viewerPause.id
+        )
+
+        let paused = TimerStateReducer.apply([viewerPause], to: makeState(), now: at(14))
+        let resumed = TimerStateReducer.apply([viewerResume], to: paused, now: at(30))
+
+        #expect(!resumed.isPaused)
+        #expect(resumed.accumulatedPause == 10)
+    }
+
+    /// A chained resume is still rejected if the owner changed the pause state after the
+    /// viewer's own pause.
+    @Test func chainedResume_isRejected_whenOwnerChangedPauseStateSince() {
+        let viewerPause = intent(.pause, at: 13, base: 1)
+        let viewerResume = TimerIntent(
+            workoutID: workoutID, baseRevision: 1, action: .resume, at: at(30),
+            previousPauseIntentID: viewerPause.id
+        )
+        let paused = TimerStateReducer.apply([viewerPause], to: makeState(), now: at(14))
+        let ownerResumed = applying(.resume, at: 20, to: paused)
+        let ownerPaused = applying(.pause, at: 25, to: ownerResumed)
+
+        let result = TimerStateReducer.apply([viewerResume], to: ownerPaused, now: at(31))
+
+        #expect(result.pausedAt == at(25))
     }
 
     @Test func viewerPrediction_matchesOwnerResult() {

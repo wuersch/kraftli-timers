@@ -113,6 +113,7 @@
 				Services/PresetMaintenance.swift,
 				Services/SilentFeedback.swift,
 				Services/TimerProvider.swift,
+				Services/TimerSessionController.swift,
 				Services/TimerState.swift,
 				Services/TimerStateReducer.swift,
 				Services/TimerSyncTransport.swift,
