@@ -36,7 +36,7 @@ final class WatchTimerRuntime {
         sessionManager.onSessionConnected = { healthKitTransport.sessionDidConnect() }
 
         let transport = CompositeTimerSyncTransport(transports: [
-            WatchConnectivityTimerSyncTransport(),
+            WatchConnectivityTimerSyncTransport(connectivity: .shared),
             healthKitTransport
         ])
         let timerSession = TimerSessionController(transport: transport)

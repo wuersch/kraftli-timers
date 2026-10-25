@@ -124,7 +124,8 @@ final class PhoneWorkoutStarter {
 
 // MARK: - Previews
 
-#if DEBUG
+// Not wrapped in `#if DEBUG`: `#Preview` blocks are compiled in Release builds too
+// (e.g. the archive build), so the helper they call must exist there as well.
 extension View {
     /// Provides an iPhone-only timer session for previews (no Watch, no channels).
     func previewTimerSession() -> some View {
@@ -137,4 +138,3 @@ extension View {
         return environment(controller).environment(starter)
     }
 }
-#endif

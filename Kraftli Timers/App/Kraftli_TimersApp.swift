@@ -76,7 +76,7 @@ struct Kraftli_TimersApp: App {
         mirroredWorkoutObserver.onSessionConnected = { healthKitTransport.sessionDidConnect() }
         let timerSession = TimerSessionController(
             transport: CompositeTimerSyncTransport(transports: [
-                WatchConnectivityTimerSyncTransport(),
+                WatchConnectivityTimerSyncTransport(connectivity: .shared),
                 healthKitTransport
             ])
         )
