@@ -192,6 +192,47 @@ struct TimerSyncTransportTests {
         #expect(received.isEmpty)
     }
 
+    // MARK: - Start requests
+
+    private func makeStartRequest() -> StartRequest {
+        StartRequest(workoutID: UUID(), config: makeState().config, requestedAt: t0)
+    }
+
+    @Test func startRequestPayload_roundTripsThroughWatchConnectivityDictionary() throws {
+        let payload = TimerSyncPayload.startRequest(makeStartRequest())
+
+        #expect(TimerSyncPayload(dictionary: try payload.dictionary()) == payload)
+    }
+
+    @Test @MainActor func composite_sendsStartRequestOnEveryChannel() {
+        let healthKit = FakeTransport()
+        let connectivity = FakeTransport()
+        let composite = CompositeTimerSyncTransport(transports: [healthKit, connectivity])
+        let request = makeStartRequest()
+
+        composite.requestStart(request)
+
+        #expect(healthKit.requestedStarts == [request] && connectivity.requestedStarts == [request])
+    }
+
+    @Test @MainActor func composite_deliversStartRequestOnce_evenAfterExpectingItsWorkout() {
+        let healthKit = FakeTransport()
+        let connectivity = FakeTransport()
+        let composite = CompositeTimerSyncTransport(transports: [healthKit, connectivity])
+        var requests: [StartRequest] = []
+        var payloads: [TimerSyncPayload] = []
+        composite.onStartRequest = { requests.append($0) }
+        composite.onPayload = { payloads.append($0) }
+        let request = makeStartRequest()
+
+        connectivity.deliver(.startRequest(request))
+        composite.expect(request.workoutID)          // the receiver starts the workout
+        healthKit.deliver(.startRequest(request))    // the copy from the other channel
+
+        #expect(requests == [request])
+        #expect(payloads.isEmpty)  // start requests never reach the session's payload handler
+    }
+
     @Test @MainActor func composite_forwardsReconnectFromAnyChannel() {
         let healthKit = FakeTransport()
         let connectivity = FakeTransport()
@@ -214,9 +255,11 @@ private final class FakeTransport: TimerSyncTransport {
     var onReconnect: (() -> Void)?
     private(set) var published: [TimerState] = []
     private(set) var sent: [[TimerIntent]] = []
+    private(set) var requestedStarts: [StartRequest] = []
 
     func publish(_ state: TimerState) { published.append(state) }
     func send(_ intents: [TimerIntent]) { sent.append(intents) }
+    func requestStart(_ request: StartRequest) { requestedStarts.append(request) }
 
     /// Simulates a payload arriving from the other device on this channel.
     func deliver(_ payload: TimerSyncPayload) { onPayload?(payload) }

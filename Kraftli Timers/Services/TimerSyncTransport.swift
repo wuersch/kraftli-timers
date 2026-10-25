@@ -28,6 +28,8 @@ nonisolated enum TimerSyncPayload: Codable, Equatable, Sendable {
     case state(TimerState)
     /// Viewer intents for the owner, in the order the user made them.
     case intents([TimerIntent])
+    /// The iPhone asking the Watch to start and own a workout.
+    case startRequest(StartRequest)
 
     /// WatchConnectivity dictionary key for an encoded payload. Distinct from the
     /// legacy `WatchMessageCoder` keys, so old and new messages never collide.
@@ -68,6 +70,9 @@ protocol TimerSyncTransport: AnyObject {
     /// Sends viewer intents to the owner.
     func send(_ intents: [TimerIntent])
 
+    /// Asks the other device to start and own a workout.
+    func requestStart(_ request: StartRequest)
+
     /// Called for every payload this channel receives.
     var onPayload: ((TimerSyncPayload) -> Void)? { get set }
 
@@ -84,6 +89,10 @@ nonisolated struct TimerSyncInbox: Sendable {
     private(set) var workoutID: UUID?
     private(set) var latestRevision = 0
     private var seenIntentIDs: [UUID] = []
+    /// The last start request delivered. Kept across `expect(_:)`, because a request
+    /// arrives on several channels and the receiver starts expecting its workout after
+    /// the first copy.
+    private var lastStartRequestID: UUID?
 
     /// How many intent IDs are remembered for dedup (oldest dropped first).
     static let seenIntentIDLimit = 256
@@ -94,7 +103,9 @@ nonisolated struct TimerSyncInbox: Sendable {
 
     /// Starts listening for a (new) workout, forgetting everything about the previous one.
     mutating func expect(_ workoutID: UUID?) {
+        let lastStartRequestID = lastStartRequestID
         self = Self(workoutID: workoutID)
+        self.lastStartRequestID = lastStartRequestID
     }
 
     /// Returns true if `state` is newer than anything seen for the expected workout.
@@ -110,6 +121,14 @@ nonisolated struct TimerSyncInbox: Sendable {
         seenIntentIDs = Array((seenIntentIDs + fresh.map(\.id)).suffix(Self.seenIntentIDLimit))
         return fresh
     }
+
+    /// Returns true for the first copy of a start request. Accepted whatever workout
+    /// is expected, since a request is how a new workout begins.
+    mutating func accept(_ request: StartRequest) -> Bool {
+        guard request.workoutID != lastStartRequestID else { return false }
+        lastStartRequestID = request.workoutID
+        return true
+    }
 }
 
 // MARK: - Composite
@@ -120,8 +139,11 @@ final class CompositeTimerSyncTransport: TimerSyncTransport {
     private let transports: [any TimerSyncTransport]
     private var inbox = TimerSyncInbox()
 
+    /// Receives snapshots and intents for the expected workout.
     var onPayload: ((TimerSyncPayload) -> Void)?
     var onReconnect: (() -> Void)?
+    /// Receives start requests, which are separate from the running workout's traffic.
+    var onStartRequest: ((StartRequest) -> Void)?
 
     init(transports: [any TimerSyncTransport]) {
         self.transports = transports
@@ -146,6 +168,10 @@ final class CompositeTimerSyncTransport: TimerSyncTransport {
         transports.forEach { $0.send(intents) }
     }
 
+    func requestStart(_ request: StartRequest) {
+        transports.forEach { $0.requestStart(request) }
+    }
+
     private func receive(_ payload: TimerSyncPayload) {
         switch payload {
         case .state(let state):
@@ -155,6 +181,9 @@ final class CompositeTimerSyncTransport: TimerSyncTransport {
             let fresh = inbox.accept(intents)
             guard !fresh.isEmpty else { return }
             onPayload?(.intents(fresh))
+        case .startRequest(let request):
+            guard inbox.accept(request) else { return }
+            onStartRequest?(request)
         }
     }
 }
@@ -165,7 +194,9 @@ final class CompositeTimerSyncTransport: TimerSyncTransport {
 /// - snapshots → application context (latest-wins, persisted: covers cold launches
 ///   and relaunches) plus `sendMessage` when reachable (low latency);
 /// - intents → `sendMessage` when reachable plus `transferUserInfo` (queued,
-///   survives disconnects; duplicates are dropped by the inbox).
+///   survives disconnects; duplicates are dropped by the inbox);
+/// - start requests → like snapshots, so a Watch app launched by `startWatchApp`
+///   finds the request in the context it reads on activation.
 @MainActor
 final class WatchConnectivityTimerSyncTransport: TimerSyncTransport {
     private let connectivity: WatchConnectivityService
@@ -189,6 +220,12 @@ final class WatchConnectivityTimerSyncTransport: TimerSyncTransport {
         guard let dictionary = encode(.intents(intents)) else { return }
         connectivity.sendMessage(dictionary: dictionary)
         connectivity.transferUserInfo(dictionary: dictionary)
+    }
+
+    func requestStart(_ request: StartRequest) {
+        guard let dictionary = encode(.startRequest(request)) else { return }
+        connectivity.updateApplicationContext(dictionary: dictionary)
+        connectivity.sendMessage(dictionary: dictionary)
     }
 
     private func encode(_ payload: TimerSyncPayload) -> [String: Any]? {

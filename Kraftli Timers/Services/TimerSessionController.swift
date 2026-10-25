@@ -41,6 +41,9 @@ final class TimerSessionController {
     /// This device's role for the current workout; nil when no workout is active.
     private(set) var role: Role?
 
+    /// The current workout, known from the start even before its first snapshot arrives.
+    private(set) var workoutID: UUID?
+
     /// The owner's latest snapshot as this device knows it. On the owner this is the
     /// authoritative state; on the viewer, the last one received.
     private(set) var confirmedState: TimerState?
@@ -58,6 +61,11 @@ final class TimerSessionController {
     /// True while this viewer has changes the owner hasn't confirmed yet.
     var hasUnconfirmedChanges: Bool {
         !pendingIntents.isEmpty
+    }
+
+    /// True while this viewer waits for the owner's first snapshot (e.g. "Starting on Watch…").
+    var isAwaitingOwner: Bool {
+        role == .viewer && confirmedState == nil
     }
 
     // MARK: - Callbacks
@@ -103,12 +111,20 @@ final class TimerSessionController {
         reset(for: workoutID, role: .viewer)
     }
 
+    /// Asks the other device to start and own a workout, and follows it as a viewer.
+    /// If the owner never answers, `startAsOwner(_:)` with the same `workoutID` takes over.
+    func requestStart(_ request: StartRequest) {
+        startAsViewer(workoutID: request.workoutID)
+        transport.requestStart(request)
+    }
+
     /// Stops following or owning the current workout. Later traffic for it is ignored.
     func end() {
         completionTask?.cancel()
         completionTask = nil
         transport.expect(nil)
         role = nil
+        workoutID = nil
         confirmedState = nil
         pendingIntents = []
         renderedState = nil
@@ -136,12 +152,19 @@ final class TimerSessionController {
         completionTask = nil
         transport.expect(workoutID)
         self.role = role
+        self.workoutID = workoutID
         confirmedState = nil
         pendingIntents = []
         renderedState = nil
     }
 
     private func act(_ action: TimerIntent.Action) {
+        if action == .stop, isAwaitingOwner, let workoutID {
+            // Cancelled before the owner answered: tell it anyway, so a workout that is
+            // just starting on the other device ends right after its first snapshot.
+            transport.send([TimerIntent(workoutID: workoutID, baseRevision: 0, action: .stop, at: now())])
+            return
+        }
         // A viewer can't act before it knows the owner's state: there's no base revision yet.
         guard let role, let confirmed = confirmedState else { return }
         let isPauseAction = action == .pause || action == .resume
@@ -192,7 +215,8 @@ final class TimerSessionController {
             // Two owners for one workout can only come from a crossed start handshake,
             // which step 5's yield rule resolves. Until then, keep our own state.
             Logger.timerSync.warning("Owner received a snapshot (revision \(state.revision)) for its own workout; ignoring")
-        case (.viewer, .intents), (nil, _):
+        case (.viewer, .intents), (nil, _), (_, .startRequest):
+            // Start requests arrive through `onStartRequest`, never here.
             break
         }
     }

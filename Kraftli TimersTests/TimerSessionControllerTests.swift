@@ -86,6 +86,51 @@ struct TimerSessionControllerTests {
         #expect(link.phoneEnd.sentCount == 0)
     }
 
+    // MARK: - Start handshake
+
+    @Test func requestStart_sendsRequest_andAwaitsOwnersFirstSnapshot() {
+        let link = FakeLink()
+        let phone = TimerSessionController(
+            transport: CompositeTimerSyncTransport(transports: [link.phoneEnd]),
+            schedulesCompletion: false
+        )
+        let watchTransport = CompositeTimerSyncTransport(transports: [link.watchEnd])
+        let watch = TimerSessionController(transport: watchTransport, schedulesCompletion: false)
+        var requests: [StartRequest] = []
+        watchTransport.onStartRequest = { requests.append($0) }
+        let state = Pair().state
+
+        phone.requestStart(StartRequest(workoutID: state.workoutID, config: state.config, requestedAt: Date()))
+        #expect(phone.isAwaitingOwner && phone.workoutID == state.workoutID)
+        #expect(requests.map(\.workoutID) == [state.workoutID])
+
+        watch.startAsOwner(state)
+        #expect(!phone.isAwaitingOwner)
+        #expect(phone.renderedState == state)
+    }
+
+    @Test func stopBeforeOwnerAnswered_endsTheWorkoutOnceItStarts() {
+        let link = FakeLink()
+        let phone = TimerSessionController(
+            transport: CompositeTimerSyncTransport(transports: [link.phoneEnd]),
+            schedulesCompletion: false
+        )
+        let watch = TimerSessionController(
+            transport: CompositeTimerSyncTransport(transports: [link.watchEnd]),
+            schedulesCompletion: false
+        )
+        let state = Pair().state
+        link.isConnected = false
+
+        phone.requestStart(StartRequest(workoutID: state.workoutID, config: state.config, requestedAt: Date()))
+        phone.stop()      // cancelled during "Starting on Watch…"
+        phone.end()
+        watch.startAsOwner(state)
+        link.isConnected = true
+
+        #expect(watch.confirmedState?.finish != nil)
+    }
+
     // MARK: - Connected control
 
     @Test func viewerPause_showsImmediately_andOwnerConfirmsAtTapTime() {
@@ -281,78 +326,5 @@ struct TimerSessionControllerTests {
         pair.owner.resume()
 
         #expect(seen == [true, true, false])
-    }
-}
-
-// MARK: - Fake link
-
-/// Two connected transport endpoints that behave like the real channels:
-/// - connected: everything is delivered immediately;
-/// - disconnected: immediate messages are lost, only the latest snapshot is kept
-///   (application context) and intents are queued (`transferUserInfo`);
-/// - reconnecting delivers the kept snapshot and the queue, then signals `onReconnect`.
-@MainActor
-private final class FakeLink {
-    final class End: TimerSyncTransport {
-        var onPayload: ((TimerSyncPayload) -> Void)?
-        var onReconnect: (() -> Void)?
-        weak var link: FakeLink?
-        weak var peer: End?
-        private(set) var sentCount = 0
-
-        fileprivate var latestStateWhileOffline: TimerState?
-        fileprivate var queuedIntents: [[TimerIntent]] = []
-
-        func publish(_ state: TimerState) {
-            transmit(.state(state))
-        }
-
-        func send(_ intents: [TimerIntent]) {
-            sentCount += 1
-            transmit(.intents(intents))
-        }
-
-        private func transmit(_ payload: TimerSyncPayload) {
-            guard let peer, let link else { return }
-            if link.isConnected {
-                peer.onPayload?(payload)
-                return
-            }
-            switch payload {
-            case .state(let state): latestStateWhileOffline = state
-            case .intents(let intents): queuedIntents.append(intents)
-            }
-        }
-
-        fileprivate func flush() {
-            if let state = latestStateWhileOffline {
-                peer?.onPayload?(.state(state))
-            }
-            for intents in queuedIntents {
-                peer?.onPayload?(.intents(intents))
-            }
-            latestStateWhileOffline = nil
-            queuedIntents = []
-        }
-    }
-
-    let watchEnd = End()
-    let phoneEnd = End()
-
-    var isConnected = true {
-        didSet {
-            guard isConnected, !oldValue else { return }
-            watchEnd.flush()
-            phoneEnd.flush()
-            watchEnd.onReconnect?()
-            phoneEnd.onReconnect?()
-        }
-    }
-
-    init() {
-        watchEnd.link = self
-        phoneEnd.link = self
-        watchEnd.peer = phoneEnd
-        phoneEnd.peer = watchEnd
     }
 }

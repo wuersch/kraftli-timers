@@ -28,6 +28,8 @@ struct TimerBottomSection: View {
     let sizes: TimerSizes
     var isCompleted: Bool = false
     var totalDuration: TimeInterval = 0
+    /// Shows a small Watch-slash icon while changes haven't reached the Watch yet.
+    var showsWatchDisconnected: Bool = false
 
     var body: some View {
         ZStack {
@@ -43,6 +45,18 @@ struct TimerBottomSection: View {
                     .monospacedDigit()
                     .accessibilityLabel(isCompleted ? "Workout duration" : "Total time")
                     .accessibilityValue(isCompleted ? totalDuration.formatted : totalTimeRemaining.formatted)
+                    // An overlay, so the icon doesn't shift the centered time.
+                    .overlay(alignment: .trailing) {
+                        if showsWatchDisconnected {
+                            Image(systemName: "applewatch.slash")
+                                .font(.system(size: sizes.labelFont))
+                                .foregroundStyle(.gray)
+                                .alignmentGuide(.trailing) { $0[.leading] - 8 }
+                                .transition(.opacity)
+                                .accessibilityLabel("Watch disconnected")
+                        }
+                    }
+                    .animation(.easeInOut(duration: 0.3), value: showsWatchDisconnected)
             }
             .opacity(isCountingDown ? 0 : 1)
 

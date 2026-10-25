@@ -7,27 +7,38 @@
 
 import SwiftUI
 import UIKit
-import Combine
-import HealthKit
-import os
 
 // MARK: - EMOMTimerView
+
+/// Runs an EMOM workout through the app's `TimerSessionController` (ADR-006).
+///
+/// The view never runs a stopwatch of its own. `PhoneWorkoutStarter` decides who owns
+/// the workout (the Watch if it answers, otherwise the iPhone). Every state the
+/// controller renders is handed to `timerModel.apply(_:)`, and taps become controller
+/// actions, so the screen looks the same whichever device owns the timer.
 struct EMOMTimerView: View {
     // MARK: - Properties
-    @Environment(MirroredWorkoutObserver.self) private var mirroredWorkout: MirroredWorkoutObserver?
+    @Environment(TimerSessionController.self) private var timerSession
+    @Environment(PhoneWorkoutStarter.self) private var workoutStarter
 
     @State private var timerModel: EMOMTimerModel
     @State private var session = TimerSessionState()
     @State private var countdown = CountdownCoordinator()
-    @State private var cancellables = Set<AnyCancellable>()
     @State private var isPulsing = false
 
     /// Guards the one-shot auto-start so a repeated `onAppear` can't relaunch the countdown.
     @State private var didAutoStart = false
 
-    /// Tracks whether Watch is handling the HKWorkoutSession (Scenario C).
-    /// When true, iPhone skips its own HealthKit save to avoid duplicates.
-    @State private var watchHandledWorkout = false
+    /// The start date the countdown was begun for, so each workout counts down once.
+    @State private var countdownStartDate: Date?
+
+    /// Set once this view tears its workout down, so its own stop isn't mistaken for a
+    /// stop from the Watch.
+    @State private var isEnding = false
+
+    /// A short sync message shown in the hint line ("Synced with Watch", …).
+    @State private var syncNotice: String?
+    @State private var syncNoticeTask: Task<Void, Never>?
 
     /// Called when the workout completes (timer reaches zero). Used for logging.
     private let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
@@ -35,20 +46,11 @@ struct EMOMTimerView: View {
     /// Whether to show reps count in center instead of interval countdown.
     private let showRepsInCenter: Bool
 
-    /// Service for syncing timer controls with Apple Watch (nil for standalone timers).
-    private let syncService: TimerSyncService?
-
-    /// Service for HealthKit operations (starting Watch workout sessions).
-    private let healthKitService: (any HealthKitService)?
-
-    /// Exercise name for Watch sync message.
+    /// Exercise name, part of the workout's `TimerConfig`.
     private let exerciseName: String
 
-    /// Interval count (reps) for Watch sync message (EMOM-specific).
-    private let syncIntervalCount: Int?
-
-    /// Pre-generated correlation ID for Watch ↔ iPhone UUID matching.
-    private let correlationID: UUID?
+    /// Identifies the workout on both devices; also used as the `WorkoutLog.id`.
+    private let workoutID: UUID
 
     /// When true, the countdown + timer start automatically on first appear
     /// (e.g. launched from the preset play button), mirroring the Watch behavior.
@@ -77,6 +79,11 @@ struct EMOMTimerView: View {
     // MARK: - Computed Properties
     private var isCompleted: Bool { timerModel.isCompleted }
 
+    /// True while the iPhone waits for the Watch to confirm this workout.
+    private var isStartingOnWatch: Bool {
+        timerSession.isAwaitingOwner && timerSession.workoutID == workoutID
+    }
+
     // MARK: - Initialization
     init(
         timerModel: EMOMTimerModel = EMOMTimerModel(
@@ -87,11 +94,8 @@ struct EMOMTimerView: View {
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         showRepsInCenter: Bool = false,
-        syncService: TimerSyncService? = nil,
-        healthKitService: (any HealthKitService)? = nil,
         exerciseName: String = "Workout",
-        syncIntervalCount: Int? = nil,
-        correlationID: UUID? = nil,
+        workoutID: UUID = UUID(),
         autoStart: Bool = false,
         isSwipeDisabled: Binding<Bool> = .constant(false),
         showHint: Binding<Bool> = .constant(true),
@@ -102,11 +106,8 @@ struct EMOMTimerView: View {
         self.timerModel = timerModel
         self.onWorkoutCompleted = onWorkoutCompleted
         self.showRepsInCenter = showRepsInCenter
-        self.syncService = syncService
-        self.healthKitService = healthKitService
         self.exerciseName = exerciseName
-        self.syncIntervalCount = syncIntervalCount
-        self.correlationID = correlationID
+        self.workoutID = workoutID
         self.autoStart = autoStart
         self._isSwipeDisabled = isSwipeDisabled
         self._showHint = showHint
@@ -142,173 +143,103 @@ struct EMOMTimerView: View {
         }
     }
 
+    /// The text for the hint line: a sync notice takes precedence over the tap hint.
+    private var visibleHint: String? {
+        guard !isCompleted else { return nil }
+        return syncNotice ?? (session.showHint ? hintText : nil)
+    }
+
     // MARK: - Actions
     private func handleTap() {
-        guard !isCompleted else { return }
+        guard !isCompleted, !countdown.isCountingDown else { return }
 
-        // Ignore taps during countdown
-        guard !countdown.isCountingDown else { return }
-
-        if timerModel.isRunning {
-            timerModel.pause()
-            session.onTimerPaused()
-            // Prefer mirrored session for pause (reliable HK path).
-            // Fall back to WC message only when no active mirrored session exists.
-            if mirroredWorkout?.hasActiveSession == true {
-                mirroredWorkout?.pause()
-            } else {
-                syncService?.sendTimerControl(.pause) { result in
-                    if case .failure(let error) = result {
-                        Logger.timerSync.warning("sendTimerControl(.pause) failed: \(error.localizedDescription)")
-                    }
-                }
-            }
-        } else {
-            startCountdown()
-        }
-        Self.lightHaptic.impactOccurred()
-    }
-
-    /// Cleanup action called by parent before dismissing.
-    private func cleanupForDismiss() {
-        countdown.cancelCountdown()
-        timerModel.reset()
-        syncService?.sendTimerControl(.stop) { result in
-            if case .failure(let error) = result {
-                Logger.timerSync.warning("sendTimerControl(.stop) failed: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    private func startCountdown() {
-        // Skip countdown on resume - timer starts immediately
-        if session.hasEverStarted {
-            startAndScheduleHintHide()
-            // Prefer mirrored session for resume (reliable HK path).
-            // Fall back to WC message only when no active mirrored session exists.
-            if mirroredWorkout?.hasActiveSession == true {
-                mirroredWorkout?.resume()
-            } else {
-                syncService?.sendTimerControl(.play) { result in
-                    if case .failure(let error) = result {
-                        Logger.timerSync.warning("sendTimerControl(.play) failed: \(error.localizedDescription)")
-                    }
-                }
+        guard let state = timerSession.renderedState, timerSession.workoutID == workoutID else {
+            // Not started yet (no auto-start) — unless we're already waiting for the Watch.
+            if !isStartingOnWatch {
+                startWorkout()
+                Self.lightHaptic.impactOccurred()
             }
             return
         }
 
-        // Calculate absolute start time (3 seconds from now)
-        let scheduledStartTime = Date().addingTimeInterval(3.0)
-
-        // Send timer config to Watch with scheduled start time
-        syncService?.startTimerOnWatch(
-            kind: .emom,
-            totalDuration: timerModel.totalDuration,
-            intervalCount: syncIntervalCount,
-            exerciseName: exerciseName,
-            scheduledStartTime: scheduledStartTime,
-            correlationID: correlationID,
-            completion: nil
-        )
-
-        // Trigger HKWorkoutSession on Watch via HealthKit (Scenario C).
-        // startWatchApp(toHandle:) can launch the Watch app even when it's closed,
-        // so we don't gate on reachability — that would prevent the launch.
-        if let healthKitService {
-            Task {
-                do {
-                    try await healthKitService.startWorkoutOnWatch(
-                        activityType: .highIntensityIntervalTraining
-                    )
-                    watchHandledWorkout = true
-                } catch {
-                    Logger.healthKit.error("Failed to start workout on Watch: \(error.localizedDescription)")
-                }
-            }
+        if state.isPaused {
+            timerSession.resume()
+        } else {
+            timerSession.pause()
         }
-
-        // Start local countdown
-        countdown.startCountdown(scheduledStartTime: scheduledStartTime) { [self] in
-            startAndScheduleHintHide()
-        }
+        Self.lightHaptic.impactOccurred()
     }
 
-    private func startAndScheduleHintHide() {
-        guard !timerModel.isRunning else { return }
-        timerModel.start()
-        session.onTimerStarted { [timerModel] in timerModel.isRunning }
-    }
-
-    // MARK: - Watch Sync
-
-    private func setupControlSubscription() {
-        WatchSyncHandler.setupSubscription(
-            syncService: syncService,
-            callbacks: WatchSyncCallbacks(
-                onPlay: { [self] in
-                    // ADR-005: while a mirrored HK session is active, HK transitions are the
-                    // sole control channel — ignore the WC play fast path so the canonical
-                    // resume(at:) from reconcileMirroredState wins instead of a local-clock start.
-                    guard mirroredWorkout?.hasActiveSession != true else { return }
-                    if !timerModel.isRunning && !isCompleted && !countdown.isCountingDown {
-                        startCountdown()
-                    }
-                },
-                onPause: { [self] in
-                    // ADR-005: ignore the WC pause fast path while mirrored (see onPlay).
-                    guard mirroredWorkout?.hasActiveSession != true else { return }
-                    if timerModel.isRunning {
-                        timerModel.pause()
-                        session.onTimerPaused()
-                    }
-                },
-                onStop: { [self] in
-                    // Watch requested stop - cleanup and tell parent to dismiss
-                    cleanupForDismiss()
-                    onDismissRequested?()
-                }
-            ),
-            cancellables: &cancellables
+    /// Starts the workout: on the Watch if it confirms in time, otherwise on the iPhone.
+    /// The countdown begins once the owner's first snapshot is rendered.
+    private func startWorkout() {
+        timerSession.onRenderedStateChange = { [timerModel] state in
+            timerModel.apply(state)
+        }
+        workoutStarter.start(
+            workoutID: workoutID,
+            config: TimerConfig(
+                timerKindRaw: TimerKind.emom.rawValue,
+                totalDuration: timerModel.totalDuration,
+                intervalCount: timerModel.totalIntervals,
+                exerciseName: exerciseName
+            )
         )
     }
 
-    // MARK: - Mirrored Session Reconciliation
-
-    /// Reconciles local timer state with the mirrored HKWorkoutSession state.
-    ///
-    /// When Watch pauses/resumes the workout, the mirrored session on iPhone
-    /// receives the state change via HealthKit (reliable, unlike sendMessage).
-    /// This method adjusts the local timer to match.
-    ///
-    /// Loop prevention: if the timer is already in the matching state, this is a no-op.
-    private func reconcileMirroredState(_ newState: MirroredWorkoutObserver.SessionState?) {
-        guard let newState else { return }
-
-        // Anchor pause/resume to HealthKit's canonical transition date (identical on both
-        // devices) rather than the local clock, so repeated pause/resume stays in lockstep.
-        let date = mirroredWorkout?.lastTransitionDate ?? Date()
-
-        switch newState {
-        case .paused:
-            if timerModel.isRunning {
-                Logger.timerSync.info("Mirrored session paused → pausing local timer")
-                timerModel.pause(at: date)
-                session.onTimerPaused()
-            }
-        case .running:
-            if !timerModel.isRunning && !isCompleted && session.hasEverStarted {
-                Logger.timerSync.info("Mirrored session running → resuming local timer")
-                // Remote-driven resume: re-anchor to the shared date and resume hint tracking
-                // without replaying start feedback (startAndScheduleHintHide stays on the local path).
-                timerModel.resume(at: date)
-                session.onTimerStarted { [timerModel] in timerModel.isRunning }
-            }
-        case .ended:
-            Logger.timerSync.info("Mirrored session ended")
-        case .idle:
-            break
+    /// Cleanup action called by parent before dismissing. Safe to call more than once.
+    private func cleanupForDismiss() {
+        isEnding = true
+        countdown.cancelCountdown()
+        syncNoticeTask?.cancel()
+        // Only tear down the session if it still belongs to this workout — a newly
+        // presented timer may already have started the next one.
+        if timerSession.workoutID == workoutID {
+            workoutStarter.cancel()
+            timerSession.stop()
+            timerSession.onRenderedStateChange = nil
+            timerSession.end()
         }
+        timerModel.reset()
+    }
+
+    /// Shows the 3-2-1-GO countdown toward the workout's shared start date. The timer
+    /// model already follows the state; the countdown only displays and beeps.
+    private func beginCountdown(until startDate: Date) {
+        guard countdownStartDate == nil else { return }
+        countdownStartDate = startDate
+        countdown.startCountdown(scheduledStartTime: startDate) { [session, timerModel] in
+            session.onTimerStarted { timerModel.isRunning }
+        }
+    }
+
+    private func showSyncNotice(_ text: String) {
+        syncNoticeTask?.cancel()
+        withAnimation(.easeIn(duration: 0.2)) { syncNotice = text }
+        syncNoticeTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.3)) { syncNotice = nil }
+        }
+    }
+
+    // MARK: - Session Updates
+
+    /// Follows pause/resume from either device for the hint.
+    private func pausedStateChanged(_ isPaused: Bool?) {
+        guard let isPaused, session.hasEverStarted else { return }
+        if isPaused {
+            session.onTimerPaused()
+        } else {
+            session.onTimerStarted { [timerModel] in timerModel.isRunning }
+        }
+    }
+
+    /// The Watch stopped the workout: close the timer, like a local swipe-down.
+    private func finishChanged(_ finish: TimerState.Finish?) {
+        guard case .stopped = finish, !isEnding else { return }
+        cleanupForDismiss()
+        onDismissRequested?()
     }
 
     // MARK: - Body
@@ -323,7 +254,7 @@ struct EMOMTimerView: View {
                         ProgressRing(
                             size: sizes.primaryRing,
                             lineWidth: sizes.primaryLineWidth,
-                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.intervalProgress),
+                            progress: isCompleted ? 1.0 : (isWaitingToStart ? 1.0 : timerModel.intervalProgress),
                             color: accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -89.5
@@ -333,15 +264,17 @@ struct EMOMTimerView: View {
                         ProgressRing(
                             size: sizes.secondaryRing!,
                             lineWidth: sizes.secondaryLineWidth!,
-                            progress: isCompleted ? 1.0 : (countdown.isCountingDown ? 1.0 : timerModel.overallProgress),
+                            progress: isCompleted ? 1.0 : (isWaitingToStart ? 1.0 : timerModel.overallProgress),
                             color: .primary,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -90.5
                         )
                         .accessibilityHidden(true)
 
-                        // Center content - switches between countdown and normal display
-                        if countdown.isCountingDown {
+                        // Center content - switches between starting, countdown and normal display
+                        if isStartingOnWatch {
+                            startingOnWatchContent(sizes: sizes)
+                        } else if countdown.isCountingDown {
                             countdownCenterContent(sizes: sizes)
                         } else {
                             normalCenterContent(sizes: sizes)
@@ -354,11 +287,12 @@ struct EMOMTimerView: View {
 
                     TimerBottomSection(
                         totalTimeRemaining: timerModel.totalTimeRemaining,
-                        isCountingDown: countdown.isCountingDown,
+                        isCountingDown: isWaitingToStart,
                         isPulsing: $isPulsing,
                         sizes: sizes,
                         isCompleted: isCompleted,
-                        totalDuration: timerModel.totalDuration
+                        totalDuration: timerModel.totalDuration,
+                        showsWatchDisconnected: timerSession.hasUnconfirmedChanges
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -371,31 +305,47 @@ struct EMOMTimerView: View {
         .timerLifecycle(
             timer: timerModel,
             session: session,
-            onPause: { timerModel.pause() },
-            onDisappear: { timerModel.pause() },
+            onPause: { timerSession.pause() },
+            onDisappear: { cleanupForDismiss() },
             onWorkoutCompleted: { data in
                 var augmented = data
-                augmented.watchHandledWorkout = watchHandledWorkout
-                augmented.correlationID = correlationID
+                // Whoever owns the timer saves the Health workout (ADR-006 §1).
+                augmented.watchHandledWorkout = timerSession.renderedState?.owner == .watch
+                augmented.correlationID = workoutID
                 onWorkoutCompleted?(augmented)
             },
-            isMirroredSessionActive: { mirroredWorkout?.hasActiveSession == true },
-            onForeground: { reconcileMirroredState(mirroredWorkout?.sessionState) }
+            // Backgrounding pauses only a workout the iPhone owns. A Watch-owned one keeps
+            // running there, and the display catches up from the state on foreground.
+            isMirroredSessionActive: { timerSession.role != .owner },
+            onForeground: { timerSession.checkCompletion() }
         )
         .onAppear {
             Self.lightHaptic.prepare()
-            setupControlSubscription()
             // Register cleanup action with parent
             onCleanupForDismiss?(cleanupForDismiss)
             // Auto-start the countdown + timer when launched from the preset play button.
             // Guarded so a repeated onAppear can't cancel/restart an in-progress countdown.
             if autoStart && !didAutoStart {
                 didAutoStart = true
-                startCountdown()
+                startWorkout()
             }
         }
-        .onChange(of: mirroredWorkout?.sessionState) { _, newState in
-            reconcileMirroredState(newState)
+        // The owner's first snapshot fixes the start date: count down toward it.
+        .onChange(of: timerSession.renderedState?.startDate) { _, startDate in
+            guard let startDate, timerSession.workoutID == workoutID else { return }
+            beginCountdown(until: startDate)
+        }
+        .onChange(of: timerSession.renderedState?.isPaused) { _, isPaused in
+            pausedStateChanged(isPaused)
+        }
+        .onChange(of: timerSession.renderedState?.finish) { _, finish in
+            finishChanged(finish)
+        }
+        .onChange(of: timerSession.lastRollbackDate) {
+            showSyncNotice("Synced with Watch")
+        }
+        .onChange(of: workoutStarter.lastFallbackDate) {
+            showSyncNotice("Watch not available — running on iPhone")
         }
         // Sync countdown state to parent for swipe disable
         .onChange(of: countdown.isCountingDown) { _, newValue in
@@ -411,6 +361,27 @@ struct EMOMTimerView: View {
                 showConfetti = true
             }
         }
+    }
+
+    /// True before the workout clock starts: waiting for the Watch, or counting down.
+    private var isWaitingToStart: Bool {
+        isStartingOnWatch || countdown.isCountingDown
+    }
+
+    // MARK: - Starting On Watch Content
+    @ViewBuilder
+    private func startingOnWatchContent(sizes: TimerSizes) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "applewatch")
+                .font(.system(size: sizes.primaryFont * 0.6))
+                .foregroundStyle(.blue)
+                .symbolEffect(.pulse)
+            Text("Starting on Watch…")
+                .font(.system(size: sizes.labelFont))
+                .foregroundStyle(.gray)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Starting on Watch")
     }
 
     // MARK: - Countdown Center Content
@@ -449,12 +420,12 @@ struct EMOMTimerView: View {
                     )
 
                 // Third element for vertical balance
-                if session.showHint && !isCompleted {
-                    Text(hintText)
+                if let visibleHint {
+                    Text(visibleHint)
                         .font(.system(size: sizes.labelFont))
                         .foregroundStyle(.gray)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.9)
+                        .minimumScaleFactor(syncNotice == nil ? 0.9 : 0.6)
                         .transition(
                             .opacity.combined(with: .scale(scale: 0.98))
                         )
@@ -504,12 +475,12 @@ struct EMOMTimerView: View {
                         )
                 }
 
-                if session.showHint && !isCompleted {
-                    Text(hintText)
+                if let visibleHint {
+                    Text(visibleHint)
                         .font(.system(size: sizes.labelFont))
                         .foregroundStyle(.gray)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.9)
+                        .minimumScaleFactor(syncNotice == nil ? 0.9 : 0.6)
                         .transition(
                             .opacity.combined(with: .scale(scale: 0.98))
                         )
@@ -535,5 +506,6 @@ struct EMOMTimerView: View {
             )
         )
     }
+    .previewTimerSession()
 }
 

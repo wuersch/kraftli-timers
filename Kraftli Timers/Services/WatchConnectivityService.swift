@@ -88,6 +88,13 @@ final class WatchConnectivityService: NSObject, ObservableObject {
     }
 
     #if os(iOS)
+    /// Whether a paired Watch has the app installed, i.e. whether a workout can start
+    /// there at all (ADR-006 §4). False until the session has activated.
+    var isWatchAppAvailable: Bool {
+        guard let session, session.activationState == .activated else { return false }
+        return session.isPaired && session.isWatchAppInstalled
+    }
+
     /// Sends a message to Watch for immediate delivery.
     ///
     /// Uses WCSession.sendMessage for real-time communication when Watch is reachable.
