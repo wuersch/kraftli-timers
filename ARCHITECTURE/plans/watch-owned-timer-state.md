@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — steps 1–4 and slice 5A done; next: slice 5B (Watch as EMOM owner)
+**Status**: In progress — steps 1–4 and slices 5A–5B done; next: 5C (device test checkpoint A, EMOM)
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -132,7 +132,7 @@ therefore done as end-to-end slices, EMOM first, so real devices can be tested a
   later cold launch doesn't start a stale workout. (3) With 5A alone, the old Watch code ignores
   the request, so an iPhone EMOM runs iPhone-only after 5 s. This is expected.
 
-#### 5B. Watch as EMOM owner
+#### 5B. Watch as EMOM owner ✅
 - `StartRequest` + `handle(_ workoutConfiguration:)` → start the HK session, wait for `.running`,
   start mirroring, `controller.startAsOwner` (`startDate = now + 3 s`). Publish over WC until
   mirroring is up.
@@ -143,6 +143,36 @@ therefore done as end-to-end slices, EMOM first, so real devices can be tested a
 - Fix the orphan-cleanup race: skip cleanup while a start is pending or a session exists, and
   check again after `await recoverActiveWorkoutSession()` before ending anything.
 - `WatchEMOMTimerView` renders from the controller. Watch-started EMOM: Watch is owner from the start.
+- *Done as:*
+  - **Runtime:** a lazily created `WatchTimerRuntime.shared` (Watch `App/`) owns the
+    `WorkoutSessionManager`, the Watch's controller and the `WatchWorkoutStarter`. `App.init` creates
+    it before WatchConnectivity activates, and `WorkoutAppDelegate` uses the same instance, so no
+    start request is dropped on a cold launch.
+  - **Starter:** `WatchWorkoutStarter` lives in the shared `Services/` folder and runs on the Watch.
+    HealthKit and the keep-alive are injected, so its tests run in the iOS target over `FakeLink`.
+    - A start request makes the Watch a viewer ("Starting…"). The request and
+      `handle(_ workoutConfiguration:)` share one session start within 15 s.
+    - When the session runs, the Watch calls `startAsOwner`. Mirroring starts without being
+      awaited.
+    - Requests older than 10 s are ignored.
+    - A 10 s watchdog closes the screen if no owner appears.
+  - **Yield:** the iPhone outranks the Watch. The inbox accepts an iPhone-owned snapshot over a
+    Watch-owned one at any revision and rejects Watch snapshots after that. A Watch owner that
+    receives one yields (`TimerSessionController.yield`). The starter then calls the new
+    `WorkoutSessionManager.discardSession()` (no Health save) and starts a `WKExtendedRuntimeSession`.
+  - **Early intents:** a viewer that waits to own the workout keeps incoming intents and applies
+    them right after `startAsOwner`. That is how an iPhone stop sent during "Starting on Watch…"
+    takes effect. A workout stopped before its start date discards its session.
+  - **HealthKit pause/resume:** still follows the model's `isRunning` via `watchTimerLifecycle`, which
+    now comes from the state. On a viewer (no session) these calls are no-ops.
+  - **Orphan cleanup:** `recoverActiveSession` checks again after its await and never finalizes a
+    session that started meanwhile.
+  - **Messages:** the legacy EMOM `StartTimerMessage` is ignored. Completion and logging reuse
+    `WatchWorkoutCoordinator.handleWorkoutCompleted`/`stopAndCleanup`, with `displayOnly` meaning
+    "iPhone-started", so `WorkoutSessionEndedMessage` still links the Health workout to the
+    iPhone's log.
+  - **Countdown:** tapping still hides the Watch countdown, but the timer starts at the shared start
+    date either way.
 
 #### 5C. 🔍 Device test checkpoint A (EMOM)
 - On the real iPhone 17 Pro + Watch: the start-path and pause/resume rows of the matrix below,

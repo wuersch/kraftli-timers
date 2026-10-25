@@ -220,6 +220,29 @@ final class WorkoutSessionManager: NSObject {
         }
     }
 
+    /// End the workout session without saving anything to HealthKit.
+    ///
+    /// Used when the iPhone turned out to own the workout (ADR-006 yield rule): the iPhone
+    /// saves the Health workout, so keeping this one would create a duplicate. Lands at
+    /// `.idle`, so the next workout can start a fresh session.
+    func discardSession() {
+        guard let session else {
+            if sessionState != .idle { resetToIdle() }
+            return
+        }
+        builder?.discardWorkout()
+        session.end()
+        // Nil the session first so its trailing `.ended` callback is dropped as stale.
+        self.session = nil
+        builder = nil
+        sessionState = .idle
+        currentHeartRate = nil
+        averageHeartRate = nil
+        maxHeartRate = nil
+        activeCalories = nil
+        Logger.workoutSession.info("Workout session discarded without saving")
+    }
+
     /// Enable mirrored session so iPhone can track this workout.
     ///
     /// When mirroring is active, iPhone receives the session via
@@ -250,6 +273,13 @@ final class WorkoutSessionManager: NSObject {
         do {
             guard let recoveredSession = try await healthStore.recoverActiveWorkoutSession() else {
                 Logger.workoutSession.debug("No active session to recover")
+                return
+            }
+            // A new workout may have started while we waited (e.g. `startWatchApp` launched the
+            // app and its session started during this await). Then the "recovered" session is
+            // that live one — never finalize it.
+            guard session == nil, sessionState == .idle else {
+                Logger.workoutSession.info("A workout session started during recovery; leaving it running")
                 return
             }
             Logger.workoutSession.info("Recovered orphaned workout session, finalizing it")

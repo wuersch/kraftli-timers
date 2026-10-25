@@ -18,7 +18,9 @@ import os
 
 final class WorkoutAppDelegate: NSObject, WKApplicationDelegate {
     /// Shared workout session manager, injected into views via @Environment.
-    let workoutSessionManager = WorkoutSessionManager()
+    var workoutSessionManager: WorkoutSessionManager {
+        WatchTimerRuntime.shared.sessionManager
+    }
 
     /// Called by watchOS when iPhone sends a workout configuration via startWatchApp(toHandle:).
     ///
@@ -26,16 +28,8 @@ final class WorkoutAppDelegate: NSObject, WKApplicationDelegate {
     /// The configuration arrives via HealthKit, not WatchConnectivity.
     func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
         Logger.workoutSession.info("Received workout configuration from iPhone: \(String(describing: workoutConfiguration.activityType))")
-
-        Task {
-            do {
-                try await workoutSessionManager.startSession(configuration: workoutConfiguration)
-                try await workoutSessionManager.startMirroring()
-                Logger.workoutSession.info("Workout session started from iPhone configuration")
-            } catch {
-                Logger.workoutSession.error("Failed to start workout session from iPhone: \(error.localizedDescription)")
-            }
-        }
+        // Shares one session start with the iPhone's start request (ADR-006 §4).
+        WatchTimerRuntime.shared.handle(workoutConfiguration)
     }
 
     /// Called when the app needs to recover from a crash during an active workout.

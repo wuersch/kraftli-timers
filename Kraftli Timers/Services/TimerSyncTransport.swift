@@ -88,6 +88,8 @@ nonisolated struct TimerSyncInbox: Sendable {
     /// Only payloads for this workout are accepted; nil accepts nothing.
     private(set) var workoutID: UUID?
     private(set) var latestRevision = 0
+    /// The owner of the latest accepted snapshot.
+    private(set) var latestOwner: DeviceRole?
     private var seenIntentIDs: [UUID] = []
     /// The last start request delivered. Kept across `expect(_:)`, because a request
     /// arrives on several channels and the receiver starts expecting its workout after
@@ -109,9 +111,21 @@ nonisolated struct TimerSyncInbox: Sendable {
     }
 
     /// Returns true if `state` is newer than anything seen for the expected workout.
+    ///
+    /// Ownership precedence: the iPhone arbitrates iPhone-started workouts (ADR-006 §4), so
+    /// after a crossed handshake its snapshot replaces a Watch-owned one whatever the revisions.
     mutating func accept(_ state: TimerState) -> Bool {
-        guard state.workoutID == workoutID, state.revision > latestRevision else { return false }
+        guard state.workoutID == workoutID else { return false }
+        switch (latestOwner, state.owner) {
+        case (.watch, .phone):
+            break  // The iPhone took over.
+        case (.phone, .watch):
+            return false  // A Watch that hasn't yielded yet.
+        default:
+            guard state.revision > latestRevision else { return false }
+        }
         latestRevision = state.revision
+        latestOwner = state.owner
         return true
     }
 

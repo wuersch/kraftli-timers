@@ -23,6 +23,10 @@ struct Kraftli_Timers_Watch_AppApp: App {
         // Load exercise reference data from JSON (in-memory, not persisted)
         ExerciseRepository.load()
 
+        // Create the timer session (and its WatchConnectivity handler) before activating,
+        // so a start request in the persisted application context isn't dropped.
+        _ = WatchTimerRuntime.shared
+
         // Activate WatchConnectivity for real-time sync with iPhone
         WatchConnectivityService.shared.activate()
 
@@ -50,6 +54,8 @@ struct Kraftli_Timers_Watch_AppApp: App {
             ContentView()
                 .environment(messageCoordinator)
                 .environment(appDelegate.workoutSessionManager)
+                .environment(WatchTimerRuntime.shared.timerSession)
+                .environment(WatchTimerRuntime.shared.starter)
                 .onAppear {
                     // Wire session manager so coordinator can end orphaned sessions
                     messageCoordinator.sessionManager = appDelegate.workoutSessionManager

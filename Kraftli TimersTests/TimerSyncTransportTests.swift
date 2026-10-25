@@ -192,6 +192,25 @@ struct TimerSyncTransportTests {
         #expect(received.isEmpty)
     }
 
+    // MARK: - Ownership precedence
+
+    @Test func inbox_phoneSnapshotReplacesWatchSnapshot_evenAtSameRevision() {
+        var inbox = TimerSyncInbox()
+        let watchState = makeState(revision: 1)
+        inbox.expect(watchState.workoutID)
+        var phoneState = TimerState(workoutID: watchState.workoutID, owner: .phone, config: watchState.config, now: t0)
+        phoneState.revision = 1
+
+        var laterWatchState = watchState
+        laterWatchState.revision = 5
+
+        let acceptedWatch = inbox.accept(watchState)
+        let acceptedPhone = inbox.accept(phoneState)          // the iPhone took over
+        let acceptedLaterWatch = inbox.accept(laterWatchState) // a Watch that hasn't yielded yet
+
+        #expect(acceptedWatch && acceptedPhone && !acceptedLaterWatch)
+    }
+
     // MARK: - Start requests
 
     private func makeStartRequest() -> StartRequest {
