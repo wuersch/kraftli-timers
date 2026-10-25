@@ -29,8 +29,9 @@ nonisolated enum TimerStateReducer {
     ///
     /// Rules (ADR-007):
     /// - Intents for another workout, or already handled ones, are ignored.
-    /// - **Pause/resume** are rejected as a group if the owner's paused/running
-    ///   state changed after the batch's base revision — the owner's state wins.
+    /// - **Pause/resume** are rejected if the owner's paused/running state changed
+    ///   after the intent's base revision — the owner's state wins — unless that
+    ///   change was the sender's own preceding pause/resume (`previousPauseIntentID`).
     /// - **Rounds** and **stop** are always honored (rounds commute; stopping is
     ///   never wrong), subject only to the workout not having ended before them.
     /// - An action that doesn't fit the current state (pausing a paused timer,
@@ -50,15 +51,23 @@ nonisolated enum TimerStateReducer {
         guard !fresh.isEmpty else { return state }
 
         var next = state
+        let nextRevision = state.revision + 1
         for intent in fresh {
-            let conflicts = intent.baseRevision < state.pauseStateRevision
             switch intent.action {
-            case .pause where !conflicts:
-                pause(&next, at: intent.at, now: now)
-            case .resume where !conflicts:
-                resume(&next, at: intent.at, now: now)
             case .pause, .resume:
-                break  // Rejected: the owner's paused/running state changed meanwhile.
+                guard !conflicts(intent, with: next) else {
+                    break  // Rejected: the owner's paused/running state changed meanwhile.
+                }
+                let wasPaused = next.isPaused
+                if intent.action == .pause {
+                    pause(&next, at: intent.at, now: now)
+                } else {
+                    resume(&next, at: intent.at, now: now)
+                }
+                if next.isPaused != wasPaused {
+                    next.pauseStateRevision = nextRevision
+                    next.pauseStateIntentID = intent.id
+                }
             case .incrementRound:
                 incrementRound(&next, at: intent.at, now: now)
             case .stop:
@@ -67,11 +76,18 @@ nonisolated enum TimerStateReducer {
         }
 
         next.handledIntentIDs = Array((state.handledIntentIDs + fresh.map(\.id)).suffix(TimerState.handledIntentIDLimit))
-        next.revision = state.revision + 1
-        if next.isPaused != state.isPaused {
-            next.pauseStateRevision = next.revision
-        }
+        next.revision = nextRevision
         return next
+    }
+
+    /// A pause/resume conflicts when the paused/running state changed after the sender's
+    /// base revision — unless the change was the sender's own preceding intent.
+    private static func conflicts(_ intent: TimerIntent, with state: TimerState) -> Bool {
+        guard intent.baseRevision < state.pauseStateRevision else { return false }
+        if let previous = intent.previousPauseIntentID, previous == state.pauseStateIntentID {
+            return false
+        }
+        return true
     }
 
     // MARK: - Completion

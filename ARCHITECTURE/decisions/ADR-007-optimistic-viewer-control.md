@@ -34,6 +34,7 @@ struct TimerIntent: Codable, Equatable, Sendable {
     let baseRevision: Int     // last *confirmed* owner revision the viewer had
     let action: Action        // .pause | .resume | .incrementRound | .stop
     let at: Date              // when the user acted
+    let previousPauseIntentID: UUID?  // the sender's own unconfirmed pause/resume this follows
 }
 ```
 
@@ -68,6 +69,12 @@ When the owner receives a batch of intents:
 | `.incrementRound` | Apply (round counts commute) unless tapped during the countdown or after the workout ended |
 | `.stop` | Apply unless already finished (stopping is never wrong to honor). If time had already run out, record the natural completion instead |
 
+A pause/resume that *follows the sender's own* earlier pause/resume is not a conflict: if the
+state's `pauseStateIntentID` (the intent that last changed the paused/running state) equals the
+intent's `previousPauseIntentID`, it's applied. Queued intents can arrive in separate deliveries
+(first `[pause]`, later `[pause, resume]`). Without this rule, applying the viewer's own pause would
+make its own resume look like a conflict.
+
 Conflicts are judged on `pauseStateRevision`, not on `revision`. Otherwise every round counted on
 the owner would invalidate a viewer's pause. Whatever the batch does, `revision` is bumped once so
 the new `handledIntentIDs` reach the viewer.
@@ -79,9 +86,10 @@ the owner's state. That is the accepted cost of B. A short neutral hint ("Synced
 "Synced with iPhone") explains the jump. A rejection needs changes on both devices during the same
 disconnect, so this is rare.
 
-Pending pause/resume intents created while disconnected are sent as **one ordered batch** against
-the same `baseRevision`, so "pause, wait, resume" on the viewer is either fully applied or fully
-rejected — never half.
+The viewer resends its whole pending list with every new intent, so intents created while
+disconnected travel as **one ordered list**. Together with the chaining rule above, "pause, wait,
+resume" on the viewer is either fully applied or fully rejected — never half — however the
+transport splits the deliveries.
 
 ### 4. Owner unreachable for the rest of the workout
 

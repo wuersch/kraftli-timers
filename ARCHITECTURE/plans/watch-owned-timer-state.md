@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — steps 1–3 done, step 4 next
+**Status**: In progress — steps 1–4 done, step 5 next
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -74,7 +74,7 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
   `StartTimerMessage`/`StopTimerMessage` context and the new snapshots must not both be published
   from the iPhone. The legacy path has to go when the iPhone starts publishing.
 
-### 4. `TimerSessionController` (one per device, @Observable, @MainActor)
+### 4. `TimerSessionController` (one per device, @Observable, @MainActor) ✅
 - Holds the role (owner/viewer), the confirmed snapshot and the pending intents. It exposes the
   rendered state and `pause()`, `resume()`, `incrementRound()` and `stop()`.
 - Owner: applies intents through the reducer, bumps the revision, publishes, republishes on
@@ -82,6 +82,13 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
 - Viewer: predicts optimistically, batches intents while disconnected, and drops/rolls back on newer
   snapshots. Exposes `isAwaitingOwner` for the "disconnected" indicator.
 - Tests: full owner+viewer pair over fake channels, including the ADR-007 conflict cases.
+- *Done as:* the viewer resends its whole pending list on every tap. A rollback is recorded in
+  `lastRollbackDate` for the step-7 hint. Pair tests run over a `FakeLink` that models the real
+  channels: while disconnected, messages are lost, the context keeps only the latest state, and
+  queued transfers are delivered on reconnect. They found a protocol flaw, which is now fixed:
+  split deliveries of a queued pause → resume made the viewer's own resume look like a conflict.
+  Pause/resume intents are now chained via `previousPauseIntentID` (ADR-007 updated). Driving the
+  HK session from `pausedAt` stays on the Watch side (step 6).
 
 ### 5. iPhone: start handshake and ownership
 - Move `workoutSessionMirroringStartHandler` setup into `Kraftli_TimersApp.init` (finding 4).
