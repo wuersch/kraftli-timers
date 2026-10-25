@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — steps 1–4 and slices 5A–5B done; next: 5C (device test checkpoint A, EMOM)
+**Status**: In progress — steps 1–4 and slices 5A, 5B, 5D done; 5C (device checkpoint A) pending on the user's devices; next: 5E
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -178,10 +178,17 @@ therefore done as end-to-end slices, EMOM first, so real devices can be tested a
 - On the real iPhone 17 Pro + Watch: the start-path and pause/resume rows of the matrix below,
   EMOM only.
 
-#### 5D. AMRAP
+#### 5D. AMRAP ✅
 - The same for `AMRAPTimerView` / `WatchAMRAPTimerView`. Rounds come from
   `renderedState.roundCount`, and taps call `controller.incrementRound()`. The model's own round
   counting goes away (`decrementRoundsCompleted` has no UI callers).
+- *Done as:* started before checkpoint A at the user's request (2026-10-25), so findings from 5C
+  apply to both timer kinds. On iPhone, tapping counts a round while running and resumes while
+  paused. A long press pauses or resumes. On Watch, tapping the metrics counts a round. The model
+  lost `increment/decrementRoundsCompleted`. Its `roundsCompleted` only mirrors `roundCount`. With
+  AMRAP moved over, the iPhone no longer sends `StartTimerMessage`, `TimerControlMessage` or the
+  stop context. The Watch ignores a legacy `StartTimerMessage`, and `WatchPresetListView` no longer
+  creates a legacy sync service. The code itself is deleted in 5E.
 
 #### 5E. Remove old paths, completion and logging
 - Delete: `TimerControlMessage`, `StopTimerMessage`, `StartTimerMessage` (incl. `displayOnly`),
