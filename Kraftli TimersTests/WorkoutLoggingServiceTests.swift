@@ -46,9 +46,7 @@ struct WorkoutLoggingServiceTests {
 
     @Test @MainActor func defaultService_logWorkout_emom_persistsToContext() throws {
         // Create in-memory model context
-        let schema = Schema([WorkoutLog.self])
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
 
         let service = DefaultWorkoutLoggingService(modelContext: context)
@@ -74,9 +72,7 @@ struct WorkoutLoggingServiceTests {
     }
 
     @Test @MainActor func defaultService_logWorkout_amrap_persistsToContext() throws {
-        let schema = Schema([WorkoutLog.self])
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
 
         let service = DefaultWorkoutLoggingService(modelContext: context)
@@ -99,9 +95,7 @@ struct WorkoutLoggingServiceTests {
     }
 
     @Test @MainActor func defaultService_logWorkout_withHealthKitUUID_persistsUUID() throws {
-        let schema = Schema([WorkoutLog.self])
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
 
         let service = DefaultWorkoutLoggingService(modelContext: context)
@@ -124,9 +118,7 @@ struct WorkoutLoggingServiceTests {
     }
 
     @Test @MainActor func defaultService_logWorkout_withoutHealthKitUUID_persistsNil() throws {
-        let schema = Schema([WorkoutLog.self])
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
 
         let service = DefaultWorkoutLoggingService(modelContext: context)
@@ -147,9 +139,7 @@ struct WorkoutLoggingServiceTests {
     }
 
     @Test @MainActor func defaultService_logMultipleWorkouts_persistsAll() throws {
-        let schema = Schema([WorkoutLog.self])
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
 
         let service = DefaultWorkoutLoggingService(modelContext: context)
@@ -178,9 +168,7 @@ struct WorkoutLoggingServiceTests {
     }
 
     @Test @MainActor func defaultService_logWorkout_setsCurrentDate() throws {
-        let schema = Schema([WorkoutLog.self])
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
 
         let beforeLog = Date()

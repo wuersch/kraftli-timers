@@ -155,9 +155,7 @@ struct PhoneMessageCoordinatorTests {
     // MARK: - WorkoutLog HealthKit-UUID update (works without a live timer view)
 
     @Test @MainActor func sessionEnded_updatesLogByCorrelationID() throws {
-        let schema = Schema([WorkoutLog.self])
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
 
         let correlationID = UUID()
@@ -184,9 +182,7 @@ struct PhoneMessageCoordinatorTests {
     }
 
     @Test @MainActor func sessionEnded_mismatchedCorrelationID_leavesLogUntouched() throws {
-        let schema = Schema([WorkoutLog.self])
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
 
         let log = WorkoutLog(
@@ -226,11 +222,7 @@ struct PhoneMessageCoordinatorTests {
         coordinator.handleMessage(message)
 
         // Context is now wired with the matching log (no UUID yet).
-        let schema = Schema([WorkoutLog.self])
-        let container = try ModelContainer(
-            for: schema,
-            configurations: [ModelConfiguration(isStoredInMemoryOnly: true)]
-        )
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
         let context = container.mainContext
         let log = WorkoutLog(
             id: correlationID,
