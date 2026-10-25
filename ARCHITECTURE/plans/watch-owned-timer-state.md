@@ -1,7 +1,7 @@
 # Plan: Single-owner timer state (ADR-006 / ADR-007)
 
 **Branch**: `feature/watch-owned-timer-state`
-**Status**: In progress — steps 1–4 done, step 5 next
+**Status**: In progress — steps 1–4 done; next: slice 5A (iPhone EMOM on the controller)
 **Date**: 2026-10-25
 
 Goal: replace event replication between iPhone and Watch with one owner publishing versioned
@@ -14,22 +14,24 @@ October 2026 sync review, including "Watch app sometimes doesn't start".
 |---|---------|----------|
 | 1 | Start offset (wake-up jitter, 400 ms GO delay, Watch skip/late-join lead) | Step 2 — shared `startDate`, implicit countdown |
 | 2 | Initiating device pauses/resumes on local clock | Steps 1, 4 — owner applies tap-time intents |
-| 3 | Asymmetric HK/WC arbitration drops iPhone pause | Step 7 — arbitration removed |
-| 4 | Mirroring handler set in `onAppear` | Step 5 — set in `App.init` |
-| 5 | `hasActiveSession` true for ended session | Step 7 — mirrored state no longer drives timer logic |
-| 6 | Stale `lastTransitionDate` after reconnect | Step 7 — removed |
+| 3 | Asymmetric HK/WC arbitration drops iPhone pause | 5A/5B — arbitration replaced; 5E deletes it |
+| 4 | Mirroring handler set in `onAppear` | 5A — set in `App.init` |
+| 5 | `hasActiveSession` true for ended session | 5A/5B — mirrored state no longer drives timer logic |
+| 6 | Stale `lastTransitionDate` after reconnect | 5E — removed |
 | 7 | AMRAP `+1` messages lost/dropped | Steps 1, 4 — absolute `roundCount`, queued intents |
-| 8 | `watchHandledWorkout` set on launch request | Step 5 — ownership confirmed by snapshot |
-| — | Watch sometimes doesn't start (launch error swallowed; orphan cleanup ends fresh session) | Steps 5, 6 |
+| 8 | `watchHandledWorkout` set on launch request | 5A — ownership confirmed by snapshot |
+| — | Watch sometimes doesn't start (launch error swallowed; orphan cleanup ends fresh session) | 5A (visible fallback), 5B (cleanup race) |
 
 ## Steps
 
-Each step builds on its own, keeps the app working, and comes with unit tests. Device testing
-happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the full test suite.
+Each step builds on its own and comes with unit tests. Steps 1–4 kept the app's behavior unchanged.
+Steps 5–8 were re-sequenced into the vertical slices 5A–5E (see the note there): on the feature
+branch, the app works end to end again only after 5B, so nothing is merged before checkpoint A.
+Running the full test suite needs the user's OK (CLAUDE.md), unless they said otherwise for the session.
 
 ### 0. Accept the ADRs
 - Review ADR-006 and ADR-007, settle the open questions below, flip both to *Accepted*.
-- Mark ADR-003/004/005 *Superseded by ADR-006* only when step 7 lands.
+- Mark ADR-003/004/005 *Superseded by ADR-006* only when slice 5E lands.
 
 ### 1. Shared state and reducer (pure Swift, no UI) ✅
 - `TimerState`, `TimerConfig`, `TimerIntent`, `DeviceRole`, `Finish` in a shared file next to
@@ -90,41 +92,64 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
   Pause/resume intents are now chained via `previousPauseIntentID` (ADR-007 updated). Driving the
   HK session from `pausedAt` stays on the Watch side (step 6).
 
-### 5. iPhone: start handshake and ownership
-- Move `workoutSessionMirroringStartHandler` setup into `Kraftli_TimersApp.init` (finding 4).
-- Start flow: decide whether a Watch is available → `StartRequest` + `startWatchApp` → "Starting
-  on Watch…" → wait for revision 1 → countdown. On a timeout (5 s) or a thrown error, the iPhone
-  becomes owner and shows "Watch not available — running on iPhone".
-- Health-save decision = `state.owner == .phone`. Delete `watchHandledWorkout`.
-- 🔍 **Device test checkpoint A** (start paths only).
+### 5. Vertical slices (re-sequenced 2026-10-25)
 
-### 6. Watch: owner flow
-- `handle(_ workoutConfiguration:)` + `StartRequest` → start the HK session, wait for `.running`,
-  start mirroring, publish revision 1 (`startDate = now + 3 s`).
-- Yield rule: seeing `owner: .phone` for its `workoutID` → end the session without saving, then
-  become viewer (or dismiss — see open question 2).
+The original steps 5–8 (iPhone handshake → Watch owner → wire views → completion) can't be tested
+one by one. The iPhone's new start request needs the Watch's answer (step 6). The legacy start
+message can't run alongside it, because both use the iPhone's single application-context slot. And
+nothing becomes visible until the views render from the controller (step 7). The same work is
+therefore done as end-to-end slices, EMOM first, so real devices can be tested as early as possible.
+
+#### 5A. iPhone EMOM on the controller
+- Move `workoutSessionMirroringStartHandler` setup into `Kraftli_TimersApp.init` (finding 4).
+- iPhone start flow: Watch available (`isPaired && isWatchAppInstalled`)? → `StartRequest`
+  (workout ID + config; needs a payload case and the WC transport) + `startWatchApp` →
+  "Starting on Watch…" → controller as **viewer**, countdown once revision 1 arrives. On a 5 s
+  timeout or a thrown `startWatchApp` → controller as **owner** (`owner: .phone`, published as the
+  context so a late Watch yields), with the notice "Watch not available — running on iPhone".
+  No Watch → owner immediately, no wait.
+- `EMOMTimerView` renders from `controller.renderedState` (`timerModel.apply`). Taps go to
+  `controller.pause()/resume()/stop()`, and the countdown display is derived from
+  `startDate − now`. The iPhone stops publishing the legacy start/stop context.
+- Health-save decision = `state.owner == .phone`. `watchHandledWorkout` is no longer used for EMOM.
+- Snap-back hint from `lastRollbackDate`; "Watch disconnected" indicator from `hasUnconfirmedChanges`.
+
+#### 5B. Watch as EMOM owner
+- `StartRequest` + `handle(_ workoutConfiguration:)` → start the HK session, wait for `.running`,
+  start mirroring, `controller.startAsOwner` (`startDate = now + 3 s`). Publish over WC until
+  mirroring is up.
+- HK `session.pause()/resume()` driven by `renderedState.pausedAt` (owner only). Mirrored HK
+  transitions no longer drive timer logic on either device.
+- Yield rule: a context with `owner: .phone` for its `workoutID` → end the HK session without
+  saving, become viewer, keep the screen alive via `WKExtendedRuntimeSession`.
 - Fix the orphan-cleanup race: skip cleanup while a start is pending or a session exists, and
   check again after `await recoverActiveWorkoutSession()` before ending anything.
-- Watch-started workouts: Watch is owner from the start, same publishing.
-- 🔍 **Device test checkpoint B** (start, pause/resume from both sides, disconnects).
+- `WatchEMOMTimerView` renders from the controller. Watch-started EMOM: Watch is owner from the start.
 
-### 7. Wire the views, delete the old paths
-- iPhone `EMOMTimerView`/`AMRAPTimerView` and Watch timer views bind to the controller.
-- Delete: `TimerControlMessage`, `StopTimerMessage`, `StartTimerMessage.displayOnly`,
+#### 5C. 🔍 Device test checkpoint A (EMOM)
+- On the real iPhone 17 Pro + Watch: the start-path and pause/resume rows of the matrix below,
+  EMOM only.
+
+#### 5D. AMRAP
+- The same for `AMRAPTimerView` / `WatchAMRAPTimerView`. Rounds come from
+  `renderedState.roundCount`, and taps call `controller.incrementRound()`. The model's own round
+  counting goes away (`decrementRoundsCompleted` has no UI callers).
+
+#### 5E. Remove old paths, completion and logging
+- Delete: `TimerControlMessage`, `StopTimerMessage`, `StartTimerMessage` (incl. `displayOnly`),
   `WatchSyncHandler`, both reconcile functions, the ADR-005 gates, `MirroredWorkoutObserver`'s timer
-  role (it keeps only the session handle for the data channel), and most of the coordinator dedup.
-- `TimerLifecycleModifier`: background no longer pauses an owned-elsewhere workout. An iPhone-owned
+  role (it keeps only the session handle for the data channel), `watchHandledWorkout`, the
+  models' legacy `start/pause/resume(at:)/start(at:)` wrappers, and most coordinator dedup.
+- `TimerLifecycleModifier`: background no longer pauses a workout owned elsewhere. An iPhone-owned
   workout keeps today's behavior.
+- Completion: the owner sets `finish`. The final snapshot and `WorkoutSessionEndedMessage` go out over
+  all channels, including `transferUserInfo`. The iPhone writes the `WorkoutLog` for
+  iPhone-started workouts from the final state; the Watch writes it for Watch-started ones. If the
+  owner never reports, the starting device logs from its predicted state when the time runs out
+  (ADR-007 §4).
+- 🔍 **Device test checkpoint B** (full matrix).
 
-### 8. Completion and logging
-- The owner sets `finish`. The final snapshot and `WorkoutSessionEndedMessage` go out over all
-  channels, including `transferUserInfo`.
-- The iPhone writes the `WorkoutLog` for iPhone-started workouts from the final state (reps/rounds
-  from the state, not from its local model). The Watch writes it for Watch-started ones (unchanged).
-- If the owner never reports, the starting device logs from its predicted state at time-out (ADR-007 §4).
-- 🔍 **Device test checkpoint C** (full matrix).
-
-### 9. Documentation
+### 6. Documentation
 - `ARCHITECTURE/architecture.md`: the HealthKit/sync section and the component tables.
 - `SPEC/scope.md`: the "iPhone → Watch Timer Sync" and "Synchronized Countdown" sections. Their
   limitations text is already outdated (it says Apple doesn't allow programmatic Watch launch).
@@ -167,5 +192,26 @@ happens after steps 5, 6 and 8 (see matrix below). I'll ask before running the f
   This is mitigated by publishing on all transports with idempotent apply.
 - Mirroring needs the session to be prepared or running first. Publishing over WC until then is
   part of step 6.
-- Large refactor of tested code: keep each step mergeable, and run the existing tests (with your
-  OK) before deleting old paths in step 7.
+- Large refactor of tested code: keep every commit green, and don't merge before checkpoint A.
+
+## Working notes (for a fresh session)
+
+- **Build/test toolchain:** `xcode-select` may still point to the Command Line Tools. Prefix
+  `xcodebuild`/`xcrun` with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+- **Simulators:** iPhone 17 Pro runs on the iOS 27.0 runtime (27.1 only supports iPhone Duo). For Watch
+  tests use `platform=watchOS Simulator,name=Apple Watch Series 12 (46mm)`. Full suites can exceed
+  10 minutes: run them in the background.
+- **Shared code:** new files in `Kraftli Timers/Services/` that the Watch also needs must be added to
+  the "Exceptions for 'Kraftli Timers' folder in 'Kraftli Timers Watch App' target" list in
+  `project.pbxproj` (alphabetical).
+- **Isolation:** app targets default to MainActor. Types decoded in HealthKit/WC delegate callbacks are
+  `nonisolated` (see `TimerState`). Nested helper types in tests need their own `@MainActor`.
+  Mutating calls can't go inside `#expect(...)`.
+- **SwiftData in tests:** always use `makeInMemoryContainer(for:)` (CloudKit disabled), never a bare
+  `ModelConfiguration(isStoredInMemoryOnly:)`.
+- **WatchConnectivity:** messages sent with `replyHandler: nil` arrive in `session(_:didReceiveMessage:)`
+  without a reply handler. The application context is one slot per direction.
+- **Where things are:** state and reducer `Services/TimerState*.swift`; transports
+  `Services/TimerSyncTransport.swift`, `Services/HealthKitTimerSyncTransport.swift`; controller
+  `Services/TimerSessionController.swift`; tests `Kraftli TimersTests/TimerState*Tests.swift`,
+  `TimerSync*Tests.swift`, `TimerSessionControllerTests.swift` (incl. `FakeLink`).
