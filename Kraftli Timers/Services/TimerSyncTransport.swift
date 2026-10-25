@@ -220,7 +220,10 @@ final class WatchConnectivityTimerSyncTransport: TimerSyncTransport {
     var onPayload: ((TimerSyncPayload) -> Void)?
     var onReconnect: (() -> Void)?
 
-    init(connectivity: WatchConnectivityService = .shared) {
+    /// - Parameter connectivity: Usually `.shared`. Passed explicitly rather than as a default
+    ///   argument: default arguments are evaluated outside the main actor, where the
+    ///   main-actor-isolated `shared` can't be read.
+    init(connectivity: WatchConnectivityService) {
         self.connectivity = connectivity
         connectivity.onTimerSyncPayload = { [weak self] payload in self?.onPayload?(payload) }
         connectivity.onReachable = { [weak self] in self?.onReconnect?() }
