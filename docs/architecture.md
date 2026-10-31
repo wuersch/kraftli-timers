@@ -1,6 +1,8 @@
 # Architecture
 
-Data models, patterns, and key components.
+Data models, patterns, and key components: *how* the system is built. *What* it must do is
+specified in the [use cases](use-cases/); *why* it is built this way is recorded in the
+[ADRs](adr/).
 
 ## Domain Model Summary
 
@@ -8,20 +10,25 @@ Quick reference for the core domain types:
 
 | Type | Purpose |
 |------|---------|
-| `TimerPreset` | Saved timer configuration: id, kind, duration, exercise, reps (EMOM), sortOrder |
+| `TimerPreset` | Saved timer configuration: id, kind, duration, exerciseId, reps (EMOM), sortOrder |
 | `TimerKind` | Enum: EMOM \| AMRAP |
-| `Exercise` | Exercise metadata: id, name, description, formTips, muscleGroup, difficulty |
+| `ExerciseInfo` | Bundled, in-memory exercise reference data: id, name, description, formTips, muscleGroup, difficulty ([ADR-0009](adr/ADR-0009-bundled-exercise-library.md)) |
+| `Exercise` | Legacy SwiftData model, kept in the schema for migration only |
 | `WorkoutLog` | Completed workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID |
 | `MuscleGroup` | Enum: fullBody \| upperBody \| lowerBody \| core |
 | `Difficulty` | Enum: beginner \| intermediate \| advanced |
 
 ## Patterns
 
-- **SwiftData** for persistence (@Model classes, @Query for fetching)
+- **SwiftData + CloudKit** for persistence, both devices as peers (@Model classes, @Query for fetching; [ADR-0008](adr/ADR-0008-swiftdata-cloudkit-persistence.md))
 - **Observable** macro for runtime state management (timer models)
 - **Dependency Injection** for testability (timer providers, audio feedback)
-- **Protocol-based abstractions** for services (protocol → default → silent mock)
-- **Two-channel Watch communication** for HealthKit (HK session channel + WatchConnectivity message channel)
+- **Protocol-based abstractions** for services: `protocol` → `Default…` (production) → `Silent…`
+  (previews/tests, fails quietly). Time and scheduling are injectable (`now`, `schedules…` flags) so
+  timing logic is unit-testable
+- **Shared code** between the iOS and watchOS targets lives in the iOS folders and is added to the
+  Watch target via Xcode membership exceptions; platform differences use `#if os()`
+- **Single-owner timer state** replicated as snapshots over every transport ([ADR-0006](adr/ADR-0006-single-owner-timer-state.md), [ADR-0007](adr/ADR-0007-optimistic-viewer-control.md))
 
 ## Data Models
 
@@ -34,13 +41,15 @@ final class TimerPreset {
     var durationInterval: TimeInterval
     var targetReps: Int?          // Optional, only for EMOM
     var sortOrder: Int            // For list ordering
-    var exercise: Exercise?       // Relationship
+    var exerciseId: UUID?         // Reference into the bundled library
+    var exercise: Exercise?       // Legacy relationship (migration only)
 
     // Computed
     var kind: TimerKind
     var duration: Duration
     var primaryText: String       // "EMOM · 20 min"
     var secondaryText: String     // "Exercise · 10 Reps"
+    var exerciseInfo: ExerciseInfo?   // Looked up by exerciseId
     var intervalDuration: TimeInterval  // duration / reps (or 60 default)
 
     // Static utilities
@@ -57,17 +66,18 @@ enum TimerKind: String, CaseIterable {
 }
 ```
 
-### Exercise (SwiftData @Model)
+### ExerciseInfo (in-memory reference data)
 ```swift
-@Model
-final class Exercise {
-    var id: UUID
-    var name: String
-    var exerciseDescription: String?
-    var formTips: [String]?
-    var muscleGroup: MuscleGroup?
-    var difficulty: Difficulty?
+struct ExerciseInfo: Identifiable, Hashable, Sendable {
+    let id: UUID
+    let name: String
+    let description: String
+    let formTips: [String]
+    let muscleGroup: MuscleGroup
+    let difficulty: Difficulty?
 }
+// ExerciseRepository loads Exercises.json at startup; the legacy `Exercise` @Model stays in the
+// schema only so the exerciseId migration can read old relationships (ADR-0009).
 ```
 
 ### WorkoutLog (SwiftData @Model)
@@ -132,7 +142,7 @@ enum TimePeriod: String, CaseIterable {
 
 User preferences are managed via `AppSettings`, an `@Observable` class with `@AppStorage` properties.
 
-See [ADR-001: Settings Pattern](decisions/ADR-001-settings-pattern.md) for full decision rationale and implementation details.
+See [ADR-0001: Settings Pattern](adr/ADR-0001-settings-pattern.md) for full decision rationale and implementation details.
 
 ## Timer Sync & HealthKit Architecture
 
@@ -185,9 +195,9 @@ and redelivery are harmless:
 calories; `sendMessage` + `transferUserInfo`). `PhoneMessageCoordinator` links the UUID to the
 `WorkoutLog` whose ID is the workout ID and publishes it for the summary screen.
 
-See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md),
-[ADR-006: Single-owner timer state](decisions/ADR-006-single-owner-timer-state.md) and
-[ADR-007: Optimistic viewer control](decisions/ADR-007-optimistic-viewer-control.md).
+See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
+[ADR-0006: Single-owner timer state](adr/ADR-0006-single-owner-timer-state.md) and
+[ADR-0007: Optimistic viewer control](adr/ADR-0007-optimistic-viewer-control.md).
 
 ## Key Components
 
@@ -216,15 +226,17 @@ See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md)
 ### Services
 | Service | Purpose |
 |---------|---------|
-| `TimerCoordinator` | High-level timer orchestration |
+| `TimerCoordinator` | Tick scheduler: drives a timer model from a `TimerProvider` |
 | `TimerProvider` | Protocol for timer implementations |
-| `DisplayLinkTimerProvider` | CADisplayLink for smooth animations |
-| `FoundationTimerProvider` | Foundation Timer fallback |
-| `AudioFeedbackProvider` | Protocol for audio feedback |
-| `SystemSoundFeedback` | Production audio (cheering sound) |
-| `NeutralSoundFeedback` | Neutral audio (system beeps) |
+| `DisplayLinkTimerProvider` | CADisplayLink ticks (Smooth Animations on) |
+| `FoundationTimerProvider` | 0.2 s Foundation Timer (Smooth Animations off; always on Watch) |
+| `FeedbackProvider` | Protocol for interval/completion feedback (`SilentFeedback` when Sound is off and on the Watch) |
+| `SystemSoundFeedback` | Interval beep + cheering completion sound |
+| `NeutralSoundFeedback` | Interval beep + three-beep completion |
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
+| `ExerciseRepository` / `ExerciseLoader` | Load the bundled exercise library into memory |
+| `PresetMaintenance` | Startup migration + CloudKit duplicate cleanup (deletes on iPhone only) |
 | `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |
 | `TimerState` / `TimerStateReducer` | Shared: replicated timer state and the only code that changes it |
 | `TimerSessionController` | Shared: one device's role (owner/viewer), confirmed state, pending intents (@Observable) |
@@ -283,7 +295,8 @@ See [ADR-002: HealthKit Integration](decisions/ADR-002-healthkit-integration.md)
 ## Utilities
 
 - `TimeInterval+Format` - MM:SS, HH:MM:SS, and interval description formatting
-- `View+ReadSize` - GeometryReader-based size measurement
+- `View+PaddedDomain` - `ifLet` conditional view modifier helper
+- `Logger+App` - Categorized `os.Logger` instances
 - `UISeparator` - Consistent separator characters (e.g., middle dot)
 - `TimePeriod+Chart` - Chart x-axis unit for time periods
 - `Difficulty+UI` - Difficulty display colors

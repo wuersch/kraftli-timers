@@ -2,7 +2,7 @@
 
 Future features and ideas. Items here are **not in active scope**.
 
-> **Promotion Rule**: Backlog items require explicit discussion and approval before implementation. Do not implement directly from this file.
+> **Promotion Rule**: Backlog items require explicit discussion and approval before implementation. Promoting an item means specifying it as a use case (`/adlc:use-case`) in [use-cases/](use-cases/). Do not implement directly from this file.
 
 ---
 
@@ -10,7 +10,7 @@ Future features and ideas. Items here are **not in active scope**.
 
 **Priority**: Low (nice-to-have)
 
-Display form tips overlay when timer is paused. Uses existing `formTips` data from Exercise model.
+Display form tips overlay when timer is paused. Uses the `formTips` already bundled with each exercise ([ADR-0009](adr/ADR-0009-bundled-exercise-library.md)).
 
 ---
 
@@ -97,21 +97,13 @@ Requires Exercise Library and Programs features.
 
 ---
 
-## HealthKit Integration
+## HealthKit Enhancements
 
-**Priority**: Medium (can be implemented alongside Workout History)
+**Priority**: Medium
 
-> **Detailed Spec**: See [SPEC/healthkit-workoutkit-integration.md](healthkit-workoutkit-integration.md) for full UX flows, scenarios, and technical implementation plan.
-
-### Phase 1 (Current Focus)
-- Record completed workouts to Apple Health (duration, type, calories)
-- Capture heart rate during workout via Watch workout session
-- Best-effort: works with or without Watch app running
-- No live HR display in timer views (data collected in background)
-
-### Future Phases
-- Live heart rate display during workouts
-- Post-workout summary screen
+Recording workouts to Apple Health, live heart rate on the Watch and the post-workout summary are
+implemented ([UC-0005](use-cases/UC-0005-record-a-workout.md), [ADR-0002](adr/ADR-0002-healthkit-integration.md)). Remaining ideas:
+- Heart rate for iPhone-owned workouts via an iOS 26 `HKWorkoutSession` on iPhone (AirPods / BLE straps)
 - Programs integration (single session spanning multiple exercises)
 
 ---
@@ -151,11 +143,13 @@ Deferred settings features for future consideration:
 
 ---
 
-## ~~Watch → iPhone Timer Triggering~~
+## Follow a Watch-Started Workout on iPhone
 
-> **Merged into HealthKit Integration** — See [Scenario D in healthkit-workoutkit-integration.md](healthkit-workoutkit-integration.md#scenario-d-both-devices-watch-leads).
->
-> With mirrored workout sessions (watchOS 10+), this feature becomes a natural part of the HealthKit integration rather than a separate effort. iPhone automatically receives workout state when Watch starts a session.
+**Priority**: Low
+
+A workout started on the Watch isn't shown on the iPhone today ([UC-0004](use-cases/UC-0004-run-a-workout-on-apple-watch.md)).
+Under the single-owner model this becomes a pure viewer feature: the iPhone renders the Watch's
+snapshots ([ADR-0006](adr/ADR-0006-single-owner-timer-state.md)).
 
 ---
 
