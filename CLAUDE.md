@@ -2,9 +2,6 @@
 
 Native iOS fitness app for high-intensity, minimalistic workouts.
 
-## Tech Stack
-- iOS 26+ | Swift 6.2 | SwiftUI | SwiftData
-
 ## Project Goal
 Learning project: educational value matters as much as working code. Explain SwiftUI concepts when introducing new patterns.
 
@@ -32,16 +29,12 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Check docs: `python3 -I ~/.claude/plugins/cache/adlc-marketplace/adlc/*/scripts/check-docs.py .`
 
 ## Project Structure
-- `App/` - Entry point and root navigation
 - `Features/` - Feature modules with co-located Model+View
 - `Models/` - SwiftData persistence models only
 - `Services/` - Protocols + implementations: `protocol` → `Default…` (production) → `Silent…`
   (previews/tests); inject `now`/scheduling seams for timing logic
 - Code shared with the Watch lives in the iOS folders and joins the Watch target via membership
   exceptions; guard platform differences with `#if os()`
-- `Components/` - Reusable UI components
-- `Modifiers/` - SwiftUI view modifiers
-- `Extensions/` - Type extensions
 
 ## Design Philosophy
 - Native SwiftUI components (Button, List, NavigationStack)
@@ -50,12 +43,8 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Dark background + minimal UI = keep it simple
 
 ## Workflow
-1. Plan before coding: summarize approach, list assumptions and options
-2. Ask questions if requirements unclear
-3. Discuss new feature ideas before adding to scope
-4. Implement in small, testable steps
-5. Branch for each feature: `feature/name` or `fix/name`
-6. Present options with tradeoffs when multiple approaches exist
+- Branch for each feature: `feature/name` or `fix/name`
+- Present options with tradeoffs when multiple approaches exist
 
 ## Git Safety
 - Always inspect stash contents before dropping (`git stash show -p`)
