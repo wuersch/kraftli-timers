@@ -2,9 +2,6 @@
 
 Native iOS fitness app for high-intensity, minimalistic workouts.
 
-## Tech Stack
-- iOS 26+ | Swift 6.2 | SwiftUI | SwiftData
-
 ## Project Goal
 Learning project: educational value matters as much as working code. Explain SwiftUI concepts when introducing new patterns.
 
@@ -12,25 +9,32 @@ Learning project: educational value matters as much as working code. Explain Swi
 
 | Document | Contents |
 |----------|----------|
-| [SPEC/scope.md](SPEC/scope.md) | Current release features, details, and UI spec |
-| [SPEC/backlog.md](SPEC/backlog.md) | Future features (requires promotion) |
-| [ARCHITECTURE/architecture.md](ARCHITECTURE/architecture.md) | Data models, patterns, components |
-| [ARCHITECTURE/decisions/](ARCHITECTURE/decisions/) | Architecture Decision Records |
+| [docs/scope.md](docs/scope.md) | Release overview; index of use cases and ADRs with status |
+| [docs/use-cases/](docs/use-cases/) | Use case specifications (UC-NNNN), the normative requirements |
+| [docs/use-cases/ui-spec.md](docs/use-cases/ui-spec.md) | Interaction design: screens, gestures, copy |
+| [docs/backlog.md](docs/backlog.md) | Future features (requires promotion) |
+| [docs/architecture.md](docs/architecture.md) | Data models, patterns, components |
+| [docs/adr/](docs/adr/) | Architecture Decision Records (ADR-NNNN, MADR format) |
+| [docs/plans/](docs/plans/) | Implementation plans for larger changes |
 
 ## Rules
-- **Only implement from scope.md** – backlog items require explicit promotion
+- **Only implement use cases with status `approved` or later** – backlog items require explicit
+  promotion, which means specifying them as a use case
+- New or changed behavior → `/adlc:use-case` (revise an existing UC rather than creating a duplicate)
+- Significant, hard-to-reverse structural decisions → `/adlc:adr` (in `docs/adr/`)
+- Keep use cases interaction-agnostic; screens and gestures go into `docs/use-cases/ui-spec.md`
+- When a change realizes a use case or ADR, update its status (and `docs/scope.md`)
 - Discuss new feature ideas before adding them to documentation
 - Plan before coding: summarize approach, list assumptions and options
-- Document significant architectural decisions as ADRs
+- Check docs: `python3 -I ~/.claude/plugins/cache/adlc-marketplace/adlc/*/scripts/check-docs.py .`
 
 ## Project Structure
-- `App/` - Entry point and root navigation
 - `Features/` - Feature modules with co-located Model+View
 - `Models/` - SwiftData persistence models only
-- `Services/` - Protocols + implementations
-- `Components/` - Reusable UI components
-- `Modifiers/` - SwiftUI view modifiers
-- `Extensions/` - Type extensions
+- `Services/` - Protocols + implementations: `protocol` → `Default…` (production) → `Silent…`
+  (previews/tests); inject `now`/scheduling seams for timing logic
+- Code shared with the Watch lives in the iOS folders and joins the Watch target via membership
+  exceptions; guard platform differences with `#if os()`
 
 ## Design Philosophy
 - Native SwiftUI components (Button, List, NavigationStack)
@@ -39,12 +43,8 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Dark background + minimal UI = keep it simple
 
 ## Workflow
-1. Plan before coding: summarize approach, list assumptions and options
-2. Ask questions if requirements unclear
-3. Discuss new feature ideas before adding to scope
-4. Implement in small, testable steps
-5. Branch for each feature: `feature/name` or `fix/name`
-6. Present options with tradeoffs when multiple approaches exist
+- Branch for each feature: `feature/name` or `fix/name`
+- Present options with tradeoffs when multiple approaches exist
 
 ## Git Safety
 - Always inspect stash contents before dropping (`git stash show -p`)

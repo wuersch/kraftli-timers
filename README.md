@@ -45,10 +45,12 @@ A native iOS and watchOS app for high-intensity interval training. Minimalistic,
 
 ## Documentation
 
-- [Scope](SPEC/scope.md) - Current features, details, and UI specification
-- [Backlog](SPEC/backlog.md) - Future features and ideas
-- [Architecture](ARCHITECTURE/architecture.md) - Data models, patterns, and components
-- [ADRs](ARCHITECTURE/decisions/) - Architecture Decision Records
+- [Scope](docs/scope.md) - Release overview and index of use cases and decisions
+- [Use Cases](docs/use-cases/) - What the app does, one specification per user goal
+- [UI Specification](docs/use-cases/ui-spec.md) - Screens, gestures, and copy
+- [Backlog](docs/backlog.md) - Future features and ideas
+- [Architecture](docs/architecture.md) - Data models, patterns, and components
+- [ADRs](docs/adr/) - Architecture Decision Records
 
 ## Project Structure
 
@@ -84,7 +86,7 @@ When making schema changes (adding fields, record types, etc.):
 
 This is a learning project where educational value matters as much as working code. When contributing:
 
-1. Read through the [documentation](SPEC/scope.md) to understand patterns and conventions
+1. Read through the [documentation](docs/scope.md) to understand patterns and conventions
 2. Follow existing code style and SwiftUI idioms
 3. Keep UI minimalistic - native components, no unnecessary features
 4. Test on iOS Simulator (iPhone 17 Pro recommended)
