@@ -1,6 +1,6 @@
 # UC-0009: Correct or delete a logged workout
 
-- **Status:** implemented
+- **Status:** clarified
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to fix a miscounted workout or remove one that shouldn't be in my
   history, so that my stats stay truthful.
@@ -28,8 +28,9 @@ The athlete picks a workout to correct, or decides to remove one.
 ## Main Success Scenario
 
 1. Athlete picks a workout from a list.
-2. System shows its date, time, exercise, duration in minutes, and kind (EMOM or AMRAP) as
-   read-only information. Only the reps (EMOM) or rounds (AMRAP) can be changed.
+2. System shows its date, time, exercise, duration, kind (EMOM, AMRAP or For Time) and, if any,
+   its session as read-only information. The duration is shown in minutes, or for For Time to the
+   second. Only the reps (EMOM, For Time) or rounds (AMRAP) can be changed.
 3. Athlete sets the corrected value: 1–999 reps, or 1–99 rounds.
 4. Athlete saves the correction.
 5. System stores the new value. Stats and lists reflect it, on all devices.
@@ -40,8 +41,10 @@ The athlete picks a workout to correct, or decides to remove one.
   - 1a1. System removes it from the history immediately, without asking for confirmation, on all devices.
   - 1a2. The workout's Apple Health entry, if any, stays in Apple Health.
   - 1a3. Use case ends.
-- 3a. The recorded value lies outside the correctable range (e.g. 0 rounds for a workout stopped early):
-  - 3a1. System keeps the recorded value unless the athlete chooses a value within the range.
+- 3a. The recorded value lies outside the correctable range (e.g. 0 rounds for a workout stopped
+  early), or none was recorded (an AMRAP without round counting, a For Time stopped early):
+  - 3a1. System keeps the recorded value, or no value, unless the athlete chooses a value within
+    the range.
   - 3a2. Use case continues at step 4.
 - 4a. Athlete abandons the correction:
   - 4a1. The workout stays unchanged.
@@ -52,3 +55,5 @@ The athlete picks a workout to correct, or decides to remove one.
 - Interaction design: [ui-spec.md](ui-spec.md#workout-log-editor)
 - AMRAP rounds can't be corrected during a workout; this use case is the way to correct them
   ([UC-0002](UC-0002-run-an-amrap-workout.md)).
+- A For Time finish time can't be corrected; a mistaken result is deleted instead
+  ([UC-0012](UC-0012-run-a-for-time-workout.md) extension 7a).

@@ -1,6 +1,6 @@
 # UC-0008: Review workout history and stats
 
-- **Status:** approved
+- **Status:** clarified
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to see how much I've trained recently, overall, per muscle group
   and per exercise, so I can judge my consistency and balance.
@@ -38,10 +38,13 @@ The athlete wants to review their training.
    - the total training time in minutes, and the number of workouts
    - the training time per muscle group (full body, upper body, lower body, core)
    - the training minutes per day or month as an activity breakdown
-   - the training per exercise: minutes, number of workouts and total reps or rounds, ordered by minutes, highest first
+   - the training per exercise: minutes, number of workouts and total reps or rounds, ordered by minutes, highest first.
+     Reps from EMOM and For Time workouts add up; workouts recorded without reps or rounds count
+     toward minutes and workouts only.
 5. Athlete asks for one exercise's workouts.
 6. System lists that exercise's workouts in the chosen period. Each shows its date, duration, and
-   reps or rounds, and is marked if it was stopped early.
+   reps or rounds if recorded, names its session if it was a step of one
+   ([UC-0015](UC-0015-run-a-training-session.md)), and is marked if it was stopped early.
 7. Athlete may correct or delete a listed workout ([UC-0009](UC-0009-correct-or-delete-a-logged-workout.md)).
 
 ## Extensions
@@ -65,7 +68,8 @@ The athlete wants to review their training.
 
 ## Special Requirements
 
-- A workout's time counts in whole minutes, rounded down.
+- Workout times add up to the second; totals are rounded down to whole minutes only for display,
+  so short workouts, such as a 45-second For Time, still count.
 - Exercises are matched to muscle groups by the name recorded with the workout.
 
 ## Related Information
@@ -76,4 +80,6 @@ The athlete wants to review their training.
     left out of the totals (step 2).
   - "6 Months" shows 7 monthly values (step 2).
   - Workouts stopped early don't exist yet ([UC-0005](UC-0005-record-a-workout.md)).
+  - Each workout is rounded down to whole minutes before the totals are added up, so workouts
+    under a minute add nothing (Special Requirements).
 - The stats approach is planned to be reworked; a revision of this use case is expected.

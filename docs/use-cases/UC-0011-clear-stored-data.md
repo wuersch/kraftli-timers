@@ -1,8 +1,9 @@
 # UC-0011: Clear stored data
 
-- **Status:** implemented
+- **Status:** clarified
 - **Primary Actor:** Athlete
-- **Goal:** As an athlete, I want to wipe my workout history, my presets, or both, to start fresh.
+- **Goal:** As an athlete, I want to wipe my workout history, my presets, my sessions, or all of
+  them, to start fresh.
 - **Scope:** Kraftli Timers (iPhone app)
 - **Level:** user-goal
 
@@ -26,10 +27,12 @@ The athlete asks to clear stored data ([UC-0010](UC-0010-configure-app-preferenc
 
 ## Main Success Scenario
 
-1. System offers three choices, each showing how many items it would delete:
+1. System offers four choices, each showing how many items it would delete:
    - workout history
    - timer presets
-   - all data (both)
+   - sessions, together with the week plan ([UC-0013](UC-0013-compose-a-training-session.md),
+     [UC-0014](UC-0014-plan-the-training-week.md))
+   - all data (all of the above)
 2. Athlete chooses what to clear.
 3. System asks for confirmation. It states the number of items and that the deletion can't be undone.
 4. Athlete confirms.
