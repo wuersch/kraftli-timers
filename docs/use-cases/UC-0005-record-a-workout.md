@@ -1,6 +1,6 @@
 # UC-0005: Record a workout
 
-- **Status:** approved
+- **Status:** clarified
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want every workout I do to land in my workout history and in Apple
   Health exactly once, so that my stats and my Activity Rings reflect the work I did.
@@ -18,16 +18,18 @@
 - A workout has ended, either because its duration elapsed or because the athlete ended it
   ([UC-0001](UC-0001-run-an-emom-workout.md), [UC-0002](UC-0002-run-an-amrap-workout.md),
   [UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md),
-  [UC-0004](UC-0004-run-a-workout-on-apple-watch.md)).
+  [UC-0004](UC-0004-run-a-workout-on-apple-watch.md), [UC-0012](UC-0012-run-a-for-time-workout.md)),
+  or a step of a session has ended ([UC-0015](UC-0015-run-a-training-session.md)).
 
 ## Success Guarantee
 
 - The workout history holds exactly one entry for the workout:
   - when it was done
   - the exercise name as it was at that time
-  - the kind (EMOM or AMRAP)
-  - its duration
-  - reps completed (EMOM) or rounds counted (AMRAP)
+  - the kind (EMOM, AMRAP or For Time)
+  - its duration, or for For Time its finish time, to the second
+  - reps completed (EMOM), rounds counted (AMRAP with round counting), or the reps done (For Time)
+  - the session's name, when the workout was a step of a session
 - Apple Health holds exactly one workout for it, linked to the history entry. It covers the actual
   start, end and pauses, and includes heart rate and active calories when the Watch tracked it.
 - The history entry is available on all of the athlete's devices.
@@ -43,9 +45,10 @@ A workout ends.
 
 ## Main Success Scenario
 
-1. The workout's duration has elapsed.
+1. The workout's duration has elapsed, or a For Time workout was declared done.
 2. The device on which the workout was started records the history entry. It has the full duration
-   and the reps completed (EMOM) or rounds counted (AMRAP).
+   or the finish time, and the reps completed (EMOM), rounds counted (AMRAP with round counting) or
+   reps done (For Time).
 3. The device that ran the workout saves it to Apple Health as a high-intensity interval training
    workout (indoor), with its actual start, end and pauses. When that device is the Watch, the save
    includes the heart rate and active calories it tracked.
@@ -58,7 +61,8 @@ A workout ends.
 
 - 1a. Athlete ended the workout early, after at least 1 minute of active time (pauses excluded):
   - 1a1. The entry records the active time so far, the reps completed or rounds counted so far, and
-    marks the workout as stopped early.
+    marks the workout as stopped early. A For Time workout has no rep count in that case, because
+    the reps done are unknown.
   - 1a2. Use case continues at step 2.
 - 1b. Athlete ended the workout during the countdown, or with less than 1 minute of active time:
   - 1b1. Nothing is recorded, neither in the history nor in Apple Health.
@@ -86,6 +90,11 @@ A workout ends.
 - 3c. The iPhone ran the workout:
   - 3c1. The Health workout contains no heart rate or calories. System never estimates them.
   - 3c2. Use case continues at step 6.
+- 3d. The workout was a step of a session ([UC-0015](UC-0015-run-a-training-session.md)):
+  - 3d1. No Health workout is saved for the step. When the session ends, the device that ran it
+    saves one Health workout for the whole session, with the time between steps as pauses, and
+    each step's entry is linked to it.
+  - 3d2. Use case continues at step 6.
 - 4a. The devices are out of contact when the workout ends:
   - 4a1. The report is delivered once contact returns, possibly after the athlete has left the summary.
   - 4a2. Use case continues at step 5.

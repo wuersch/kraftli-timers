@@ -1,6 +1,6 @@
 # UC-0003: Run an iPhone-started workout together with the Watch
 
-- **Status:** approved
+- **Status:** clarified
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete wearing an Apple Watch, I want a workout I start on the iPhone to run on
   my Watch as well, so that heart rate and calories are captured and I can follow and control the
@@ -17,15 +17,17 @@
 
 ## Preconditions
 
-- The athlete has started an EMOM or AMRAP workout on the iPhone ([UC-0001](UC-0001-run-an-emom-workout.md),
-  [UC-0002](UC-0002-run-an-amrap-workout.md)).
+- The athlete has started an EMOM, AMRAP or For Time workout on the iPhone
+  ([UC-0001](UC-0001-run-an-emom-workout.md), [UC-0002](UC-0002-run-an-amrap-workout.md),
+  [UC-0012](UC-0012-run-a-for-time-workout.md)), or a session
+  ([UC-0015](UC-0015-run-a-training-session.md)).
 - An Apple Watch is paired with the iPhone and has the Kraftli Timers Watch app installed.
 
 ## Success Guarantee
 
 - The Watch ran the workout and tracked heart rate and calories. The iPhone followed it, and both
-  devices showed the same remaining time throughout.
-- Every pause, resume, counted round and stop, made on either device, took effect on both.
+  devices showed the same remaining or elapsed time throughout.
+- Every pause, resume, counted round, declared done and stop, made on either device, took effect on both.
 - The workout is recorded once in the workout history and once in Apple Health, with heart rate and
   calories ([UC-0005](UC-0005-record-a-workout.md)).
 
@@ -46,11 +48,13 @@ The athlete starts a workout on the iPhone while a paired Watch has the app inst
    the Watch app is already open, and a few seconds when it has to launch.
 3. Both devices count down to the same start instant and start the workout at that instant.
 4. The Watch tracks heart rate and calories for the whole workout.
-5. Both devices show the same remaining time, interval, reps or rounds.
-6. Athlete pauses, resumes, or counts a round on either device.
+5. Both devices show the same remaining time, interval, reps or rounds, or for For Time the same
+   elapsed time.
+6. Athlete pauses, resumes, counts a round, or declares a For Time workout done, on either device.
 7. System applies the action immediately on that device and on the other, as of the moment the athlete acted.
    Steps 6–7 repeat as needed.
-8. The duration elapses, and both devices show the workout as done.
+8. The duration elapses, or a For Time workout was declared done, and both devices show the
+   workout as done.
 9. System records the workout ([UC-0005](UC-0005-record-a-workout.md)). The iPhone shows
    the summary with heart rate and calories from the Watch.
 
@@ -87,7 +91,8 @@ The athlete starts a workout on the iPhone while a paired Watch has the app inst
 - 6c. While out of contact, rounds were counted on both devices:
   - 6c1. System adds them up.
   - 6c2. Use case continues at step 5.
-- 6d. Athlete ends the workout on either device before the duration has elapsed:
+- 6d. Athlete ends the workout on either device before the duration has elapsed, or a For Time
+  workout without declaring it done:
   - 6d1. System stops the workout on both devices, records it as stopped early
     ([UC-0005](UC-0005-record-a-workout.md) extensions 1a–1b), and both return to their preset lists.
   - 6d2. Use case ends.
@@ -95,7 +100,8 @@ The athlete starts a workout on the iPhone while a paired Watch has the app inst
   - 6e1. The workout keeps running on the Watch, and the iPhone catches up when it returns.
   - 6e2. Use case continues at step 5.
 - 8a. Contact is lost and never comes back before the end:
-  - 8a1. Each device shows completion when the time runs out.
+  - 8a1. Each device shows completion when the time runs out. For a For Time workout, the other
+    device shows completion once it learns of the declared done.
   - 8a2. The iPhone records the workout from what it last knew.
   - 8a3. Heart rate and calories reach the iPhone only once the devices are back in contact. If
     the Watch never reports, they are lost.
