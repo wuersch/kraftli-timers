@@ -154,12 +154,20 @@ nonisolated enum TimerStateReducer {
 
     /// Completes an open-ended workout at the moment done was declared (ADR-0010).
     ///
-    /// Ignored for time-boxed workouts, during the countdown, while paused, and once finished.
-    /// Like any intent, a done that arrives after a later pause or resume on the owner is
-    /// clamped to that transition (accepted deviation from UC-0012 7b).
+    /// Ignored for time-boxed workouts, during the countdown, once finished, and when tapped
+    /// while paused. Like any intent, a done that arrives after a later pause or resume on the
+    /// owner is clamped to that transition (accepted deviation from UC-0012 7b).
     private static func done(_ state: inout TimerState, at date: Date, now: Date) {
-        guard state.config.isOpenEnded, state.finish == nil, !state.isPaused,
+        guard state.config.isOpenEnded, state.finish == nil,
               !state.isCountingDown(at: date) else { return }
+        if let pausedAt = state.pausedAt {
+            // Tapped on the other device before the owner paused: the athlete was done, so it
+            // still counts, at the pause. Rejecting it would roll back a completion the viewer
+            // already showed and logged.
+            guard date <= pausedAt else { return }
+            state.finish = .completed(at: pausedAt)
+            return
+        }
         state.finish = .completed(at: effectiveDate(date, in: state, now: now))
     }
 

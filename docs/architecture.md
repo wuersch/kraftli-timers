@@ -10,8 +10,8 @@ Quick reference for the core domain types:
 
 | Type | Purpose |
 |------|---------|
-| `TimerPreset` | Saved timer configuration: id, kind, duration, exerciseId, reps (EMOM), sortOrder |
-| `TimerKind` | Enum: EMOM \| AMRAP |
+| `TimerPreset` | Saved timer configuration: id, kind, duration (0 for For Time), exerciseId, reps (EMOM, For Time), sortOrder |
+| `TimerKind` | Enum: EMOM \| AMRAP \| For Time |
 | `ExerciseInfo` | Bundled, in-memory exercise reference data: id, name, description, formTips, muscleGroup, difficulty ([ADR-0009](adr/ADR-0009-bundled-exercise-library.md)) |
 | `Exercise` | Legacy SwiftData model, kept in the schema for migration only |
 | `WorkoutLog` | Completed workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID |
@@ -38,8 +38,8 @@ Quick reference for the core domain types:
 final class TimerPreset {
     var id: UUID
     var kindRawValue: String      // Stored as string for SwiftData
-    var durationInterval: TimeInterval
-    var targetReps: Int?          // Optional, only for EMOM
+    var durationInterval: TimeInterval  // 0 for For Time (no duration)
+    var targetReps: Int?          // EMOM and For Time; nil for AMRAP
     var sortOrder: Int            // For list ordering
     var exerciseId: UUID?         // Reference into the bundled library
     var exercise: Exercise?       // Legacy relationship (migration only)
@@ -47,13 +47,15 @@ final class TimerPreset {
     // Computed
     var kind: TimerKind
     var duration: Duration
-    var primaryText: String       // "EMOM · 20 min"
+    var primaryText: String       // "EMOM · 20 min", "For Time"
     var secondaryText: String     // "Exercise · 10 Reps"
     var exerciseInfo: ExerciseInfo?   // Looked up by exerciseId
     var intervalDuration: TimeInterval  // duration / reps (or 60 default)
 
     // Static utilities
     static let minimumIntervalDuration: TimeInterval = 3
+    static let forTimeRepsRange = 1...999
+    static let defaultForTimeReps = 100
     static func maximumReps(forDuration: TimeInterval) -> Int
 }
 ```
@@ -63,6 +65,9 @@ final class TimerPreset {
 enum TimerKind: String, CaseIterable {
     case emom = "EMOM"
     case amrap = "AMRAP"
+    case forTime = "For Time"
+
+    var hasFixedDuration: Bool    // false for For Time
 }
 ```
 
@@ -88,8 +93,8 @@ final class WorkoutLog {
     var date: Date
     var exerciseName: String           // Snapshot (not reference)
     var timerKindRawValue: String
-    var durationSeconds: TimeInterval
-    var repsCompleted: Int?            // EMOM only
+    var durationSeconds: TimeInterval  // For Time: the finish time, to the second
+    var repsCompleted: Int?            // EMOM and For Time
     var roundsCompleted: Int?          // AMRAP only
     var healthKitWorkoutUUID: UUID?    // Correlation with Apple Health entry
 
@@ -153,6 +158,8 @@ renders the newest snapshot and sends its taps as **intents** (ADR-007).
 **The state** — `TimerState` (`Services/TimerState.swift`, shared):
 - `startDate`, `pausedAt`, `accumulatedPause`, `roundCount`, `finish`, plus `revision`, `owner`
   and the immutable `TimerConfig`
+- `TimerConfig.totalDuration` is optional: nil marks an open-ended For Time workout, which never
+  completes by itself and ends with a `done` intent recorded as `.completed` (ADR-0010)
 - Everything on screen is derived from the state and the local clock (`elapsed(at:)`), so both
   devices compute the same remaining time from the same absolute dates
 - The 3-2-1 countdown is implicit: `now < startDate`
@@ -210,6 +217,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `ExerciseSelectionView` | Exercise browser with filtering |
 | `EMOMTimerView` | Full-screen EMOM timer |
 | `AMRAPTimerView` | Full-screen AMRAP timer |
+| `ForTimeTimerView` | Full-screen For Time timer: circling arc, tap = done |
 | `StatsView` | Workout statistics dashboard |
 | `WorkoutListView` | Filtered workout list (by exercise) |
 | `AllWorkoutsView` | Global workout list with edit/delete |
@@ -221,6 +229,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 |-------|---------|
 | `EMOMTimerModel` | Renders an EMOM `TimerState`: interval display and feedback (@Observable) |
 | `AMRAPTimerModel` | Renders an AMRAP `TimerState`: remaining time and rounds (@Observable) |
+| `ForTimeTimerModel` | Renders an open-ended `TimerState`: elapsed time, finish time and pace (@Observable, shared with the Watch) |
 | `TimerSessionState` | Shared hint/confetti state management (@Observable) |
 
 ### Services
@@ -281,6 +290,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `DigitalCrownStepperView` | Reusable Digital Crown numeric input |
 | `WatchEMOMTimerView` | Full-screen EMOM timer for Watch |
 | `WatchAMRAPTimerView` | Full-screen AMRAP timer for Watch |
+| `WatchForTimeTimerView` | Full-screen For Time timer for Watch (tap = done) |
 
 ### watchOS Services
 | Service | Purpose |
@@ -288,7 +298,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `WatchTimerRuntime` | Watch: app-lifetime owner of session manager, timer session and starter (shared instance) |
 | `WatchWorkoutStarter` | Watch: answers start requests, takes ownership or yields, Watch-started workouts (@Observable) |
 | `WatchTimerSyncService` | Watch: sends `WorkoutSessionEndedMessage` to iPhone (protocol → default → silent) |
-| `WatchWorkoutCoordinator` | Watch: end-of-workout logic shared by EMOM and AMRAP (end session, log or report) |
+| `WatchWorkoutCoordinator` | Watch: end-of-workout logic shared by all Watch timer views (end session, log or report) |
 | `WorkoutSessionManager` | HKWorkoutSession/HKLiveWorkoutBuilder lifecycle (@Observable) |
 | `WorkoutAppDelegate` | WKApplicationDelegate: receives workout configs from iPhone |
 
@@ -301,4 +311,4 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 - `TimePeriod+Chart` - Chart x-axis unit for time periods
 - `Difficulty+UI` - Difficulty display colors
 - `MuscleGroup+UI` - Muscle group display colors
-- `TimerKind+UI` - Timer kind display colors
+- `TimerKind+UI` - Timer kind display colors and glyphs (`timer.interval`, `timer.amrap`, `timer.simple`)

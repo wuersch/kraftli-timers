@@ -109,6 +109,16 @@ struct ForTimeTests {
         #expect(state.isPaused)
     }
 
+    @Test func done_tappedBeforeOwnerPause_completesAtThePause() {
+        // The viewer declared done at 62 s; the owner paused at 65 s before it arrived.
+        var state = applying(.pause, at: 3 + 65, to: makeState())
+        state = applying(.done, at: 3 + 62, to: state, now: 3 + 66)
+
+        #expect(state.finish == .completed(at: at(3 + 65)))
+        #expect(state.elapsed(at: at(3 + 500)) == 65)
+        #expect(!state.isRunning(at: at(3 + 500)))
+    }
+
     @Test func done_afterStop_isIgnored() {
         var state = applying(.stop, at: 3 + 60, to: makeState())
         state = applying(.done, at: 3 + 61, to: state)

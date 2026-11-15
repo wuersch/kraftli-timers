@@ -5,7 +5,7 @@
 //  Controls page (the second TabView page) for the Watch active-workout
 //  screen: Stop and Play/Pause. These were previously overlaid at the bottom
 //  of the ring view; with the Apple-style numerical layout they live on their
-//  own swipe page so the metrics page stays uncluttered. Shared by EMOM/AMRAP.
+//  own swipe page so the metrics page stays uncluttered. Shared by all timer kinds.
 //
 
 import SwiftUI
