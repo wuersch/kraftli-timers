@@ -61,7 +61,7 @@ struct WorkoutSummaryContent: View {
                 .foregroundStyle(.green)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Duration")
+                Text(data.durationTitle)
                     .font(.subheadline)
                     .foregroundStyle(.green)
 
@@ -69,6 +69,13 @@ struct WorkoutSummaryContent: View {
                     .font(.system(size: 34, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.primary)
+
+                if let pace = data.formattedPace {
+                    Text(pace)
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
             }
             Spacer()
         }

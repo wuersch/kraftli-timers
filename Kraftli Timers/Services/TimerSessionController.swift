@@ -150,6 +150,8 @@ final class TimerSessionController {
     func resume() { act(.resume) }
     func incrementRound() { act(.incrementRound) }
     func stop() { act(.stop) }
+    /// Declares an open-ended (For Time) workout done.
+    func done() { act(.done) }
 
     /// Owner only: marks the workout completed if its time has run out.
     /// Normally scheduled automatically; exposed for tests.
@@ -304,9 +306,11 @@ final class TimerSessionController {
     private func scheduleCompletionCheck() {
         completionTask?.cancel()
         completionTask = nil
+        // An open-ended workout has no end time; only a done intent finishes it.
         guard schedulesCompletion, role == .owner, let state = confirmedState,
-              state.finish == nil, !state.isPaused else { return }
-        let endDate = state.startDate.addingTimeInterval(state.accumulatedPause + state.config.totalDuration)
+              state.finish == nil, !state.isPaused,
+              let totalDuration = state.config.totalDuration else { return }
+        let endDate = state.startDate.addingTimeInterval(state.accumulatedPause + totalDuration)
         let delay = max(0, endDate.timeIntervalSince(now()))
         completionTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))

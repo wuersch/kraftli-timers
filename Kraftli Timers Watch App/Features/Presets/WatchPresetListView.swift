@@ -42,6 +42,12 @@ enum TimerPresentation: Identifiable, Equatable {
         workoutID: UUID = UUID(),
         startedOnPhone: Bool = false
     )
+    case forTime(
+        targetReps: Int,
+        exerciseName: String,
+        workoutID: UUID = UUID(),
+        startedOnPhone: Bool = false
+    )
 
     // The workout ID is the identity: a new start for the same preset must
     // re-create the timer view, not reuse the already-started one.
@@ -51,6 +57,8 @@ enum TimerPresentation: Identifiable, Equatable {
             return "emom-\(workoutID.uuidString)"
         case .amrap(_, _, let workoutID, _):
             return "amrap-\(workoutID.uuidString)"
+        case .forTime(_, _, let workoutID, _):
+            return "fortime-\(workoutID.uuidString)"
         }
     }
 }
@@ -101,6 +109,13 @@ struct WatchPresetListView: View {
             case .amrap(let duration, let exerciseName, let workoutID, let startedOnPhone):
                 WatchAMRAPTimerView(
                     totalDuration: duration,
+                    exerciseName: exerciseName,
+                    workoutID: workoutID,
+                    startedOnPhone: startedOnPhone
+                )
+            case .forTime(let targetReps, let exerciseName, let workoutID, let startedOnPhone):
+                WatchForTimeTimerView(
+                    targetReps: targetReps,
                     exerciseName: exerciseName,
                     workoutID: workoutID,
                     startedOnPhone: startedOnPhone
@@ -188,16 +203,22 @@ struct WatchPresetListView: View {
     // MARK: - Actions
 
     private func launchTimer(for preset: TimerPreset) {
-        if preset.kind == .emom {
+        switch preset.kind {
+        case .emom:
             activeTimer = .emom(
                 duration: preset.durationInterval,
                 intervalCount: preset.targetReps ?? 1,
                 exerciseName: preset.exerciseInfo?.name ?? "EMOM Workout"
             )
-        } else {
+        case .amrap:
             activeTimer = .amrap(
                 duration: preset.durationInterval,
                 exerciseName: preset.exerciseInfo?.name ?? "AMRAP Workout"
+            )
+        case .forTime:
+            activeTimer = .forTime(
+                targetReps: preset.targetReps ?? TimerPreset.defaultForTimeReps,
+                exerciseName: preset.exerciseInfo?.name ?? "For Time Workout"
             )
         }
     }
@@ -211,10 +232,11 @@ struct WatchPresetListView: View {
     /// Presents an iPhone-started workout the starter accepted (ADR-006).
     private func presentRequestedWorkout(_ request: StartRequest) {
         workoutStarter.requestPresented()
-        switch TimerKind(rawValue: request.config.timerKindRaw) ?? .emom {
+        let config = request.config
+        switch TimerKind(rawValue: config.timerKindRaw) ?? .emom {
         case .emom:
             activeTimer = .emom(
-                duration: request.config.totalDuration,
+                duration: config.totalDuration ?? 0,
                 intervalCount: request.config.intervalCount ?? 1,
                 exerciseName: request.config.exerciseName,
                 workoutID: request.workoutID,
@@ -222,8 +244,15 @@ struct WatchPresetListView: View {
             )
         case .amrap:
             activeTimer = .amrap(
-                duration: request.config.totalDuration,
-                exerciseName: request.config.exerciseName,
+                duration: config.totalDuration ?? 0,
+                exerciseName: config.exerciseName,
+                workoutID: request.workoutID,
+                startedOnPhone: true
+            )
+        case .forTime:
+            activeTimer = .forTime(
+                targetReps: config.targetReps ?? TimerPreset.defaultForTimeReps,
+                exerciseName: config.exerciseName,
                 workoutID: request.workoutID,
                 startedOnPhone: true
             )

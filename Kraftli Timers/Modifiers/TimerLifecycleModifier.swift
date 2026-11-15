@@ -77,7 +77,7 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
                 guard didComplete else { return }
                 session.onTimerCompleted()
                 let completionData = WorkoutCompletionData(
-                    durationSeconds: timer.totalDuration,
+                    durationSeconds: timer.recordedDuration,
                     repsCompleted: timer.completedReps,
                     roundsCompleted: timer.completedRounds
                 )

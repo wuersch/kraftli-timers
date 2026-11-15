@@ -11,7 +11,7 @@ import SwiftUI
 ///
 /// Displays read-only workout metadata (date, exercise, duration, timer kind)
 /// with an editable picker for the relevant metric based on timer type:
-/// - EMOM: reps completed
+/// - EMOM, For Time: reps completed
 /// - AMRAP: rounds completed
 struct WorkoutLogEditorView: View {
     @Environment(\.dismiss) private var dismiss
@@ -22,28 +22,34 @@ struct WorkoutLogEditorView: View {
 
     init(workout: WorkoutLog) {
         self.workout = workout
-        let initialValue: Int
+        let storedValue: Int?
         switch workout.timerKind {
-        case .emom:
-            initialValue = workout.repsCompleted ?? 0
+        case .emom, .forTime:
+            storedValue = workout.repsCompleted
         case .amrap:
-            initialValue = workout.roundsCompleted ?? 0
+            storedValue = workout.roundsCompleted
         }
-        _editableValue = State(initialValue: initialValue)
+        // Start inside the picker's range, even for a log without a stored value.
+        let range = Self.metricRange(for: workout.timerKind)
+        _editableValue = State(initialValue: min(max(storedValue ?? range.lowerBound, range.lowerBound), range.upperBound))
     }
 
     // MARK: - Computed Properties
 
     private var metricLabel: String {
         switch workout.timerKind {
-        case .emom: return "Reps Completed"
+        case .emom, .forTime: return "Reps Completed"
         case .amrap: return "Rounds Completed"
         }
     }
 
     private var metricRange: ClosedRange<Int> {
-        switch workout.timerKind {
-        case .emom: return 1...999
+        Self.metricRange(for: workout.timerKind)
+    }
+
+    private static func metricRange(for kind: TimerKind) -> ClosedRange<Int> {
+        switch kind {
+        case .emom, .forTime: return 1...999
         case .amrap: return 1...99
         }
     }
@@ -87,7 +93,7 @@ struct WorkoutLogEditorView: View {
             ReadOnlyRow(label: "Date", value: workout.formattedDate)
             ReadOnlyRow(label: "Time", value: workout.formattedTime)
             ReadOnlyRow(label: "Exercise", value: workout.exerciseName)
-            ReadOnlyRow(label: "Duration", value: "\(workout.durationMinutes) min")
+            ReadOnlyRow(label: "Duration", value: workout.formattedDuration)
             ReadOnlyRow(label: "Type", value: workout.timerKind.rawValue)
         }
     }
@@ -114,7 +120,7 @@ struct WorkoutLogEditorView: View {
 
     private func saveChanges() {
         switch workout.timerKind {
-        case .emom:
+        case .emom, .forTime:
             workout.repsCompleted = editableValue
         case .amrap:
             workout.roundsCompleted = editableValue

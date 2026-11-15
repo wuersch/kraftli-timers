@@ -81,7 +81,6 @@ struct WatchAMRAPTimerView: View {
         WatchWorkoutCoordinator(
             config: WatchWorkoutConfig(
                 timerKind: .amrap,
-                totalDuration: totalDuration,
                 exerciseName: exerciseName,
                 workoutID: workoutID,
                 startedOnPhone: startedOnPhone,

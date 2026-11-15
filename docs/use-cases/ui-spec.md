@@ -78,11 +78,11 @@ case wins.
 
 - Like AMRAP, title "Exercise · For Time", orange. An arc circles the ring continuously, one
   revolution per minute like a stopwatch hand; it freezes while paused.
-- Center: large elapsed time (M:SS) counting up, "REPS" + target rep count below.
-- Below: "ELAPSED" + elapsed time; after done, "FINISH TIME".
+- Center: "REPS" + large target rep count.
+- Below: "ELAPSED" + elapsed time counting up; after done, "FINISH TIME".
 - No signals during the workout.
-- Tap = done (no confirmation; ignored during the countdown and while paused); long-press (0.8 s)
-  pauses/resumes. Hint "Tap when done · Hold to pause".
+- Tap = done (no confirmation; ignored during the countdown); tap while paused resumes; long-press
+  (0.8 s) pauses/resumes. Hint "Tap when done · Hold to pause" / "Tap to resume".
 
 ### Watch Sync Indicators
 
@@ -142,7 +142,8 @@ case wins.
 - **Workout:** silent countdown with "Get ready" (tap hides it). Paged layout: controls page (End,
   Pause/Resume; resuming jumps back) to the left of the metrics page: TOTAL, INTERVAL (orange in
   the last 3 s) and REPS for EMOM / ROUNDS for AMRAP (tap to count), live heart rate and ACTIVE KCAL.
-  For Time: ELAPSED counting up and target REPS; tap the metrics page to declare done. Pause and
+  For Time: ELAPSED counting up (FINISH once done) and target REPS; tap the metrics page to
+  declare done. Pause and
   End stay on the controls page.
   "DONE" at the end until End is pressed. No sounds, no haptics, no confetti, no summary.
 - **iPhone-started:** "Starting…" until ownership is settled.

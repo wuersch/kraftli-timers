@@ -199,6 +199,23 @@ struct TimerRunnerView: View {
                 onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
                 onDismissRequested: { dismiss() }
             )
+        case .forTime:
+            ForTimeTimerView(
+                timerModel: ForTimeTimerModel(
+                    targetReps: preset.targetReps ?? TimerPreset.defaultForTimeReps,
+                    timerProvider: timerProvider,
+                    feedbackProvider: feedbackProvider
+                ),
+                onWorkoutCompleted: makeLoggingClosure(),
+                exerciseName: preset.exerciseInfo?.name ?? "Workout",
+                workoutID: correlationID,
+                autoStart: true,
+                isSwipeDisabled: $isSwipeDisabled,
+                showHint: $showHint,
+                showConfetti: $showConfetti,
+                onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
+                onDismissRequested: { dismiss() }
+            )
         }
     }
 

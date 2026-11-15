@@ -48,10 +48,33 @@ nonisolated struct TimerConfig: Codable, Equatable, Sendable {
     /// Raw `TimerKind` value. Stored raw so this type
     /// stays independent of the MainActor-isolated `TimerKind` conformances.
     let timerKindRaw: String
-    let totalDuration: TimeInterval
-    /// Number of EMOM intervals (reps); nil for AMRAP.
+    /// The workout's length. nil for an open-ended workout (For Time), which counts up
+    /// until it is declared done and never completes by itself (ADR-0010).
+    let totalDuration: TimeInterval?
+    /// Number of EMOM intervals (reps); nil for AMRAP and For Time.
     let intervalCount: Int?
     let exerciseName: String
+    /// For Time's target rep count; nil for the time-boxed kinds.
+    let targetReps: Int?
+
+    init(
+        timerKindRaw: String,
+        totalDuration: TimeInterval?,
+        intervalCount: Int?,
+        exerciseName: String,
+        targetReps: Int? = nil
+    ) {
+        self.timerKindRaw = timerKindRaw
+        self.totalDuration = totalDuration
+        self.intervalCount = intervalCount
+        self.exerciseName = exerciseName
+        self.targetReps = targetReps
+    }
+
+    /// True for a workout without a duration, which ends only when declared done.
+    var isOpenEnded: Bool {
+        totalDuration == nil
+    }
 }
 
 // MARK: - StartRequest
@@ -77,7 +100,8 @@ nonisolated struct StartRequest: Codable, Equatable, Sendable {
 nonisolated struct TimerState: Codable, Equatable, Sendable {
     /// How a workout ended.
     enum Finish: Codable, Equatable, Sendable {
-        /// Ran to zero. `at` is the instant the remaining time reached zero.
+        /// Ran to zero, or — for an open-ended workout — was declared done. `at` is the
+        /// instant the remaining time reached zero, or the moment done was declared.
         case completed(at: Date)
         /// Ended early by the user.
         case stopped(at: Date)
@@ -160,16 +184,25 @@ nonisolated struct TimerState: Codable, Equatable, Sendable {
 
     // MARK: - Derived values (identical on every device)
 
-    /// Workout time elapsed at `now`, excluding pauses, clamped to `0...totalDuration`.
+    /// Workout time elapsed at `now`, excluding pauses, clamped to `0...totalDuration`
+    /// (only below for an open-ended workout).
     func elapsed(at now: Date) -> TimeInterval {
         // A paused timer is frozen at its pause; a finished one at its end.
         let reference = pausedAt ?? finish?.date ?? now
-        let raw = reference.timeIntervalSince(startDate) - accumulatedPause
-        return min(max(raw, 0), config.totalDuration)
+        let raw = max(reference.timeIntervalSince(startDate) - accumulatedPause, 0)
+        guard let totalDuration = config.totalDuration else { return raw }
+        return min(raw, totalDuration)
     }
 
-    func remaining(at now: Date) -> TimeInterval {
-        config.totalDuration - elapsed(at: now)
+    /// Time left at `now`; nil for an open-ended workout.
+    func remaining(at now: Date) -> TimeInterval? {
+        config.totalDuration.map { $0 - elapsed(at: now) }
+    }
+
+    /// True once a time-boxed workout's time has run out. Never true for an open-ended one.
+    func hasRunOut(at now: Date) -> Bool {
+        guard let totalDuration = config.totalDuration else { return false }
+        return elapsed(at: now) >= totalDuration
     }
 
     var isPaused: Bool {
@@ -183,7 +216,7 @@ nonisolated struct TimerState: Codable, Equatable, Sendable {
 
     /// True once the workout ended, either explicitly or by reaching zero.
     func isFinished(at now: Date) -> Bool {
-        finish != nil || elapsed(at: now) >= config.totalDuration
+        finish != nil || hasRunOut(at: now)
     }
 
     /// True while the workout clock is advancing.
@@ -205,6 +238,8 @@ nonisolated struct TimerIntent: Codable, Equatable, Sendable, Identifiable {
         case resume
         case incrementRound
         case stop
+        /// Declares an open-ended workout done (ADR-0010).
+        case done
     }
 
     /// Dedup key: the owner processes each intent at most once.
