@@ -69,7 +69,7 @@ struct WatchAMRAPTimerView: View {
 
     private var config: TimerConfig {
         TimerConfig(
-            timerKindRaw: TimerKind.amrap.rawValue,
+            kind: .amrap,
             totalDuration: totalDuration,
             intervalCount: nil,
             exerciseName: exerciseName

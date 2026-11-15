@@ -233,7 +233,7 @@ struct WatchPresetListView: View {
     private func presentRequestedWorkout(_ request: StartRequest) {
         workoutStarter.requestPresented()
         let config = request.config
-        switch TimerKind(rawValue: config.timerKindRaw) ?? .emom {
+        switch config.kind {
         case .emom:
             activeTimer = .emom(
                 duration: config.totalDuration ?? 0,

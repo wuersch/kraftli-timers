@@ -89,7 +89,7 @@ final class DefaultHealthKitService: HealthKitService {
 
         // Types we read (heart rate for future summary screens)
         let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .heartRate)!
+            HKQuantityType(.heartRate)
         ]
 
         try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)

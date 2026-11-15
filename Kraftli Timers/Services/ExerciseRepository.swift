@@ -32,7 +32,7 @@ enum ExerciseRepository {
     static func load() {
         let data = ExerciseLoader.loadBundled()
         exercises = data.map { ExerciseInfo(from: $0) }.sorted { $0.name < $1.name }
-        exercisesById = Dictionary(uniqueKeysWithValues: exercises.map { ($0.id, $0) })
+        exercisesById = Dictionary(exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     /// All exercises, sorted alphabetically by name.

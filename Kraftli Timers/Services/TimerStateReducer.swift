@@ -100,11 +100,10 @@ nonisolated enum TimerStateReducer {
     /// caller only publishes a new revision when the workout actually finished.
     static func completingIfDue(_ state: TimerState, now: Date) -> TimerState? {
         guard state.finish == nil, !state.isPaused, state.hasRunOut(at: now),
-              let totalDuration = state.config.totalDuration else {
+              let endDate = state.scheduledEndDate else {
             return nil
         }
         var next = state
-        let endDate = state.startDate.addingTimeInterval(state.accumulatedPause + totalDuration)
         next.finish = .completed(at: endDate)
         next.revision = state.revision + 1
         return next
@@ -175,7 +174,7 @@ nonisolated enum TimerStateReducer {
     /// and for an unfinished open-ended workout).
     private static func endDate(of state: TimerState) -> Date? {
         if let finish = state.finish { return finish.date }
-        guard !state.isPaused, let totalDuration = state.config.totalDuration else { return nil }
-        return state.startDate.addingTimeInterval(state.accumulatedPause + totalDuration)
+        guard !state.isPaused else { return nil }
+        return state.scheduledEndDate
     }
 }

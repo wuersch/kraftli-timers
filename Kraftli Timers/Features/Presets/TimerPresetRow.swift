@@ -47,10 +47,7 @@ struct TimerPresetRow: View {
             }
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
+        .cardStyle(padded: false)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditing { didTapEdit(preset) }

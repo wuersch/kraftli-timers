@@ -20,7 +20,7 @@ struct TimerSyncTransportTests {
             workoutID: workoutID,
             owner: .watch,
             config: TimerConfig(
-                timerKindRaw: TimerKind.emom.rawValue,
+                kind: .emom,
                 totalDuration: 600,
                 intervalCount: 10,
                 exerciseName: "Burpees"

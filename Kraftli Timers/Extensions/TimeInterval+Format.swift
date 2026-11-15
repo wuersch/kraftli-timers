@@ -9,6 +9,12 @@ extension TimeInterval {
         return String(format: "%02d:%02d", minutes, seconds)
     }
     
+    /// Whole minutes, rounded down. Totals are added up in seconds and rounded only
+    /// for display (UC-0008).
+    var wholeMinutes: Int {
+        Int(self / 60)
+    }
+
     /// Returns the time formatted as hh:mm:ss for durations over 1 hour.
     var hhMMSS: String {
         let totalSeconds = max(0, Int(self))

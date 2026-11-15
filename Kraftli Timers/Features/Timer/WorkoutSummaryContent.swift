@@ -85,57 +85,16 @@ struct WorkoutSummaryContent: View {
 
     // MARK: - Calories Card
 
+    /// Shown with a "--" placeholder while a Watch-owned workout's data is still on its way.
     @ViewBuilder
     private var caloriesCard: some View {
-        if let calories = data.activeCalories {
+        if data.activeCalories != nil || data.ownedByWatch {
             HStack(spacing: 16) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 28))
                     .foregroundStyle(.orange)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Active Calories")
-                        .font(.subheadline)
-                        .foregroundStyle(.orange)
-
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text("\(Int(calories))")
-                            .font(.system(size: 34, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(.primary)
-                            .contentTransition(.numericText())
-
-                        Text("CAL")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Spacer()
-            }
-            .cardStyle()
-            .padding(.horizontal, 20)
-        } else if data.ownedByWatch {
-            // Placeholder while waiting for Watch data
-            HStack(spacing: 16) {
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.orange)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Active Calories")
-                        .font(.subheadline)
-                        .foregroundStyle(.orange)
-
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text("--")
-                            .font(.system(size: 34, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.primary)
-
-                        Text("CAL")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                SummaryMetric(title: "Active Calories", value: data.activeCalories, unit: "CAL", color: .orange)
                 Spacer()
             }
             .cardStyle()
@@ -145,103 +104,27 @@ struct WorkoutSummaryContent: View {
 
     // MARK: - Heart Rate Card
 
+    /// Shows whichever of average and maximum arrived; both as "--" placeholders while a
+    /// Watch-owned workout's data is still on its way.
     @ViewBuilder
     private var heartRateCard: some View {
-        if data.averageHeartRate != nil || data.maxHeartRate != nil {
+        let isWaiting = data.averageHeartRate == nil && data.maxHeartRate == nil
+        if !isWaiting || data.ownedByWatch {
             HStack(spacing: 16) {
                 Image(systemName: "heart.fill")
                     .font(.system(size: 28))
                     .foregroundStyle(.red)
 
                 HStack(alignment: .top, spacing: 0) {
-                    // Avg Heart Rate
-                    if let avgHR = data.averageHeartRate {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Avg Heart Rate")
-                                .font(.subheadline)
-                                .foregroundStyle(.red)
-
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text("\(Int(avgHR))")
-                                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                                    .monospacedDigit()
-                                    .foregroundStyle(.primary)
-                                    .contentTransition(.numericText())
-
-                                Text("BPM")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if data.averageHeartRate != nil || isWaiting {
+                        SummaryMetric(title: "Avg Heart Rate", value: data.averageHeartRate, unit: "BPM", color: .red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-
-                    // Max Heart Rate
-                    if let maxHR = data.maxHeartRate {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Max Heart Rate")
-                                .font(.subheadline)
-                                .foregroundStyle(.red.opacity(0.7))
-
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text("\(Int(maxHR))")
-                                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                                    .monospacedDigit()
-                                    .foregroundStyle(.primary.opacity(0.7))
-                                    .contentTransition(.numericText())
-
-                                Text("BPM")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if data.maxHeartRate != nil || isWaiting {
+                        SummaryMetric(title: "Max Heart Rate", value: data.maxHeartRate, unit: "BPM", color: .red)
+                            .opacity(0.7)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                }
-            }
-            .cardStyle()
-            .padding(.horizontal, 20)
-        } else if data.ownedByWatch {
-            // Placeholder while waiting for Watch data
-            HStack(spacing: 16) {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.red)
-
-                HStack(alignment: .top, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Avg Heart Rate")
-                            .font(.subheadline)
-                            .foregroundStyle(.red)
-
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("--")
-                                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.primary)
-
-                            Text("BPM")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Max Heart Rate")
-                            .font(.subheadline)
-                            .foregroundStyle(.red.opacity(0.7))
-
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("--")
-                                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.primary)
-
-                            Text("BPM")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .cardStyle()
@@ -282,6 +165,37 @@ struct WorkoutSummaryContent: View {
     private func openHealthApp() {
         if let url = URL(string: "x-apple-health://") {
             UIApplication.shared.open(url)
+        }
+    }
+}
+
+// MARK: - Summary Metric
+
+/// A titled whole-number value with its unit, e.g. "Avg Heart Rate / 142 BPM".
+/// A nil value shows "--": the data is expected but hasn't arrived yet.
+private struct SummaryMetric: View {
+    let title: String
+    let value: Double?
+    let unit: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(color)
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value.map { "\(Int($0))" } ?? "--")
+                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                    .contentTransition(.numericText())
+
+                Text(unit)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

@@ -44,7 +44,7 @@ final class WatchWorkoutStarter {
     private(set) var requestedWorkout: StartRequest?
 
     @ObservationIgnored private let controller: TimerSessionController
-    @ObservationIgnored private let startHealthSession: (_ timerKindRaw: String) async throws -> Void
+    @ObservationIgnored private let startHealthSession: (TimerKind) async throws -> Void
     @ObservationIgnored private let discardHealthSession: () -> Void
     @ObservationIgnored private let startKeepAlive: () -> Void
     @ObservationIgnored private let endKeepAlive: () -> Void
@@ -70,7 +70,7 @@ final class WatchWorkoutStarter {
     init(
         controller: TimerSessionController,
         transport: CompositeTimerSyncTransport,
-        startHealthSession: @escaping (_ timerKindRaw: String) async throws -> Void,
+        startHealthSession: @escaping (TimerKind) async throws -> Void,
         discardHealthSession: @escaping () -> Void,
         startKeepAlive: @escaping () -> Void = {},
         endKeepAlive: @escaping () -> Void = {},
@@ -106,7 +106,7 @@ final class WatchWorkoutStarter {
         scheduleWatchdog(for: request.workoutID)
 
         let session = ensureHealthSession { [startHealthSession] in
-            try await startHealthSession(request.config.timerKindRaw)
+            try await startHealthSession(request.config.kind)
         }
         ownershipTask = Task { [weak self] in
             let started = await session.value
@@ -127,7 +127,7 @@ final class WatchWorkoutStarter {
         controller.startAsOwner(TimerState(workoutID: workoutID, owner: .watch, config: config, now: now()))
         sessionStart = nil
         _ = ensureHealthSession { [startHealthSession] in
-            try await startHealthSession(config.timerKindRaw)
+            try await startHealthSession(config.kind)
         }
     }
 

@@ -23,7 +23,6 @@ struct ForTimeTimerView: View {
     @State private var timerModel: ForTimeTimerModel
     @State private var session = TimerSessionState()
     @State private var countdown = CountdownCoordinator()
-    @State private var isPulsing = false
 
     /// Guards the one-shot auto-start so a repeated `onAppear` can't relaunch the countdown.
     @State private var didAutoStart = false
@@ -94,7 +93,7 @@ struct ForTimeTimerView: View {
     init(
         timerModel: ForTimeTimerModel = ForTimeTimerModel(
             timerProvider: DisplayLinkTimerProvider(),
-            feedbackProvider: SystemSoundFeedback()
+            feedbackProvider: DefaultFeedback()
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         exerciseName: String = "Workout",
@@ -167,7 +166,7 @@ struct ForTimeTimerView: View {
         workoutStarter.start(
             workoutID: workoutID,
             config: TimerConfig(
-                timerKindRaw: TimerKind.forTime.rawValue,
+                kind: .forTime,
                 totalDuration: nil,
                 intervalCount: nil,
                 exerciseName: exerciseName,
@@ -260,8 +259,7 @@ struct ForTimeTimerView: View {
 
                     TimerBottomSection(
                         time: timerModel.elapsedTime,
-                        isCountingDown: isWaitingToStart,
-                        isPulsing: $isPulsing,
+                        isWaitingToStart: isWaitingToStart,
                         sizes: sizes,
                         isCompleted: isCompleted,
                         countsUp: true,
@@ -476,7 +474,7 @@ struct ForTimeTimerView: View {
             timerModel: ForTimeTimerModel(
                 targetReps: 50,
                 timerProvider: DisplayLinkTimerProvider(),
-                feedbackProvider: SystemSoundFeedback()
+                feedbackProvider: DefaultFeedback()
             )
         )
     }

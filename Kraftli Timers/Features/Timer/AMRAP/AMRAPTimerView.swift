@@ -23,7 +23,6 @@ struct AMRAPTimerView: View {
     @State private var timerModel: AMRAPTimerModel
     @State private var session = TimerSessionState()
     @State private var countdown = CountdownCoordinator()
-    @State private var isPulsing = false
 
     /// Guards the one-shot auto-start so a repeated `onAppear` can't relaunch the countdown.
     @State private var didAutoStart = false
@@ -95,7 +94,7 @@ struct AMRAPTimerView: View {
     init(
         timerModel: AMRAPTimerModel = AMRAPTimerModel(
             timerProvider: DisplayLinkTimerProvider(),
-            feedbackProvider: SystemSoundFeedback()
+            feedbackProvider: DefaultFeedback()
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         exerciseName: String = "Workout",
@@ -120,7 +119,7 @@ struct AMRAPTimerView: View {
     }
 
     // MARK: - Styling
-    private let accentColor: Color = .indigo
+    private let accentColor: Color = TimerKind.amrap.color
 
 
     // MARK: - Actions
@@ -168,7 +167,7 @@ struct AMRAPTimerView: View {
         workoutStarter.start(
             workoutID: workoutID,
             config: TimerConfig(
-                timerKindRaw: TimerKind.amrap.rawValue,
+                kind: .amrap,
                 totalDuration: timerModel.totalDuration,
                 intervalCount: nil,
                 exerciseName: exerciseName
@@ -243,7 +242,7 @@ struct AMRAPTimerView: View {
                         ProgressRing(
                             size: sizes.primaryRing,
                             lineWidth: sizes.primaryLineWidth,
-                            progress: isCompleted ? 1.0 : (isWaitingToStart ? 1.0 : timerModel.progress),
+                            progress: isCompleted || isWaitingToStart ? 1.0 : timerModel.progress,
                             color: accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -90
@@ -266,8 +265,7 @@ struct AMRAPTimerView: View {
 
                     TimerBottomSection(
                         time: timerModel.totalTimeRemaining,
-                        isCountingDown: isWaitingToStart,
-                        isPulsing: $isPulsing,
+                        isWaitingToStart: isWaitingToStart,
                         sizes: sizes,
                         isCompleted: isCompleted,
                         totalDuration: timerModel.totalDuration,
@@ -458,7 +456,7 @@ struct AMRAPTimerView: View {
             timerModel: AMRAPTimerModel(
                 totalDuration: 5 * 60,
                 timerProvider: DisplayLinkTimerProvider(),
-                feedbackProvider: SystemSoundFeedback()
+                feedbackProvider: DefaultFeedback()
             )
         )
     }

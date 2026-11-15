@@ -48,8 +48,7 @@ final class WatchTimerRuntime {
         starter = WatchWorkoutStarter(
             controller: timerSession,
             transport: transport,
-            startHealthSession: { kindRaw in
-                let kind = TimerKind(rawValue: kindRaw) ?? .emom
+            startHealthSession: { kind in
                 try await Self.startSession(on: sessionManager, configuration: Self.configuration(for: kind))
             },
             discardHealthSession: { sessionManager.discardSession() },

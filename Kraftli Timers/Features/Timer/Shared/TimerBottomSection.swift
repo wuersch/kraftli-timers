@@ -16,16 +16,16 @@ import SwiftUI
 /// ```swift
 /// TimerBottomSection(
 ///     time: timerModel.totalTimeRemaining,
-///     isCountingDown: countdown.isCountingDown,
-///     isPulsing: $isPulsing,
+///     isWaitingToStart: isWaitingToStart,
 ///     sizes: sizes
 /// )
 /// ```
 struct TimerBottomSection: View {
     /// Time remaining, or the elapsed time when `countsUp`.
     let time: TimeInterval
-    let isCountingDown: Bool
-    @Binding var isPulsing: Bool
+    /// True until the workout starts running (waiting for the Watch, or counting down):
+    /// shows the pulsing "get ready" text in place of the time.
+    let isWaitingToStart: Bool
     let sizes: TimerSizes
     var isCompleted: Bool = false
     var totalDuration: TimeInterval = 0
@@ -33,6 +33,9 @@ struct TimerBottomSection: View {
     var countsUp: Bool = false
     /// Shows a small Watch-slash icon while changes haven't reached the Watch yet.
     var showsWatchDisconnected: Bool = false
+
+    /// Drives the "get ready" pulse. Private: only this view starts and stops it.
+    @State private var isPulsing = false
 
     var body: some View {
         ZStack {
@@ -61,7 +64,7 @@ struct TimerBottomSection: View {
                     }
                     .animation(.easeInOut(duration: 0.3), value: showsWatchDisconnected)
             }
-            .opacity(isCountingDown ? 0 : 1)
+            .opacity(isWaitingToStart ? 0 : 1)
 
             // "Get ready" text (shown during countdown)
             Text("Get ready")
@@ -74,8 +77,8 @@ struct TimerBottomSection: View {
                     value: isPulsing
                 )
                 .padding(.top, sizes.spacing * 0.4)
-                .opacity(isCountingDown ? 1 : 0)
-                .onChange(of: isCountingDown) { _, newValue in
+                .opacity(isWaitingToStart ? 1 : 0)
+                .onChange(of: isWaitingToStart) { _, newValue in
                     isPulsing = newValue
                 }
         }
@@ -111,22 +114,19 @@ struct TimerBottomSection: View {
     VStack(spacing: 40) {
         TimerBottomSection(
             time: 125,
-            isCountingDown: false,
-            isPulsing: .constant(false),
+            isWaitingToStart: false,
             sizes: TimerSizes.emom(for: CGSize(width: 393, height: 852))
         )
 
         TimerBottomSection(
             time: 125,
-            isCountingDown: true,
-            isPulsing: .constant(true),
+            isWaitingToStart: true,
             sizes: TimerSizes.emom(for: CGSize(width: 393, height: 852))
         )
 
         TimerBottomSection(
             time: 0,
-            isCountingDown: false,
-            isPulsing: .constant(false),
+            isWaitingToStart: false,
             sizes: TimerSizes.emom(for: CGSize(width: 393, height: 852)),
             isCompleted: true,
             totalDuration: 1200

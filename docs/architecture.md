@@ -240,8 +240,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `DisplayLinkTimerProvider` | CADisplayLink ticks (Smooth Animations on) |
 | `FoundationTimerProvider` | 0.2 s Foundation Timer (Smooth Animations off; always on Watch) |
 | `FeedbackProvider` | Protocol for interval/completion feedback (`SilentFeedback` when Sound is off and on the Watch) |
-| `SystemSoundFeedback` | Interval beep + cheering completion sound |
-| `NeutralSoundFeedback` | Interval beep + three-beep completion |
+| `DefaultFeedback` | Interval beep + completion cue (cheering or three beeps) |
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
 | `ExerciseRepository` / `ExerciseLoader` | Load the bundled exercise library into memory |

@@ -27,7 +27,7 @@ struct TimerStateTests {
             workoutID: workoutID,
             owner: .watch,
             config: TimerConfig(
-                timerKindRaw: TimerKind.amrap.rawValue,
+                kind: .amrap,
                 totalDuration: duration,
                 intervalCount: nil,
                 exerciseName: "Burpees"
@@ -380,5 +380,27 @@ struct TimerStateTests {
         let decoded = try JSONDecoder().decode(TimerState.self, from: data)
 
         #expect(decoded == original)
+    }
+}
+
+struct TimerConfigCodingTests {
+
+    /// The kind travels under its original key, so devices on different app versions
+    /// keep understanding each other.
+    @Test func kind_keepsItsWireKey() throws {
+        let config = TimerConfig(kind: .forTime, totalDuration: nil, intervalCount: nil, exerciseName: "Burpees", targetReps: 50)
+
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(config)) as? [String: Any]
+
+        #expect(json?["timerKindRaw"] as? String == "For Time")
+        #expect(try JSONDecoder().decode(TimerConfig.self, from: JSONEncoder().encode(config)) == config)
+    }
+
+    @Test func unknownKind_failsToDecode() {
+        let json = Data(#"{"timerKindRaw":"Tabata","exerciseName":"Burpees"}"#.utf8)
+
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(TimerConfig.self, from: json)
+        }
     }
 }

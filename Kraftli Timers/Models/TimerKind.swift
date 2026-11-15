@@ -8,7 +8,9 @@
 import Foundation
 import HealthKit
 
-enum TimerKind: String, Codable, CaseIterable {
+/// `nonisolated` so the sync value types (`TimerConfig`, `TimerState`), which are decoded
+/// off the main actor, can carry a kind.
+nonisolated enum TimerKind: String, Codable, CaseIterable, Sendable {
     case emom  = "EMOM"
     case amrap = "AMRAP"
     case forTime = "For Time"

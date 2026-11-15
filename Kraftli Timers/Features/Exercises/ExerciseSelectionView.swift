@@ -37,8 +37,18 @@ struct ExerciseSelectionView: View {
     /// ID of the currently expanded exercise card (only one at a time).
     @State private var expandedExerciseId: UUID? = nil
 
-    /// Cached filtered exercises, updated when filters change.
-    @State private var filteredExercises: [ExerciseInfo] = []
+    /// The exercises matching the active filters. Computed, not cached in `@State`:
+    /// filtering a few dozen in-memory exercises is cheap, and the list is right
+    /// from the first frame.
+    private var filteredExercises: [ExerciseInfo] {
+        ExerciseRepository.all.filter { exercise in
+            let matchesMuscle = muscleGroupFilter == nil
+                || exercise.muscleGroup == muscleGroupFilter
+            let matchesDifficulty = difficultyFilter == nil
+                || exercise.difficulty == difficultyFilter
+            return matchesMuscle && matchesDifficulty
+        }
+    }
 
     /// True if any filter is active.
     private var hasActiveFilters: Bool {
@@ -82,15 +92,6 @@ struct ExerciseSelectionView: View {
                     muscleGroup: $muscleGroupFilter,
                     difficulty: $difficultyFilter
                 )
-            }
-            .onAppear {
-                updateFilteredExercises()
-            }
-            .onChange(of: muscleGroupFilter) {
-                updateFilteredExercises()
-            }
-            .onChange(of: difficultyFilter) {
-                updateFilteredExercises()
             }
         }
     }
@@ -150,16 +151,6 @@ struct ExerciseSelectionView: View {
             } else {
                 expandedExerciseId = id
             }
-        }
-    }
-
-    private func updateFilteredExercises() {
-        filteredExercises = ExerciseRepository.all.filter { exercise in
-            let matchesMuscle = muscleGroupFilter == nil
-                || exercise.muscleGroup == muscleGroupFilter
-            let matchesDifficulty = difficultyFilter == nil
-                || exercise.difficulty == difficultyFilter
-            return matchesMuscle && matchesDifficulty
         }
     }
 }

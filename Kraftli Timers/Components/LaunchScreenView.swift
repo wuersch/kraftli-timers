@@ -85,14 +85,16 @@ struct LaunchScreenView: View {
             }
         }
         .opacity(screenOpacity)
-        .onAppear {
-            startAnimationSequence()
+        // `.task` is cancelled when the view goes away, so a launch screen that is
+        // removed early doesn't call `onComplete` later.
+        .task {
+            await runAnimationSequence()
         }
     }
 
     // MARK: - Animation Sequence
 
-    private func startAnimationSequence() {
+    private func runAnimationSequence() async {
         // Phase 1: Arcs expand and spin (0 - 2.5s)
         // Outer arc: 3 full rotations CW, expands to full size
         withAnimation(.easeOut(duration: 2.5)) {
@@ -112,23 +114,29 @@ struct LaunchScreenView: View {
         }
 
         // Phase 3: Final settling - arcs do a small additional rotation to "lock in" (2.5s - 2.8s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            withAnimation(.easeOut(duration: 0.3)) {
-                // Small final adjustments to settle into a balanced position
-                outerRotation += 15
-                innerRotation -= 10
-            }
+        do {
+            try await Task.sleep(for: .seconds(2.5))
+        } catch {
+            return
+        }
+        withAnimation(.easeOut(duration: 0.3)) {
+            // Small final adjustments to settle into a balanced position
+            outerRotation += 15
+            innerRotation -= 10
         }
 
         // Phase 4: Fade out (2.7s - 3.0s)
-        withAnimation(.easeIn(duration: 0.3).delay(2.7)) {
+        withAnimation(.easeIn(duration: 0.3).delay(0.2)) {
             screenOpacity = 0
         }
 
         // Phase 5: Complete - notify parent (3.0s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            onComplete()
+        do {
+            try await Task.sleep(for: .seconds(0.5))
+        } catch {
+            return
         }
+        onComplete()
     }
 }
 

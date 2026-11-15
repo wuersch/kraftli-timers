@@ -81,7 +81,7 @@ struct WatchEMOMTimerView: View {
 
     private var config: TimerConfig {
         TimerConfig(
-            timerKindRaw: TimerKind.emom.rawValue,
+            kind: .emom,
             totalDuration: totalDuration,
             intervalCount: intervalCount,
             exerciseName: exerciseName

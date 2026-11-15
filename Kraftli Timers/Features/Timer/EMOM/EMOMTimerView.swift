@@ -24,7 +24,6 @@ struct EMOMTimerView: View {
     @State private var timerModel: EMOMTimerModel
     @State private var session = TimerSessionState()
     @State private var countdown = CountdownCoordinator()
-    @State private var isPulsing = false
 
     /// Guards the one-shot auto-start so a repeated `onAppear` can't relaunch the countdown.
     @State private var didAutoStart = false
@@ -90,7 +89,7 @@ struct EMOMTimerView: View {
             totalReps: 5,
             totalMinutes: 1,
             timerProvider: DisplayLinkTimerProvider(),
-            feedbackProvider: SystemSoundFeedback()
+            feedbackProvider: DefaultFeedback()
         ),
         onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
         showRepsInCenter: Bool = false,
@@ -119,7 +118,7 @@ struct EMOMTimerView: View {
     // MARK: - Styling
     private var accentColor: Color {
         if isCompleted { return .green }
-        return timerModel.isIntervalWarning ? .orange : .blue
+        return timerModel.isIntervalWarning ? .orange : TimerKind.emom.color
     }
 
 
@@ -179,7 +178,7 @@ struct EMOMTimerView: View {
         workoutStarter.start(
             workoutID: workoutID,
             config: TimerConfig(
-                timerKindRaw: TimerKind.emom.rawValue,
+                kind: .emom,
                 totalDuration: timerModel.totalDuration,
                 intervalCount: timerModel.totalIntervals,
                 exerciseName: exerciseName
@@ -254,22 +253,24 @@ struct EMOMTimerView: View {
                         ProgressRing(
                             size: sizes.primaryRing,
                             lineWidth: sizes.primaryLineWidth,
-                            progress: isCompleted ? 1.0 : (isWaitingToStart ? 1.0 : timerModel.intervalProgress),
+                            progress: isCompleted || isWaitingToStart ? 1.0 : timerModel.intervalProgress,
                             color: accentColor,
                             backgroundColor: Color.gray.opacity(0.2),
                             rotationDegrees: -89.5
                         )
                         .accessibilityHidden(true)
 
-                        ProgressRing(
-                            size: sizes.secondaryRing!,
-                            lineWidth: sizes.secondaryLineWidth!,
-                            progress: isCompleted ? 1.0 : (isWaitingToStart ? 1.0 : timerModel.overallProgress),
-                            color: .primary,
-                            backgroundColor: Color.gray.opacity(0.2),
-                            rotationDegrees: -90.5
-                        )
-                        .accessibilityHidden(true)
+                        if let outerRing = sizes.secondaryRing, let outerLineWidth = sizes.secondaryLineWidth {
+                            ProgressRing(
+                                size: outerRing,
+                                lineWidth: outerLineWidth,
+                                progress: isCompleted || isWaitingToStart ? 1.0 : timerModel.overallProgress,
+                                color: .primary,
+                                backgroundColor: Color.gray.opacity(0.2),
+                                rotationDegrees: -90.5
+                            )
+                            .accessibilityHidden(true)
+                        }
 
                         // Center content - switches between starting, countdown and normal display
                         if isStartingOnWatch {
@@ -287,8 +288,7 @@ struct EMOMTimerView: View {
 
                     TimerBottomSection(
                         time: timerModel.totalTimeRemaining,
-                        isCountingDown: isWaitingToStart,
-                        isPulsing: $isPulsing,
+                        isWaitingToStart: isWaitingToStart,
                         sizes: sizes,
                         isCompleted: isCompleted,
                         totalDuration: timerModel.totalDuration,
@@ -374,7 +374,7 @@ struct EMOMTimerView: View {
         VStack(spacing: 12) {
             Image(systemName: "applewatch")
                 .font(.system(size: sizes.primaryFont * 0.6))
-                .foregroundStyle(.blue)
+                .foregroundStyle(TimerKind.emom.color)
                 .symbolEffect(.pulse)
             Text("Starting on Watch…")
                 .font(.system(size: sizes.labelFont))
@@ -502,7 +502,7 @@ struct EMOMTimerView: View {
                 totalReps: 100,
                 totalMinutes: 20,
                 timerProvider: DisplayLinkTimerProvider(),
-                feedbackProvider: SystemSoundFeedback()
+                feedbackProvider: DefaultFeedback()
             )
         )
     }

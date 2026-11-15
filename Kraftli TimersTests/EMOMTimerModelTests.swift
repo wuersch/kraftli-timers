@@ -242,7 +242,7 @@ struct EMOMTimerModelTests {
             workoutID: UUID(),
             owner: .watch,
             config: TimerConfig(
-                timerKindRaw: TimerKind.emom.rawValue,
+                kind: .emom,
                 totalDuration: duration,
                 intervalCount: intervals,
                 exerciseName: "Burpees"

@@ -49,7 +49,7 @@ struct WatchWorkoutStarterTests {
         let watch: TimerSessionController
         let starter: WatchWorkoutStarter
         let config = TimerConfig(
-            timerKindRaw: TimerKind.emom.rawValue,
+            kind: .emom,
             totalDuration: 600,
             intervalCount: 10,
             exerciseName: "Burpees"

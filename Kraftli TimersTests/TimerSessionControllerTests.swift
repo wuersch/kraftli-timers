@@ -46,7 +46,7 @@ struct TimerSessionControllerTests {
                 workoutID: UUID(),
                 owner: .watch,
                 config: TimerConfig(
-                    timerKindRaw: TimerKind.amrap.rawValue,
+                    kind: .amrap,
                     totalDuration: duration,
                     intervalCount: nil,
                     exerciseName: "Burpees"

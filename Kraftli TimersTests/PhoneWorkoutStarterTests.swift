@@ -40,7 +40,7 @@ struct PhoneWorkoutStarterTests {
         let starter: PhoneWorkoutStarter
         let workoutID = UUID()
         let config = TimerConfig(
-            timerKindRaw: TimerKind.emom.rawValue,
+            kind: .emom,
             totalDuration: 600,
             intervalCount: 10,
             exerciseName: "Burpees"
