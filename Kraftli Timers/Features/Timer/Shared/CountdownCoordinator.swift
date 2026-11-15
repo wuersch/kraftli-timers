@@ -8,8 +8,6 @@
 
 #if os(iOS)
 import Foundation
-import AVFoundation
-import os
 
 /// Coordinates a 3-second countdown before workouts begin.
 ///
@@ -46,13 +44,12 @@ final class CountdownCoordinator {
     // MARK: - Private State
 
     private var countdownTask: Task<Void, Never>?
-    private var beepPlayer: AVAudioPlayer?
     private var scheduledStartTime: Date?
 
     // MARK: - Initialization
 
     init() {
-        setupAudioPlayer()
+        TimerSounds.shared.prepare([.beep])
     }
 
     // MARK: - Public Methods
@@ -142,43 +139,8 @@ final class CountdownCoordinator {
         completion()
     }
 
-    private func setupAudioPlayer() {
-        // Configure audio session for playback alongside other audio
-        do {
-            try AVAudioSession.sharedInstance().setCategory(
-                .playback,
-                mode: .default,
-                options: [.mixWithOthers]
-            )
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            Logger.audio.error("Countdown audio session setup failed: \(error.localizedDescription)")
-        }
-
-        // Preload beep sound
-        if let url = Bundle.main.url(forResource: "beep", withExtension: "wav") {
-            do {
-                beepPlayer = try AVAudioPlayer(contentsOf: url)
-                beepPlayer?.volume = 1.0
-                beepPlayer?.prepareToPlay()
-
-                // Prime audio hardware with silent playback to avoid first-play static
-                beepPlayer?.volume = 0
-                beepPlayer?.play()
-                beepPlayer?.stop()
-                beepPlayer?.currentTime = 0
-                beepPlayer?.volume = 1.0
-            } catch {
-                Logger.audio.error("Failed to load countdown beep: \(error.localizedDescription)")
-            }
-        } else {
-            Logger.audio.warning("Countdown beep file not found in bundle")
-        }
-    }
-
     private func playBeep() {
-        beepPlayer?.currentTime = 0
-        beepPlayer?.play()
+        TimerSounds.shared.play(.beep)
     }
 }
 #endif
