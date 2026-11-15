@@ -286,7 +286,7 @@ struct EMOMTimerView: View {
                     .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
                     TimerBottomSection(
-                        totalTimeRemaining: timerModel.totalTimeRemaining,
+                        time: timerModel.totalTimeRemaining,
                         isCountingDown: isWaitingToStart,
                         isPulsing: $isPulsing,
                         sizes: sizes,

@@ -15,6 +15,7 @@ final class TimerPreset {
     // CloudKit requires default values for all non-optional attributes
     var id: UUID = UUID()
     var kindRawValue: String = TimerKind.emom.rawValue
+    /// The workout's length; 0 for For Time, which has no duration (ADR-0010).
     var durationInterval: TimeInterval = 20 * 60
     var targetReps: Int?
     var sortOrder: Int = 0
@@ -43,7 +44,12 @@ final class TimerPreset {
     }
 
     var primaryText: String {
-        "\(kind.rawValue)\(UISeparator.dot)\(durationInterval.durationText)"
+        switch kind {
+        case .emom, .amrap:
+            "\(kind.rawValue)\(UISeparator.dot)\(durationInterval.durationText)"
+        case .forTime:
+            kind.rawValue
+        }
     }
 
     var secondaryText: String {
@@ -68,6 +74,10 @@ final class TimerPreset {
 
     // MARK: - Constants
 
+    /// Allowed and default rep counts for For Time presets (UC-0006).
+    static let forTimeRepsRange = 1...999
+    static let defaultForTimeReps = 100
+
     /// Minimum allowed interval duration in seconds.
     static let minimumIntervalDuration: TimeInterval = 3
 
@@ -87,8 +97,16 @@ final class TimerPreset {
         sortOrder: Int = 0,
         exerciseId: UUID? = nil
     ) {
-        precondition(kind != .emom || targetReps != nil, "EMOM presets require targetReps")
-        precondition(durationInterval > 0, "durationInterval must be positive")
+        switch kind {
+        case .emom:
+            precondition(targetReps != nil, "EMOM presets require targetReps")
+            precondition(durationInterval > 0, "durationInterval must be positive")
+        case .amrap:
+            precondition(durationInterval > 0, "durationInterval must be positive")
+        case .forTime:
+            precondition(targetReps != nil, "For Time presets require targetReps")
+            precondition(durationInterval == 0, "For Time presets have no duration")
+        }
         if let reps = targetReps {
             precondition(reps > 0, "targetReps must be positive")
         }

@@ -72,6 +72,8 @@ nonisolated enum TimerStateReducer {
                 incrementRound(&next, at: intent.at, now: now)
             case .stop:
                 stop(&next, at: intent.at, now: now)
+            case .done:
+                done(&next, at: intent.at, now: now)
             }
         }
 
@@ -97,13 +99,12 @@ nonisolated enum TimerStateReducer {
     /// Called by the owner on its tick. Returns nil when nothing changes, so the
     /// caller only publishes a new revision when the workout actually finished.
     static func completingIfDue(_ state: TimerState, now: Date) -> TimerState? {
-        guard state.finish == nil, !state.isPaused,
-              state.elapsed(at: now) >= state.config.totalDuration else {
+        guard state.finish == nil, !state.isPaused, state.hasRunOut(at: now),
+              let totalDuration = state.config.totalDuration else {
             return nil
         }
         var next = state
-        let endDate = state.startDate
-            .addingTimeInterval(state.accumulatedPause + state.config.totalDuration)
+        let endDate = state.startDate.addingTimeInterval(state.accumulatedPause + totalDuration)
         next.finish = .completed(at: endDate)
         next.revision = state.revision + 1
         return next
@@ -121,8 +122,7 @@ nonisolated enum TimerStateReducer {
         guard state.finish == nil, !state.isPaused else { return }
         let effective = effectiveDate(date, in: state, now: now)
         // No pausing during the countdown or after the time has run out.
-        guard effective >= state.startDate,
-              state.elapsed(at: effective) < state.config.totalDuration else { return }
+        guard effective >= state.startDate, !state.hasRunOut(at: effective) else { return }
         state.pausedAt = effective
         state.lastTransitionAt = effective
     }
@@ -152,10 +152,22 @@ nonisolated enum TimerStateReducer {
         state.finish = .stopped(at: effectiveDate(date, in: state, now: now))
     }
 
-    /// The instant the workout ended or will end, if known (nil while paused and unfinished).
+    /// Completes an open-ended workout at the moment done was declared (ADR-0010).
+    ///
+    /// Ignored for time-boxed workouts, during the countdown, while paused, and once finished.
+    /// Like any intent, a done that arrives after a later pause or resume on the owner is
+    /// clamped to that transition (accepted deviation from UC-0012 7b).
+    private static func done(_ state: inout TimerState, at date: Date, now: Date) {
+        guard state.config.isOpenEnded, state.finish == nil, !state.isPaused,
+              !state.isCountingDown(at: date) else { return }
+        state.finish = .completed(at: effectiveDate(date, in: state, now: now))
+    }
+
+    /// The instant the workout ended or will end, if known (nil while paused and unfinished,
+    /// and for an unfinished open-ended workout).
     private static func endDate(of state: TimerState) -> Date? {
         if let finish = state.finish { return finish.date }
-        guard !state.isPaused else { return nil }
-        return state.startDate.addingTimeInterval(state.accumulatedPause + state.config.totalDuration)
+        guard !state.isPaused, let totalDuration = state.config.totalDuration else { return nil }
+        return state.startDate.addingTimeInterval(state.accumulatedPause + totalDuration)
     }
 }

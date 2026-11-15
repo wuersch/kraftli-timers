@@ -48,9 +48,20 @@ final class WorkoutLog {
         date.formatted(date: .omitted, time: .shortened)
     }
 
-    /// Summary text for the workout (e.g., "20 min · 100 reps" or "20 min · 5 rounds").
+    /// The duration as shown in lists: "20 min", or the finish time "4:32" for For Time.
+    var formattedDuration: String {
+        switch timerKind {
+        case .emom, .amrap:
+            "\(durationMinutes) min"
+        case .forTime:
+            String(format: "%d:%02d", Int(durationSeconds) / 60, Int(durationSeconds) % 60)
+        }
+    }
+
+    /// Summary text for the workout (e.g., "20 min · 100 reps", "20 min · 5 rounds",
+    /// or "4:32 · 100 reps" for For Time).
     var summaryText: String {
-        let duration = "\(durationMinutes) min"
+        let duration = formattedDuration
         if let reps = repsCompleted {
             return "\(duration)\(UISeparator.dot)\(reps) reps"
         } else if let rounds = roundsCompleted {

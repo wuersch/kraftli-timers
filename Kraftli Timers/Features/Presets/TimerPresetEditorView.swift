@@ -28,15 +28,16 @@ struct TimerPresetEditorView: View {
         if let preset = presetToEdit {
             _timerKind = State(initialValue: preset.kind)
             _selectedExerciseId = State(initialValue: preset.exerciseId)
+            // For Time presets store no duration (0); offer the default if the kind changes.
             _durationMinutes = State(
-                initialValue: Int(preset.durationInterval / 60)
+                initialValue: preset.durationInterval > 0 ? Int(preset.durationInterval / 60) : 20
             )
-            _targetReps = State(initialValue: preset.targetReps ?? 100)
+            _targetReps = State(initialValue: preset.targetReps ?? TimerPreset.defaultForTimeReps)
         } else {
             _timerKind = State(initialValue: .emom)
             _selectedExerciseId = State(initialValue: nil)
             _durationMinutes = State(initialValue: 20)
-            _targetReps = State(initialValue: 100)
+            _targetReps = State(initialValue: TimerPreset.defaultForTimeReps)
         }
     }
 
@@ -76,9 +77,14 @@ struct TimerPresetEditorView: View {
         .labelsHidden()
     }
 
+    /// EMOM caps the reps by the duration; For Time allows 1–999.
+    private var repsRange: ClosedRange<Int> {
+        timerKind == .forTime ? TimerPreset.forTimeRepsRange : 1...maxReps
+    }
+
     private var targetRepsPicker: some View {
         Picker("Total Reps", selection: $targetReps) {
-            ForEach(1...maxReps, id: \.self) { reps in
+            ForEach(repsRange, id: \.self) { reps in
                 Text("\(reps)").tag(reps)
             }
         }
@@ -149,6 +155,12 @@ struct TimerPresetEditorView: View {
                         )
                         .foregroundStyle(.secondary)
                         .font(.subheadline)
+                    case .forTime:
+                        Text(
+                            "A fixed number of reps done as fast as possible. Tap when done to stop the clock."
+                        )
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
                     }
                 }
 
@@ -192,13 +204,21 @@ struct TimerPresetEditorView: View {
                             targetRepsPicker
                         }
                     }
+                case .forTime:
+                    Section {
+                        Text("Total Reps")
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                        targetRepsPicker
+                    }
                 }
             }
             .onChange(of: durationMinutes) { _, _ in
-                // Ensure targetReps doesn't exceed maxReps when duration changes
-                if targetReps > maxReps {
-                    targetReps = maxReps
-                }
+                clampTargetReps()
+            }
+            .onChange(of: timerKind) { _, _ in
+                // Switching from For Time (up to 999) to EMOM may exceed the duration's cap.
+                clampTargetReps()
             }
             .navigationTitle(presetToEdit == nil ? "New Timer" : "Edit Timer")
             .navigationBarTitleDisplayMode(.inline)
@@ -237,19 +257,27 @@ struct TimerPresetEditorView: View {
 
     // MARK: - Actions
 
+    /// Keeps the reps within the current kind's range.
+    private func clampTargetReps() {
+        targetReps = min(max(targetReps, repsRange.lowerBound), repsRange.upperBound)
+    }
+
     private func savePreset() {
+        // For Time has no duration; AMRAP has no reps.
+        let duration: TimeInterval = timerKind == .forTime ? 0 : TimeInterval(durationMinutes * 60)
+        let reps: Int? = timerKind == .amrap ? nil : targetReps
         if let existingPreset = presetToEdit {
             // Update existing preset
             existingPreset.kindRawValue = timerKind.rawValue
-            existingPreset.durationInterval = TimeInterval(durationMinutes * 60)
-            existingPreset.targetReps = timerKind == .emom ? targetReps : nil
+            existingPreset.durationInterval = duration
+            existingPreset.targetReps = reps
             existingPreset.exerciseId = selectedExerciseId
         } else {
             // Create new preset at end of list
             let preset = TimerPreset(
                 kind: timerKind,
-                durationInterval: TimeInterval(durationMinutes * 60),
-                targetReps: timerKind == .emom ? targetReps : nil,
+                durationInterval: duration,
+                targetReps: reps,
                 sortOrder: PresetMaintenance.nextSortOrder(after: presets),
                 exerciseId: selectedExerciseId
             )

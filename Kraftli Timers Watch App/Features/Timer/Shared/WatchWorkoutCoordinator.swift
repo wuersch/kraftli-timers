@@ -18,7 +18,6 @@ import os
 /// that differ between AMRAP and EMOM.
 struct WatchWorkoutConfig {
     let timerKind: TimerKind
-    let totalDuration: TimeInterval
     let exerciseName: String
 
     /// Identifies the workout on both devices; the iPhone's `WorkoutLog.id` for
@@ -30,7 +29,7 @@ struct WatchWorkoutConfig {
     let startedOnPhone: Bool
 
     /// Creates a `WorkoutLog` from the completed workout data.
-    /// AMRAP uses `roundsCompleted`; EMOM uses `repsCompleted`.
+    /// AMRAP uses `roundsCompleted`; EMOM and For Time use `repsCompleted`.
     let makeWorkoutLog: (_ healthKitUUID: UUID?) -> WorkoutLog
 }
 

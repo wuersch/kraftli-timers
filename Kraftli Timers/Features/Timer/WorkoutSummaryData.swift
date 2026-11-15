@@ -17,13 +17,13 @@ struct WorkoutSummaryData: Identifiable {
     /// Name of the exercise performed.
     let exerciseName: String
 
-    /// Type of timer used (EMOM or AMRAP).
+    /// Type of timer used (EMOM, AMRAP or For Time).
     let timerKind: TimerKind
 
-    /// Total workout duration in seconds.
+    /// Total workout duration in seconds; the finish time for For Time.
     let duration: TimeInterval
 
-    /// Number of reps completed (EMOM only).
+    /// Number of reps completed (EMOM and For Time).
     let reps: Int?
 
     /// Number of rounds completed (AMRAP only).
@@ -49,22 +49,34 @@ struct WorkoutSummaryData: Identifiable {
         averageHeartRate != nil || maxHeartRate != nil || activeCalories != nil
     }
 
-    /// Formatted duration string (e.g., "20 min" or "5:30").
+    /// Title of the duration card: For Time measures a finish time, not a set duration.
+    var durationTitle: String {
+        timerKind == .forTime ? "Finish Time" : "Duration"
+    }
+
+    /// Formatted duration string (e.g., "20 min" or "5:30"). For Time always shows M:SS.
     var formattedDuration: String {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
 
-        if seconds == 0 {
+        if seconds == 0, timerKind != .forTime {
             return "\(minutes) min"
         } else {
             return String(format: "%d:%02d", minutes, seconds)
         }
     }
 
+    /// Seconds per rep for For Time (e.g., "4.2 s/rep"); nil for the other kinds.
+    var formattedPace: String? {
+        guard timerKind == .forTime, let reps, reps > 0 else { return nil }
+        let pace = duration / Double(reps)
+        return "\(pace.formatted(.number.precision(.fractionLength(1)))) s/rep"
+    }
+
     /// Secondary info line for the header (e.g., "EMOM · 100 reps" or "AMRAP · 5 rounds").
     var headerSubtitle: String {
         switch timerKind {
-        case .emom:
+        case .emom, .forTime:
             if let reps, reps > 0 {
                 return "\(timerKind.rawValue) · \(reps) reps"
             }

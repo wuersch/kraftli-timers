@@ -93,7 +93,6 @@ struct WatchEMOMTimerView: View {
         WatchWorkoutCoordinator(
             config: WatchWorkoutConfig(
                 timerKind: .emom,
-                totalDuration: totalDuration,
                 exerciseName: exerciseName,
                 workoutID: workoutID,
                 startedOnPhone: startedOnPhone,

@@ -38,13 +38,14 @@ struct WatchPresetEditorView: View {
         if let preset = presetToEdit {
             _timerKind = State(initialValue: preset.kind)
             _selectedExerciseId = State(initialValue: preset.exerciseId)
-            _durationMinutes = State(initialValue: preset.durationInterval / 60)
-            _targetReps = State(initialValue: Double(preset.targetReps ?? 100))
+            // For Time presets store no duration (0); offer the default if the kind changes.
+            _durationMinutes = State(initialValue: preset.durationInterval > 0 ? preset.durationInterval / 60 : 20)
+            _targetReps = State(initialValue: Double(preset.targetReps ?? TimerPreset.defaultForTimeReps))
         } else {
             _timerKind = State(initialValue: .emom)
             _selectedExerciseId = State(initialValue: nil)
             _durationMinutes = State(initialValue: 20)
-            _targetReps = State(initialValue: 100)
+            _targetReps = State(initialValue: Double(TimerPreset.defaultForTimeReps))
         }
     }
 
@@ -60,6 +61,13 @@ struct WatchPresetEditorView: View {
     /// Maximum reps based on duration (uses shared constant for minimum interval).
     private var maxReps: Double {
         Double(TimerPreset.maximumReps(forDuration: durationMinutes * 60))
+    }
+
+    /// EMOM caps the reps by the duration; For Time allows 1–999.
+    private var repsRange: ClosedRange<Double> {
+        timerKind == .forTime
+            ? Double(TimerPreset.forTimeRepsRange.lowerBound)...Double(TimerPreset.forTimeRepsRange.upperBound)
+            : 1...maxReps
     }
 
     /// Calculated interval duration for display.
@@ -80,9 +88,11 @@ struct WatchPresetEditorView: View {
                 VStack(spacing: 16) {
                     timerKindSection
                     exerciseSection
-                    durationSection
 
-                    if timerKind == .emom {
+                    if timerKind != .forTime {
+                        durationSection
+                    }
+                    if timerKind != .amrap {
                         repsSection
                     }
                 }
@@ -115,10 +125,11 @@ struct WatchPresetEditorView: View {
                 }
             }
             .onChange(of: durationMinutes) { _, _ in
-                // Clamp reps if they exceed new max
-                if targetReps > maxReps {
-                    targetReps = maxReps
-                }
+                clampTargetReps()
+            }
+            .onChange(of: timerKind) { _, _ in
+                // Switching from For Time (up to 999) to EMOM may exceed the duration's cap.
+                clampTargetReps()
             }
         }
     }
@@ -138,6 +149,8 @@ struct WatchPresetEditorView: View {
                     } label: {
                         Text(kind.rawValue)
                             .font(.body.weight(timerKind == kind ? .semibold : .regular))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                             .background(
@@ -199,31 +212,41 @@ struct WatchPresetEditorView: View {
                 label: "Total Reps",
                 value: $targetReps,
                 unit: "reps",
-                range: 1...maxReps
+                range: repsRange
             )
 
-            Text(intervalSeconds.intervalDescription(compact: true))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
+            if timerKind == .emom {
+                Text(intervalSeconds.intervalDescription(compact: true))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 4)
+            }
         }
     }
 
     // MARK: - Actions
 
+    /// Keeps the reps within the current kind's range.
+    private func clampTargetReps() {
+        targetReps = min(max(targetReps, repsRange.lowerBound), repsRange.upperBound)
+    }
+
     private func savePreset() {
+        // For Time has no duration; AMRAP has no reps.
+        let duration: TimeInterval = timerKind == .forTime ? 0 : durationMinutes * 60
+        let reps: Int? = timerKind == .amrap ? nil : Int(targetReps)
         if let existingPreset = presetToEdit {
             // Update existing preset
             existingPreset.kindRawValue = timerKind.rawValue
-            existingPreset.durationInterval = durationMinutes * 60
-            existingPreset.targetReps = timerKind == .emom ? Int(targetReps) : nil
+            existingPreset.durationInterval = duration
+            existingPreset.targetReps = reps
             existingPreset.exerciseId = selectedExerciseId
         } else {
             // Create new preset
             let preset = TimerPreset(
                 kind: timerKind,
-                durationInterval: durationMinutes * 60,
-                targetReps: timerKind == .emom ? Int(targetReps) : nil,
+                durationInterval: duration,
+                targetReps: reps,
                 sortOrder: PresetMaintenance.nextSortOrder(after: presets),
                 exerciseId: selectedExerciseId
             )

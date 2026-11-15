@@ -47,6 +47,16 @@ class AMRAPTimerModel: WorkoutTimer {
     }
 
     // MARK: - WorkoutTimer Protocol
+    @MainActor
+    var isCompleted: Bool {
+        totalTimeRemaining <= 0
+    }
+
+    /// A time-boxed workout records its full duration.
+    var recordedDuration: TimeInterval {
+        totalDuration
+    }
+
     var completedReps: Int? {
         nil
     }
