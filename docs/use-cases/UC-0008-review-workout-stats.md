@@ -1,6 +1,6 @@
 # UC-0008: Review workout history and stats
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to see how much I've trained recently, overall, per muscle group
   and per exercise, so I can judge my consistency and balance.

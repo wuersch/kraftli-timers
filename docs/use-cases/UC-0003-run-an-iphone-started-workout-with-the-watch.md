@@ -1,6 +1,6 @@
 # UC-0003: Run an iPhone-started workout together with the Watch
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete wearing an Apple Watch, I want a workout I start on the iPhone to run on
   my Watch as well, so that heart rate and calories are captured and I can follow and control the

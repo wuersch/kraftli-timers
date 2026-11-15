@@ -1,6 +1,6 @@
 # UC-0004: Run a workout on the Apple Watch alone
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to start and run an EMOM, AMRAP or For Time workout from my
   wrist without my iPhone, while seeing my heart rate and calories live.

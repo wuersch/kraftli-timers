@@ -1,6 +1,6 @@
 # UC-0006: Manage timer presets
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to save, change, order and remove my favourite timer
   configurations, so I can start a workout with one action.

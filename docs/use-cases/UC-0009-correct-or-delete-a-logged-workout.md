@@ -1,6 +1,6 @@
 # UC-0009: Correct or delete a logged workout
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to fix a miscounted workout or remove one that shouldn't be in my
   history, so that my stats stay truthful.

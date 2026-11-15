@@ -19,7 +19,7 @@ case wins.
 
 | Tab | Purpose | Use cases |
 |-----|---------|-----------|
-| Timers | Preset list and launching | UC-0001, UC-0002, UC-0006 |
+| Timers | Preset list and launching | UC-0001, UC-0002, UC-0006, UC-0012 |
 | Stats | Stats dashboard and history | UC-0008, UC-0009 |
 | Settings | Preferences, data, about | UC-0010, UC-0011 |
 
@@ -31,8 +31,8 @@ case wins.
 ### Timer Preset List
 
 - NavigationStack titled "Timers"; native List sorted by the athlete's order.
-- Row: primary "EMOM · 20 min" / "AMRAP · 20 min"; secondary "Exercise · N Reps" (EMOM) or
-  "Exercise" (AMRAP); blue play button on the trailing edge starts the workout.
+- Row: primary "EMOM · 20 min" / "AMRAP · 20 min" / "For Time"; secondary "Exercise · N Reps"
+  (EMOM, For Time) or "Exercise" (AMRAP); blue play button on the trailing edge starts the workout.
 - Toolbar: Edit (leading, only when presets exist), Add "+" (trailing).
 - Swipe to delete (no confirmation). Edit mode: drag handles to reorder; tapping a row opens the
   editor; the play button is hidden.
@@ -40,10 +40,11 @@ case wins.
 
 ### Preset Editor (Sheet)
 
-- Segmented picker EMOM / AMRAP with a short description of the kind.
+- Segmented picker EMOM / AMRAP / For Time with a short description of the kind.
 - Exercise row → [Exercise Selection](#exercise-selection) ("Select Exercise" if none).
-- Wheel pickers: Duration (1–60 min); Total Reps (EMOM only, 1 … 20 per minute).
-- Interval text: "N sec per interval" / "N min M sec per interval".
+- Wheel pickers: Duration (1–60 min; not for For Time); Total Reps (EMOM: 1 … 20 per minute;
+  For Time: 1–999, default 100).
+- Interval text (EMOM): "N sec per interval" / "N min M sec per interval".
 - Toolbar: Cancel (xmark) / Save (checkmark).
 
 ### Exercise Selection
@@ -73,6 +74,16 @@ case wins.
 - Tap to count a round (light haptic); tap while paused resumes; long-press (0.8 s) pauses/resumes
   (medium/light haptic). Hint "Tap to count · Hold to pause".
 
+### For Time Timer
+
+- Like AMRAP, title "Exercise · For Time", orange. An arc circles the ring continuously, one
+  revolution per minute like a stopwatch hand; it freezes while paused.
+- Center: large elapsed time (M:SS) counting up, "REPS" + target rep count below.
+- Below: "ELAPSED" + elapsed time; after done, "FINISH TIME".
+- No signals during the workout.
+- Tap = done (no confirmation; ignored during the countdown and while paused); long-press (0.8 s)
+  pauses/resumes. Hint "Tap when done · Hold to pause".
+
 ### Watch Sync Indicators
 
 - "Starting on Watch…" with a pulsing Watch icon until the Watch confirms (swipe-down still closes).
@@ -82,8 +93,8 @@ case wins.
 
 ### Workout Summary
 
-- Replaces the timer 0.3 s after completion: header with kind and reps/rounds; cards for Duration,
-  Active Calories, Avg Heart Rate, Max Heart Rate ("--" while Watch data is pending).
+- Replaces the timer 0.3 s after completion: header with kind and reps/rounds; cards for Duration
+  (For Time: "Finish Time" M:SS and pace "N.N s/rep"), Active Calories, Avg Heart Rate, Max Heart Rate ("--" while Watch data is pending).
 - Without a Watch: footer "Connect Apple Watch for heart rate and calories".
 - "Open Health" button when Health data exists. Swipe down to close.
 
@@ -101,14 +112,15 @@ case wins.
 
 ### Workout Lists
 
-- WorkoutRow (card style): exercise name, kind pill, "date · N min · N reps/rounds".
+- WorkoutRow (card style): exercise name, kind pill, "date · N min · N reps/rounds"; For Time
+  shows the finish time as M:SS instead of "N min".
 - Tap row → [Workout Log Editor](#workout-log-editor). Edit button → swipe-to-delete (no confirmation).
 - All Workouts empty: "No Workouts" — "Complete a workout to see it here".
 
 ### Workout Log Editor
 
-- Sheet with a Form: read-only Date, Time, Exercise, Duration, Type (grayed); wheel for Reps
-  (1–999) or Rounds (1–99). Toolbar Cancel (xmark) / Save (checkmark).
+- Sheet with a Form: read-only Date, Time, Exercise, Duration (M:SS for For Time), Type (grayed);
+  wheel for Reps (1–999; EMOM, For Time) or Rounds (1–99). Toolbar Cancel (xmark) / Save (checkmark).
 
 ### Settings
 
@@ -124,11 +136,13 @@ case wins.
 - **Preset list:** sorted like the iPhone. Leading swipe → Edit; trailing swipe (full swipe allowed)
   → Delete without confirmation; "+" at the bottom; empty state "No presets" — "Create one to get
   started". Tapping a preset starts it.
-- **Preset editor (sheet):** "Timer Type" buttons EMOM/AMRAP; Digital Crown steppers (with
-  haptic detents) for duration 1–60 min and reps; interval text; "Exercise" row → flat list with
+- **Preset editor (sheet):** "Timer Type" buttons EMOM/AMRAP/For Time; Digital Crown steppers
+  (with haptic detents) for duration 1–60 min (not for For Time) and reps (For Time: 1–999); interval text; "Exercise" row → flat list with
   name, muscle group and a checkmark.
 - **Workout:** silent countdown with "Get ready" (tap hides it). Paged layout: controls page (End,
   Pause/Resume; resuming jumps back) to the left of the metrics page: TOTAL, INTERVAL (orange in
   the last 3 s) and REPS for EMOM / ROUNDS for AMRAP (tap to count), live heart rate and ACTIVE KCAL.
+  For Time: ELAPSED counting up and target REPS; tap the metrics page to declare done. Pause and
+  End stay on the controls page.
   "DONE" at the end until End is pressed. No sounds, no haptics, no confetti, no summary.
 - **iPhone-started:** "Starting…" until ownership is settled.

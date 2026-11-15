@@ -201,6 +201,9 @@ rule (owner wins) are in [ADR-0007](ADR-0007-optimistic-viewer-control.md).
 
 ## More Information
 
+- **Amendment 2026-11-15:** `TimerConfig.totalDuration` is optional; nil marks an open-ended
+  workout (For Time) that never completes by itself, see
+  [ADR-0010](ADR-0010-open-ended-workouts-and-done-intent.md).
 - Supersedes ADR-0003, ADR-0004 and ADR-0005. Amends ADR-0002 (who saves to Health).
 - **Amendment 2026-10-31**, documenting the implementation (v1.6.x):
   - §4.3: the Watch takes ownership once its session has started and doesn't wait for mirroring
