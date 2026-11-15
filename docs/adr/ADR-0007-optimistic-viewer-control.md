@@ -70,7 +70,7 @@ struct TimerIntent: Codable, Equatable, Sendable {
 | pause/resume, `baseRevision < pauseStateRevision` | **Reject**: the owner paused or resumed meanwhile, and its state wins |
 | `.incrementRound` | Apply (round counts commute), unless tapped during the countdown or after the end |
 | `.stop` | Apply unless already finished. If the time had already run out, record the natural completion instead |
-| `.done` | Open-ended workouts only: record `.completed` at the tap time, unless counting down, paused or already finished ([ADR-0010](ADR-0010-open-ended-workouts-and-done-intent.md)) |
+| `.done` | Open-ended workouts only: record `.completed` at the tap time (at the pause if tapped before a pause on the owner), unless counting down, tapped while paused, or already finished ([ADR-0010](ADR-0010-open-ended-workouts-and-done-intent.md)) |
 
 - **Chained pause/resume is not a conflict.** A pause/resume that follows the sender's own earlier
   pause/resume (`previousPauseIntentID == pauseStateIntentID`) is applied.

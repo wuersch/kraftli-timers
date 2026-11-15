@@ -2,7 +2,7 @@
 //  WatchWorkoutCoordinator.swift
 //  Kraftli Timers Watch App
 //
-//  Shared end-of-workout logic for WatchAMRAPTimerView and WatchEMOMTimerView:
+//  Shared end-of-workout logic for the Watch timer views (EMOM, AMRAP, For Time):
 //  ending the HealthKit session, then logging the workout (Watch-started) or
 //  reporting it to the iPhone (iPhone-started).
 //
@@ -15,7 +15,7 @@ import SwiftData
 import os
 
 /// Configuration for a Watch workout, capturing the timer-specific details
-/// that differ between AMRAP and EMOM.
+/// that differ between the timer kinds.
 struct WatchWorkoutConfig {
     let timerKind: TimerKind
     let exerciseName: String

@@ -1,6 +1,6 @@
 # ADR-0010: Open-ended workouts have no duration in the timer state and end with a `done` intent
 
-- **Status:** approved
+- **Status:** implemented
 - **Date:** 2026-11-15
 - **Deciders:** Michael Würsch
 
@@ -42,7 +42,9 @@ handling (confetti, sound, logging, summary) already keys off `.completed`.
   completion check.
 - **`TimerIntent.Action.done`.** The reducer applies it as `.completed(at:)` at the intent's tap
   time, clamped to `[lastTransitionAt, now]` like every other intent. It is ignored during the
-  countdown, while paused, and once the workout has finished. Time-boxed workouts ignore it.
+  countdown, when tapped while paused, and once the workout has finished. A done tapped on the
+  viewer before the owner paused still completes the workout, at the pause, so a completion the
+  viewer already predicted is never rolled back. Time-boxed workouts ignore it.
 - **No new `Finish` case.** "Done" is a completion; `stop` stays the early end.
 - **Late done:** a done that reaches the owner after a later pause or resume there is moved to that
   transition instead of keeping the declared moment, an accepted deviation from UC-0012 7b. The
@@ -67,9 +69,9 @@ handling (confetti, sound, logging, summary) already keys off `.completed`.
 
 ### Confirmation
 
-`TimerStateReducer` unit tests cover `done` while running, during the countdown, while paused, after
-finishing, and from a viewer's prediction, and confirm that open-ended states never complete by
-themselves.
+`ForTimeTests` cover `done` while running, during the countdown, while paused, before a later
+owner pause, after finishing, and arriving late, and confirm that open-ended states never complete
+by themselves.
 
 ## Pros and Cons of the Options
 

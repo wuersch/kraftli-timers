@@ -11,7 +11,7 @@ import SwiftData
 /// Editor for creating and modifying timer presets on watchOS.
 ///
 /// ## Features
-/// - Timer kind selection (EMOM/AMRAP) via segmented control
+/// - Timer kind selection (EMOM/AMRAP/For Time) via buttons
 /// - Exercise selection via navigation drill-down
 /// - Duration and reps input via Digital Crown
 /// - Create new or edit existing presets
@@ -89,7 +89,7 @@ struct WatchPresetEditorView: View {
                     timerKindSection
                     exerciseSection
 
-                    if timerKind != .forTime {
+                    if timerKind.hasFixedDuration {
                         durationSection
                     }
                     if timerKind != .amrap {
@@ -233,7 +233,7 @@ struct WatchPresetEditorView: View {
 
     private func savePreset() {
         // For Time has no duration; AMRAP has no reps.
-        let duration: TimeInterval = timerKind == .forTime ? 0 : durationMinutes * 60
+        let duration: TimeInterval = timerKind.hasFixedDuration ? durationMinutes * 60 : 0
         let reps: Int? = timerKind == .amrap ? nil : Int(targetReps)
         if let existingPreset = presetToEdit {
             // Update existing preset

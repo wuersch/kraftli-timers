@@ -4,7 +4,7 @@
 //
 //  Full-screen pre-workout countdown shown before the metric display appears.
 //  Mirrors the prior ring-center countdown: a large "3 / 2 / 1 / GO" with a
-//  "Get ready" caption beneath. Shared by the EMOM and AMRAP timer views.
+//  "Get ready" caption beneath. Shared by all Watch timer views.
 //
 
 import SwiftUI

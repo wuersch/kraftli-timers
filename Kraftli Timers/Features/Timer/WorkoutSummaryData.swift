@@ -51,7 +51,7 @@ struct WorkoutSummaryData: Identifiable {
 
     /// Title of the duration card: For Time measures a finish time, not a set duration.
     var durationTitle: String {
-        timerKind == .forTime ? "Finish Time" : "Duration"
+        timerKind.hasFixedDuration ? "Duration" : "Finish Time"
     }
 
     /// Formatted duration string (e.g., "20 min" or "5:30"). For Time always shows M:SS.
@@ -59,7 +59,7 @@ struct WorkoutSummaryData: Identifiable {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
 
-        if seconds == 0, timerKind != .forTime {
+        if seconds == 0, timerKind.hasFixedDuration {
             return "\(minutes) min"
         } else {
             return String(format: "%d:%02d", minutes, seconds)
@@ -68,7 +68,7 @@ struct WorkoutSummaryData: Identifiable {
 
     /// Seconds per rep for For Time (e.g., "4.2 s/rep"); nil for the other kinds.
     var formattedPace: String? {
-        guard timerKind == .forTime, let reps, reps > 0 else { return nil }
+        guard !timerKind.hasFixedDuration, let reps, reps > 0 else { return nil }
         let pace = duration / Double(reps)
         return "\(pace.formatted(.number.precision(.fractionLength(1)))) s/rep"
     }

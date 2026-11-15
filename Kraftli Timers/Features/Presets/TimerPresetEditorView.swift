@@ -264,7 +264,7 @@ struct TimerPresetEditorView: View {
 
     private func savePreset() {
         // For Time has no duration; AMRAP has no reps.
-        let duration: TimeInterval = timerKind == .forTime ? 0 : TimeInterval(durationMinutes * 60)
+        let duration: TimeInterval = timerKind.hasFixedDuration ? TimeInterval(durationMinutes * 60) : 0
         let reps: Int? = timerKind == .amrap ? nil : targetReps
         if let existingPreset = presetToEdit {
             // Update existing preset
