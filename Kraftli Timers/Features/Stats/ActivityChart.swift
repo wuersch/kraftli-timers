@@ -138,7 +138,7 @@ struct ActivityChart: View {
     let sampleData = (0..<7).map { offset in
         ChartDataPoint(
             date: calendar.date(byAdding: .day, value: -offset, to: today)!,
-            minutes: Int.random(in: 0...45)
+            seconds: TimeInterval(Int.random(in: 0...45) * 60)
         )
     }.reversed()
 

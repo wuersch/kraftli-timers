@@ -310,7 +310,7 @@ struct StatsServiceTests {
         let stats = ExerciseStats(
             exerciseName: "Test",
             muscleGroup: nil,
-            totalMinutes: 20,
+            totalSeconds: 20 * 60,
             totalReps: nil,
             totalRounds: nil,
             workoutCount: 1
@@ -323,7 +323,7 @@ struct StatsServiceTests {
         let stats = ExerciseStats(
             exerciseName: "Test",
             muscleGroup: nil,
-            totalMinutes: 45,
+            totalSeconds: 45 * 60,
             totalReps: nil,
             totalRounds: nil,
             workoutCount: 3
@@ -381,6 +381,24 @@ struct StatsServiceTests {
         let stats = service.groupedByMuscleGroup(workouts: [], exercises: [])
 
         #expect(stats.isEmpty)
+    }
+
+    @Test func totals_addUpSecondsBeforeRounding() {
+        // Two 45-second For Time workouts: 0 min each, but 1 min together (UC-0008).
+        let exercises = [
+            ExerciseInfo(name: "Burpees", description: "", formTips: [], muscleGroup: .fullBody)
+        ]
+        let workouts = (0..<2).map { _ in
+            WorkoutLog(date: Date(), exerciseName: "Burpees", timerKind: .forTime, durationSeconds: 45, repsCompleted: 20)
+        }
+
+        let byExercise = service.groupedByExercise(workouts: workouts, exercises: exercises)
+        let byMuscleGroup = service.groupedByMuscleGroup(workouts: workouts, exercises: exercises)
+        let buckets = service.totalMinutesPerBucket(workouts: workouts, period: .week, referenceDate: Date())
+
+        #expect(byExercise.first?.totalMinutes == 1)
+        #expect(byMuscleGroup.first?.totalMinutes == 1)
+        #expect(buckets.reduce(0) { $0 + $1.minutes } == 1)
     }
 
     @Test func groupedByMuscleGroup_floorsMinutes() {

@@ -97,18 +97,18 @@ private struct TimeCell: View {
     VStack(spacing: 16) {
         // With varied data
         MuscleGroupCard(stats: [
-            MuscleGroupStats(muscleGroup: .fullBody, totalMinutes: 120),
-            MuscleGroupStats(muscleGroup: .upperBody, totalMinutes: 75),
-            MuscleGroupStats(muscleGroup: .lowerBody, totalMinutes: 45),
-            MuscleGroupStats(muscleGroup: .core, totalMinutes: 30)
+            MuscleGroupStats(muscleGroup: .fullBody, totalSeconds: 120 * 60),
+            MuscleGroupStats(muscleGroup: .upperBody, totalSeconds: 75 * 60),
+            MuscleGroupStats(muscleGroup: .lowerBody, totalSeconds: 45 * 60),
+            MuscleGroupStats(muscleGroup: .core, totalSeconds: 30 * 60)
         ])
 
         // All zeros
         MuscleGroupCard(stats: [
-            MuscleGroupStats(muscleGroup: .fullBody, totalMinutes: 0),
-            MuscleGroupStats(muscleGroup: .upperBody, totalMinutes: 0),
-            MuscleGroupStats(muscleGroup: .lowerBody, totalMinutes: 0),
-            MuscleGroupStats(muscleGroup: .core, totalMinutes: 0)
+            MuscleGroupStats(muscleGroup: .fullBody, totalSeconds: 0 * 60),
+            MuscleGroupStats(muscleGroup: .upperBody, totalSeconds: 0 * 60),
+            MuscleGroupStats(muscleGroup: .lowerBody, totalSeconds: 0 * 60),
+            MuscleGroupStats(muscleGroup: .core, totalSeconds: 0 * 60)
         ])
 
         // Empty stats (all show 0)
