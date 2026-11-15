@@ -70,6 +70,7 @@ struct TimerIntent: Codable, Equatable, Sendable {
 | pause/resume, `baseRevision < pauseStateRevision` | **Reject**: the owner paused or resumed meanwhile, and its state wins |
 | `.incrementRound` | Apply (round counts commute), unless tapped during the countdown or after the end |
 | `.stop` | Apply unless already finished. If the time had already run out, record the natural completion instead |
+| `.done` | Open-ended workouts only: record `.completed` at the tap time, unless counting down, paused or already finished ([ADR-0010](ADR-0010-open-ended-workouts-and-done-intent.md)) |
 
 - **Chained pause/resume is not a conflict.** A pause/resume that follows the sender's own earlier
   pause/resume (`previousPauseIntentID == pauseStateIntentID`) is applied.
@@ -132,6 +133,8 @@ chained intents and the handling of redelivered intents.
 
 ## More Information
 
+- **Amendment 2026-11-15:** `.done` intent for open-ended workouts, see
+  [ADR-0010](ADR-0010-open-ended-workouts-and-done-intent.md).
 - **Amendment 2026-10-31:** the pending indicator (an iPhone Watch-slash icon next to the total time)
   shows whenever intents are pending. This was confirmed as intended.
 - **Known gap:** the Watch doesn't show "Synced with iPhone" yet; only the iPhone shows its notice.

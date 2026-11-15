@@ -1,6 +1,6 @@
 # UC-0012: Run a For Time workout
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to do a fixed number of reps as fast as possible and have my
   time measured, so I can see and compare how quickly I got the work done.
@@ -104,9 +104,7 @@ The athlete starts a For Time preset.
 
 ## Related Information
 
-- Interaction design: [ui-spec.md](ui-spec.md) (For Time timer section still to be written).
-  Agreed direction: a single ring sweeping once per minute like a stopwatch hand, frozen while
-  paused; tap = done, long-press = pause/resume, swipe down = end early; no protection against an
+- Interaction design: [ui-spec.md](ui-spec.md#for-time-timer). No protection against an
   accidental "done" for now.
 - [UC-0001](UC-0001-run-an-emom-workout.md), [UC-0002](UC-0002-run-an-amrap-workout.md) (the
   time-boxed counterparts), [UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md),
@@ -118,3 +116,7 @@ The athlete starts a For Time preset.
   default 100, no duration), [UC-0008](UC-0008-review-workout-stats.md) (workouts without reps; sum seconds, round for display;
   finish time), [UC-0009](UC-0009-correct-or-delete-a-logged-workout.md) (For Time as a kind; its
   finish time stays read-only, like every duration).
+- Known deviations (fix candidates): early ends are not recorded today (Minimal Guarantee, 5b), as
+  for all kinds ([UC-0005](UC-0005-record-a-workout.md)); a done declared on one device that
+  reaches the owning device after a later pause or resume there is moved to that pause or resume,
+  not kept at the declared moment (7b).

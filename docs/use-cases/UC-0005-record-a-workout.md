@@ -1,6 +1,6 @@
 # UC-0005: Record a workout
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want every workout I do to land in my workout history and in Apple
   Health exactly once, so that my stats and my Activity Rings reflect the work I did.
