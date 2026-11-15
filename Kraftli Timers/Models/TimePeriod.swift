@@ -46,6 +46,10 @@ enum TimePeriod: String, CaseIterable, Identifiable {
     // MARK: - Core semantics
     /// Calculates a sliding date range ending at referenceDate.
     ///
+    /// The start is the beginning of the period's first bucket (its first day or month), so
+    /// the range covers exactly what the chart draws: a workout from early on the first day
+    /// counts no matter what time of day it is now.
+    ///
     /// - Parameter referenceDate: Typically today.
     /// - Returns: Start and end of the period.
     func dateRange(from referenceDate: Date, calendar: Calendar = .current) -> (start: Date, end: Date) {
@@ -58,12 +62,12 @@ enum TimePeriod: String, CaseIterable, Identifiable {
         case .month:
             start = calendar.date(byAdding: .day, value: -27, to: end) ?? end // last 28 days (~4 weeks)
         case .sixMonths:
-            start = calendar.date(byAdding: .month, value: -6, to: end) ?? end
+            start = calendar.date(byAdding: .month, value: -5, to: end) ?? end // current month + 5 before
         case .year:
-            start = calendar.date(byAdding: .month, value: -11, to: end) ?? end
+            start = calendar.date(byAdding: .month, value: -11, to: end) ?? end // current month + 11 before
         }
 
-        return (start, end)
+        return (bucketUnit.normalizedStart(start, calendar: calendar), end)
     }
 
     // MARK: - Bucketing semantics
@@ -80,7 +84,7 @@ enum TimePeriod: String, CaseIterable, Identifiable {
         let range = dateRange(from: referenceDate)
         let unit = bucketUnit
         var buckets: [Date] = []
-        var current = unit.normalizedStart(range.start)
+        var current = range.start
         while current <= range.end {
             buckets.append(current)
             current = unit.advance(current)

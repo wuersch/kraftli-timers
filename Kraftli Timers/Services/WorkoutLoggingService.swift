@@ -24,6 +24,8 @@ protocol WorkoutLoggingService {
     ///   - repsCompleted: Number of reps completed (EMOM only).
     ///   - roundsCompleted: Number of rounds completed (AMRAP only).
     ///   - healthKitWorkoutUUID: Optional HealthKit workout UUID for correlation.
+    ///   - id: The log's ID. Pass the workout's ID so the Watch's HealthKit summary can be
+    ///     matched to this log; nil generates a new one.
     /// - Returns: The created WorkoutLog instance.
     @discardableResult
     func logWorkout(
@@ -32,7 +34,8 @@ protocol WorkoutLoggingService {
         durationSeconds: TimeInterval,
         repsCompleted: Int?,
         roundsCompleted: Int?,
-        healthKitWorkoutUUID: UUID?
+        healthKitWorkoutUUID: UUID?,
+        id: UUID?
     ) -> WorkoutLog
 }
 
@@ -51,9 +54,11 @@ final class DefaultWorkoutLoggingService: WorkoutLoggingService {
         durationSeconds: TimeInterval,
         repsCompleted: Int?,
         roundsCompleted: Int?,
-        healthKitWorkoutUUID: UUID? = nil
+        healthKitWorkoutUUID: UUID? = nil,
+        id: UUID? = nil
     ) -> WorkoutLog {
         let workoutLog = WorkoutLog(
+            id: id ?? UUID(),
             exerciseName: exerciseName,
             timerKind: timerKind,
             durationSeconds: durationSeconds,
@@ -84,10 +89,12 @@ final class SilentWorkoutLoggingService: WorkoutLoggingService {
         durationSeconds: TimeInterval,
         repsCompleted: Int?,
         roundsCompleted: Int?,
-        healthKitWorkoutUUID: UUID? = nil
+        healthKitWorkoutUUID: UUID? = nil,
+        id: UUID? = nil
     ) -> WorkoutLog {
         // Return a placeholder — never persisted
         WorkoutLog(
+            id: id ?? UUID(),
             exerciseName: exerciseName,
             timerKind: timerKind,
             durationSeconds: durationSeconds,

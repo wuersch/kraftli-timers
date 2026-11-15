@@ -30,6 +30,7 @@ struct WatchWorkoutConfig {
 
     /// Creates a `WorkoutLog` from the completed workout data.
     /// AMRAP uses `roundsCompleted`; EMOM and For Time use `repsCompleted`.
+    /// Called as soon as the workout completes, while the timer model still holds its result.
     let makeWorkoutLog: (_ healthKitUUID: UUID?) -> WorkoutLog
 }
 
@@ -55,7 +56,9 @@ struct WatchWorkoutCoordinator {
         countdown.cancelCountdown()
         timer.reset()
 
-        if sessionManager.sessionState != .idle {
+        // A completed workout that is still saving (`handleWorkoutCompleted` is awaiting
+        // HealthKit) finishes there: ending it again here would report it twice.
+        if sessionManager.sessionState != .idle, !sessionManager.isEndingSession {
             // Capture metrics before ending session (they're cleared on end)
             let averageHeartRate = sessionManager.averageHeartRate
             let maxHeartRate = sessionManager.maxHeartRate
@@ -87,20 +90,17 @@ struct WatchWorkoutCoordinator {
         let maxHeartRate = sessionManager.maxHeartRate
         let activeCalories = sessionManager.activeCalories
 
+        // Build the log before awaiting HealthKit: End pressed during the save resets the
+        // timer model, which would record e.g. an AMRAP with 0 rounds.
+        let log = config.startedOnPhone ? nil : config.makeWorkoutLog(nil)
+
         var healthKitUUID: UUID? = nil
         if sessionManager.sessionState == .running || sessionManager.sessionState == .paused {
             healthKitUUID = await sessionManager.endSession()
         }
 
-        if config.startedOnPhone {
-            sendWorkoutSessionEnded(
-                healthKitUUID: healthKitUUID,
-                averageHeartRate: averageHeartRate,
-                maxHeartRate: maxHeartRate,
-                activeCalories: activeCalories
-            )
-        } else {
-            let log = config.makeWorkoutLog(healthKitUUID)
+        if let log {
+            log.healthKitWorkoutUUID = healthKitUUID
             modelContext.insert(log)
             // Surface a save failure: this is the only SwiftData record of a
             // standalone workout, saved just as watchOS is most likely to suspend
@@ -110,6 +110,13 @@ struct WatchWorkoutCoordinator {
             } catch {
                 Logger.workoutLogging.error("Failed to save standalone Watch workout log: \(error.localizedDescription)")
             }
+        } else {
+            sendWorkoutSessionEnded(
+                healthKitUUID: healthKitUUID,
+                averageHeartRate: averageHeartRate,
+                maxHeartRate: maxHeartRate,
+                activeCalories: activeCalories
+            )
         }
 
         Logger.healthKit.info("Watch \(config.timerKind.rawValue) workout completed, HealthKit UUID: \(healthKitUUID?.uuidString ?? "none"), startedOnPhone: \(config.startedOnPhone), avgHR: \(averageHeartRate.map { String(format: "%.0f", $0) } ?? "none")")

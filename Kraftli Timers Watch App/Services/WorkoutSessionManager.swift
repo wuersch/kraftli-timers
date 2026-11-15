@@ -73,6 +73,16 @@ final class WorkoutSessionManager: NSObject {
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
 
+    /// The save in progress while `endSession()` awaits HealthKit. A second caller joins it
+    /// instead of finalizing the same builder twice.
+    private var endTask: Task<UUID?, Never>?
+
+    /// True while the session is being saved to HealthKit. Whoever started the save also
+    /// records the workout, so others should leave it alone.
+    var isEndingSession: Bool {
+        endTask != nil
+    }
+
     // MARK: - Authorization
 
     /// Request authorization for workout-related HealthKit types.
@@ -188,8 +198,14 @@ final class WorkoutSessionManager: NSObject {
     /// log errors internally but our do/catch still handles it gracefully — the
     /// session is ended and cleanup runs via `defer`.
     ///
+    /// Ending is idempotent: a call made while an earlier one is still saving waits for
+    /// that save and returns its result.
+    ///
     /// - Returns: UUID of the saved HealthKit workout, or nil if save failed
     func endSession() async -> UUID? {
+        if let endTask {
+            return await endTask.value
+        }
         guard let session, let builder else {
             Logger.workoutSession.warning("Cannot end session: no active session")
             // Clean up state even without session objects (e.g. stale state after crash)
@@ -197,6 +213,19 @@ final class WorkoutSessionManager: NSObject {
             return nil
         }
 
+        // An unstructured Task (rather than awaiting inline) gives later callers a handle
+        // to wait on. It inherits the main actor, so `endTask` is set before it runs.
+        let task = Task {
+            await finish(session, builder: builder)
+        }
+        endTask = task
+        let workoutUUID = await task.value
+        endTask = nil
+        return workoutUUID
+    }
+
+    /// Finalizes the builder, ends the session and clears the session state.
+    private func finish(_ session: HKWorkoutSession, builder: HKLiveWorkoutBuilder) async -> UUID? {
         defer { cleanupSession() }
 
         do {
@@ -276,11 +305,12 @@ final class WorkoutSessionManager: NSObject {
                 Logger.workoutSession.info("A workout session started during recovery; leaving it running")
                 return
             }
+            // Finalize through locals only, never `self.session` / `self.builder`: a workout
+            // that starts while the awaits below are pending installs its own session there,
+            // and must not be wiped when this recovery finishes. Without a delegate the
+            // recovered session's trailing `.ended` callback has nowhere to land either.
             Logger.workoutSession.info("Recovered orphaned workout session, finalizing it")
-            recoveredSession.delegate = self
-            self.session = recoveredSession
             let builder = recoveredSession.associatedWorkoutBuilder()
-            self.builder = builder
 
             do {
                 try await builder.endCollection(at: Date())
@@ -291,13 +321,6 @@ final class WorkoutSessionManager: NSObject {
                 recoveredSession.end()
                 Logger.workoutSession.error("Failed to finalize recovered workout: \(error.localizedDescription)")
             }
-
-            // Land at .idle (not cleanupSession()'s .ended) so the next standalone start gate
-            // passes; niling session first means the trailing .ended delegate callback is
-            // dropped by the identity guard rather than clobbering this state.
-            session = nil
-            self.builder = nil
-            sessionState = .idle
         } catch {
             // Recovery failed — log and continue
             Logger.workoutSession.debug("Failed to recover active session: \(error.localizedDescription)")

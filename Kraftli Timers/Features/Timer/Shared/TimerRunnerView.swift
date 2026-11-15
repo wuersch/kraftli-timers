@@ -152,6 +152,11 @@ struct TimerRunnerView: View {
         dismiss()
     }
 
+    /// The exercise's name as shown, synced to the Watch and recorded with the workout.
+    private var exerciseName: String {
+        preset.exerciseInfo?.name ?? "Workout"
+    }
+
     private var navigationTitle: String {
         "\(preset.exerciseInfo?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)"
     }
@@ -182,7 +187,7 @@ struct TimerRunnerView: View {
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
                 showRepsInCenter: settings.emomShowRepsInCenter,
-                exerciseName: preset.exerciseInfo?.name ?? "Workout",
+                exerciseName: exerciseName,
                 workoutID: correlationID,
                 autoStart: true,
                 isSwipeDisabled: $isSwipeDisabled,
@@ -199,7 +204,7 @@ struct TimerRunnerView: View {
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
-                exerciseName: preset.exerciseInfo?.name ?? "Workout",
+                exerciseName: exerciseName,
                 workoutID: correlationID,
                 autoStart: true,
                 isSwipeDisabled: $isSwipeDisabled,
@@ -216,7 +221,7 @@ struct TimerRunnerView: View {
                     feedbackProvider: feedbackProvider
                 ),
                 onWorkoutCompleted: makeLoggingClosure(),
-                exerciseName: preset.exerciseInfo?.name ?? "Workout",
+                exerciseName: exerciseName,
                 workoutID: correlationID,
                 autoStart: true,
                 isSwipeDisabled: $isSwipeDisabled,
@@ -264,7 +269,7 @@ struct TimerRunnerView: View {
         guard let completionData = lastCompletionData else { return }
 
         var data = WorkoutSummaryData(
-            exerciseName: preset.exerciseInfo?.name ?? "Workout",
+            exerciseName: exerciseName,
             timerKind: preset.kind,
             duration: completionData.durationSeconds,
             reps: completionData.repsCompleted,
@@ -294,7 +299,7 @@ struct TimerRunnerView: View {
     ///
     /// If HealthKit fails, the workout is still saved locally to SwiftData.
     private func makeLoggingClosure() -> (WorkoutCompletionData) -> Void {
-        let exerciseName = preset.exerciseInfo?.name ?? "Unknown"
+        let exerciseName = exerciseName
         let timerKind = preset.kind
         let context = modelContext
         let healthKit = healthKitService
@@ -319,15 +324,11 @@ struct TimerRunnerView: View {
                     timerKind: timerKind,
                     durationSeconds: completionData.durationSeconds,
                     repsCompleted: completionData.repsCompleted,
-                    roundsCompleted: completionData.roundsCompleted
+                    roundsCompleted: completionData.roundsCompleted,
+                    // The pre-generated correlation ID, so the Watch can match its
+                    // HealthKit UUID to this exact log (instead of a "latest" heuristic).
+                    id: completionData.correlationID
                 )
-
-                // Use the pre-generated correlation ID so Watch can match its
-                // HealthKit UUID to this exact log (instead of "latest" heuristic).
-                if let correlationID = completionData.correlationID {
-                    workoutLog.id = correlationID
-                    try? context.save()
-                }
 
                 // 2. Save to HealthKit (if iPhone is handling it)
                 if completionData.ownedByWatch {
@@ -352,7 +353,11 @@ struct TimerRunnerView: View {
 
                         // Update SwiftData record with HealthKit UUID for correlation
                         workoutLog.healthKitWorkoutUUID = healthKitUUID
-                        try? context.save()
+                        do {
+                            try context.save()
+                        } catch {
+                            Logger.workoutLogging.error("Failed to save the HealthKit UUID to the workout log: \(error.localizedDescription)")
+                        }
                     } catch {
                         Logger.healthKit.error("Failed to save workout to HealthKit: \(error.localizedDescription)")
                     }
