@@ -29,67 +29,65 @@ struct TimerPresetView: View {
     @State private var editMode: EditMode = .inactive
 
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach(presets) { preset in
-                    TimerPresetRow(
-                        preset: preset,
-                        didTapRun: { presetToRun = $0 },
-                        didTapEdit: { activeSheet = .edit($0) }
-                    )
-                    .cardListRow()
-                }
-                .onDelete(perform: deletePresets)
-                .onMove(perform: movePresets)
+        List {
+            ForEach(presets) { preset in
+                TimerPresetRow(
+                    preset: preset,
+                    didTapRun: { presetToRun = $0 },
+                    didTapEdit: { activeSheet = .edit($0) }
+                )
+                .cardListRow()
             }
-            .cardListStyle(isEmpty: presets.isEmpty)
-            .overlay {
-                if presets.isEmpty {
-                    ContentUnavailableView(
-                        "No Timers",
-                        systemImage: "timer",
-                        description: Text("Tap + to create your first timer")
-                    )
-                }
+            .onDelete(perform: deletePresets)
+            .onMove(perform: movePresets)
+        }
+        .cardListStyle(isEmpty: presets.isEmpty)
+        .overlay {
+            if presets.isEmpty {
+                ContentUnavailableView(
+                    "No Timers",
+                    systemImage: "timer",
+                    description: Text("Tap + to create your first timer")
+                )
             }
-            .navigationTitle("Timers")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if !presets.isEmpty {
-                        Button {
-                            withAnimation {
-                                editMode = (editMode == .active) ? .inactive : .active
-                            }
-                        } label: {
-                            Text(editMode == .active ? "Done" : "Edit")
-                        }
-                        .accessibilityLabel(editMode == .active ? "Done editing" : "Edit timers")
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
+        }
+        .navigationTitle("Timers")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if !presets.isEmpty {
                     Button {
-                        activeSheet = .add
+                        withAnimation {
+                            editMode = (editMode == .active) ? .inactive : .active
+                        }
                     } label: {
-                        Image(systemName: "plus")
+                        Text(editMode == .active ? "Done" : "Edit")
                     }
-                    .accessibilityLabel("Add new timer")
+                    .accessibilityLabel(editMode == .active ? "Done editing" : "Edit timers")
                 }
             }
-            .environment(\.editMode, $editMode)
-            .sheet(item: $activeSheet) { sheet in
-                switch sheet {
-                case .add:
-                    TimerPresetEditorView()
-                case .edit(let preset):
-                    TimerPresetEditorView(presetToEdit: preset)
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    activeSheet = .add
+                } label: {
+                    Image(systemName: "plus")
                 }
+                .accessibilityLabel("Add new timer")
             }
-            .onChange(of: presets.isEmpty) { _, isEmpty in
-                if isEmpty {
-                    editMode = .inactive
-                }
+        }
+        .environment(\.editMode, $editMode)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .add:
+                TimerPresetEditorView()
+            case .edit(let preset):
+                TimerPresetEditorView(presetToEdit: preset)
+            }
+        }
+        .onChange(of: presets.isEmpty) { _, isEmpty in
+            if isEmpty {
+                editMode = .inactive
             }
         }
         .fullScreenCover(item: $presetToRun) { preset in
@@ -118,7 +116,9 @@ struct TimerPresetView: View {
 
 
 #Preview {
-    TimerPresetView()
+    NavigationStack {
+        TimerPresetView()
+    }
         .modelContainer(for: [TimerPreset.self, Exercise.self], inMemory: true)
 }
 

@@ -55,13 +55,9 @@ struct TimePeriodTests {
         // End should be today
         #expect(range.end == today)
 
-        // Start should be 6 days before today (inclusive = 7 days total)
-        let expectedStart = calendar.date(byAdding: .day, value: -6, to: today)!
+        // Start should be the beginning of the day 6 days before today (inclusive = 7 days total)
+        let expectedStart = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -6, to: today)!)
         #expect(range.start == expectedStart)
-
-        // Verify total span is 7 days
-        let daysDiff = calendar.dateComponents([.day], from: range.start, to: range.end).day
-        #expect(daysDiff == 6) // 0-indexed: day 0 to day 6 = 7 days total
     }
 
     @Test func dateRange_month_returnsLast28Days() {
@@ -72,13 +68,9 @@ struct TimePeriodTests {
         // End should be today
         #expect(range.end == today)
 
-        // Start should be 27 days before today (inclusive = 28 days total)
-        let expectedStart = calendar.date(byAdding: .day, value: -27, to: today)!
+        // Start should be the beginning of the day 27 days before today (inclusive = 28 days total)
+        let expectedStart = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -27, to: today)!)
         #expect(range.start == expectedStart)
-
-        // Verify total span is approximately 28 days
-        let daysDiff = calendar.dateComponents([.day], from: range.start, to: range.end).day
-        #expect(daysDiff == 27) // 0-indexed: 28 days total
     }
 
     @Test func dateRange_sixMonths_returnsLast6Months() {
@@ -89,8 +81,8 @@ struct TimePeriodTests {
         // End should be today
         #expect(range.end == today)
 
-        // Start should be 6 months before today
-        let expectedStart = calendar.date(byAdding: .month, value: -6, to: today)!
+        // Start should be the beginning of the month 5 months before today (6 months in total)
+        let expectedStart = BucketUnit.month.normalizedStart(calendar.date(byAdding: .month, value: -5, to: today)!)
         #expect(range.start == expectedStart)
     }
 
@@ -102,8 +94,8 @@ struct TimePeriodTests {
         // End should be today
         #expect(range.end == today)
 
-        // Start should be 11 months before today
-        let expectedStart = calendar.date(byAdding: .month, value: -11, to: today)!
+        // Start should be the beginning of the month 11 months before today
+        let expectedStart = BucketUnit.month.normalizedStart(calendar.date(byAdding: .month, value: -11, to: today)!)
         #expect(range.start == expectedStart)
     }
 
@@ -125,6 +117,25 @@ struct TimePeriodTests {
         // Start should be 27 days before reference date
         let expectedStart = calendar.date(byAdding: .day, value: -27, to: referenceDate)!
         #expect(range.start == expectedStart)
+    }
+
+    @Test func dateRange_startsAtBeginningOfFirstDay_regardlessOfTimeOfDay() {
+        let calendar = Calendar.current
+        let evening = calendar.date(from: DateComponents(year: 2026, month: 1, day: 15, hour: 18))!
+
+        let range = TimePeriod.week.dateRange(from: evening)
+
+        #expect(range.start == calendar.date(from: DateComponents(year: 2026, month: 1, day: 9))!)
+        #expect(range.end == evening)
+    }
+
+    @Test func dateRange_year_startsAtBeginningOfFirstMonth() {
+        let calendar = Calendar.current
+        let midMonth = calendar.date(from: DateComponents(year: 2026, month: 11, day: 15, hour: 18))!
+
+        let range = TimePeriod.year.dateRange(from: midMonth)
+
+        #expect(range.start == calendar.date(from: DateComponents(year: 2025, month: 12, day: 1))!)
     }
 
     // MARK: - Bucket Unit Tests
@@ -179,9 +190,8 @@ struct TimePeriodTests {
 
         let buckets = TimePeriod.sixMonths.allBuckets(referenceDate: today)
 
-        // Should have approximately 6-7 monthly buckets
-        #expect(buckets.count >= 6)
-        #expect(buckets.count <= 7)
+        // The current month and the 5 before (UC-0008)
+        #expect(buckets.count == 6)
     }
 
     @Test func allBuckets_year_generatesMonthlyBuckets() {

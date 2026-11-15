@@ -446,7 +446,7 @@ struct AMRAPTimerView: View {
         } else if timerModel.isRunning {
             return "Tap to add round, hold to pause, swipe down to close"
         } else {
-            return "Tap to start, hold to pause, swipe down to close"
+            return "Tap or hold to resume, swipe down to close"
         }
     }
 }

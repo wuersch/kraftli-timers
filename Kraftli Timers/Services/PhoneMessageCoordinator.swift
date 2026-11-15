@@ -81,7 +81,7 @@ final class PhoneMessageCoordinator {
                 return
             }
             log.healthKitWorkoutUUID = watchUUID
-            try? modelContext.save()
+            save(modelContext)
             Logger.healthKit.info("Updated workout log \(correlationID) with Watch HealthKit UUID: \(watchUUID)")
         } else {
             // Fallback: match most recent log without a UUID
@@ -94,8 +94,16 @@ final class PhoneMessageCoordinator {
                 return
             }
             latestLog.healthKitWorkoutUUID = watchUUID
-            try? modelContext.save()
+            save(modelContext)
             Logger.healthKit.info("Updated latest workout log with Watch HealthKit UUID: \(watchUUID) (no correlation ID)")
+        }
+    }
+
+    private func save(_ modelContext: ModelContext) {
+        do {
+            try modelContext.save()
+        } catch {
+            Logger.healthKit.error("Failed to save the Watch HealthKit UUID to the workout log: \(error.localizedDescription)")
         }
     }
 }

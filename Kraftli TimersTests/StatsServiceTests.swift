@@ -54,6 +54,19 @@ struct StatsServiceTests {
         #expect(filtered.contains { Calendar.current.isDateInToday($0.date) })
     }
 
+    @Test func filterByPeriod_week_includesWorkoutEarlierOnTheFirstDay() {
+        let calendar = Calendar.current
+        let evening = calendar.date(from: DateComponents(year: 2026, month: 1, day: 15, hour: 18))!
+        let firstDayMorning = calendar.date(from: DateComponents(year: 2026, month: 1, day: 9, hour: 7))!
+        let dayBefore = calendar.date(from: DateComponents(year: 2026, month: 1, day: 8, hour: 23))!
+        let workouts = [makeWorkout(date: firstDayMorning), makeWorkout(date: dayBefore)]
+
+        let filtered = service.filterByPeriod(workouts: workouts, period: .week, referenceDate: evening)
+
+        // The chart draws a bar for Jan 9, so its morning workout belongs to the period.
+        #expect(filtered.map(\.date) == [firstDayMorning])
+    }
+
     @Test func filterByPeriod_emptyWorkouts_returnsEmpty() {
         let filtered = service.filterByPeriod(workouts: [], period: .week, referenceDate: Date())
 
@@ -207,9 +220,8 @@ struct StatsServiceTests {
 
         let dataPoints = service.totalMinutesPerBucket(workouts: workouts, period: .sixMonths, referenceDate: today)
 
-        // Should have approximately 6-7 monthly buckets
-        #expect(dataPoints.count >= 6)
-        #expect(dataPoints.count <= 7)
+        // The current month and the 5 before (UC-0008)
+        #expect(dataPoints.count == 6)
 
         // Current month should have combined minutes from both workouts
         let currentMonth = calendar.component(.month, from: today)
