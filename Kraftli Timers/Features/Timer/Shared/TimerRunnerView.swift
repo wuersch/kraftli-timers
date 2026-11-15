@@ -56,6 +56,11 @@ struct TimerRunnerView: View {
     /// Watch data that arrived before the transition delay completed.
     @State private var pendingWatchData: WorkoutSessionEndedMessage?
 
+    /// Plays this workout's sounds. Created once in `onAppear` (it needs the settings from the
+    /// environment), not in `body`: SwiftUI re-evaluates `body` on every state change here, and
+    /// each new provider would set up the audio session and load its sounds again.
+    @State private var feedbackProvider: (any FeedbackProvider)?
+
     init(
         preset: TimerPreset,
         healthKitService: any HealthKitService = DefaultHealthKitService()
@@ -71,8 +76,8 @@ struct TimerRunnerView: View {
                     // Show summary inline (replaces timer content)
                     WorkoutSummaryContent(data: data)
                         .transition(.opacity)
-                } else {
-                    timerContent
+                } else if let feedbackProvider {
+                    timerContent(feedbackProvider: feedbackProvider)
                         .transition(.opacity)
                 }
             }
@@ -112,6 +117,12 @@ struct TimerRunnerView: View {
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                guard feedbackProvider == nil else { return }
+                feedbackProvider = settings.audioEnabled
+                    ? settings.completionSoundStyle.makeFeedbackProvider()
+                    : SilentFeedback()
+            }
             // The Watch's HealthKit summary (heart rate, calories) for this workout.
             .onChange(of: messageCoordinator.lastWorkoutSessionEnded) { _, endedMessage in
                 guard let endedMessage, endedMessage.correlationID == correlationID else { return }
@@ -156,12 +167,10 @@ struct TimerRunnerView: View {
     /// ID would break the match.
     @State private var correlationID = UUID()
 
+    /// The timer for the preset's kind. The models built here are cheap; each timer view keeps
+    /// only the first one in its `@State`, so later re-evaluations don't replace it.
     @ViewBuilder
-    private var timerContent: some View {
-        let feedbackProvider: any FeedbackProvider = settings.audioEnabled
-            ? settings.completionSoundStyle.makeFeedbackProvider()
-            : SilentFeedback()
-
+    private func timerContent(feedbackProvider: any FeedbackProvider) -> some View {
         switch preset.kind {
         case .emom:
             EMOMTimerView(
