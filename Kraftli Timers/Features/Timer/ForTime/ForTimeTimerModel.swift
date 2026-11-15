@@ -35,10 +35,14 @@ class ForTimeTimerModel: WorkoutTimer {
 
     // MARK: - Computed Properties
 
-    /// Position within the current minute (0..<1), for the arc that circles once per minute.
+    /// How long the comet takes for one lap: brisk enough to feel urgent, and a divisor of
+    /// 60 s, so the head still passes 12 o'clock on every full minute.
+    static let lapDuration: TimeInterval = 10
+
+    /// Position within the current lap (0..<1), for the comet that circles the ring.
     @MainActor
-    var minuteProgress: Double {
-        elapsedTime.truncatingRemainder(dividingBy: 60) / 60
+    var lapProgress: Double {
+        elapsedTime.truncatingRemainder(dividingBy: Self.lapDuration) / Self.lapDuration
     }
 
     /// The finish time to the second: whole seconds, at least 1 so a log is never empty.

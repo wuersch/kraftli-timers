@@ -9,12 +9,12 @@ import SwiftUI
 
 extension TimerKind {
     /// Accent color for timer kind display.
-    /// Matches the colors used in timer views (EMOM=blue, AMRAP=indigo, For Time=orange).
+    /// Matches the colors used in timer views (EMOM=blue, AMRAP=indigo, For Time=teal).
     var color: Color {
         switch self {
         case .emom: return .blue
         case .amrap: return .indigo
-        case .forTime: return .orange
+        case .forTime: return .teal
         }
     }
 

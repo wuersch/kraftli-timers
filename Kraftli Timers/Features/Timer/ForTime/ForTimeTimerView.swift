@@ -121,9 +121,6 @@ struct ForTimeTimerView: View {
     // MARK: - Styling
     private let accentColor: Color = TimerKind.forTime.color
 
-    /// Length of the circling arc, as a fraction of the ring.
-    private let arcLength = 0.2
-
     // MARK: - Actions
 
     /// Tap: declare done while running, resume while paused, start if not started.
@@ -342,20 +339,29 @@ struct ForTimeTimerView: View {
 
     // MARK: - Circling Arc
 
-    /// A short arc that circles the ring once per minute, like a stopwatch hand. It rests at
-    /// the top before the start, freezes while paused, and closes into a full ring when done.
+    /// A comet that circles the ring once per lap (10 s), like a stopwatch hand. It rests at the
+    /// top before the start, freezes while paused, and closes into a full ring when done.
     @ViewBuilder
     private func circlingArc(sizes: TimerSizes) -> some View {
-        let minuteProgress = isWaitingToStart ? 0 : timerModel.minuteProgress
-        ProgressRing(
-            size: sizes.primaryRing,
-            lineWidth: sizes.primaryLineWidth,
-            progress: isCompleted ? 1.0 : arcLength,
-            color: accentColor,
-            backgroundColor: Color.gray.opacity(0.2),
-            // The arc's leading end points to 12 o'clock at each full minute.
-            rotationDegrees: isCompleted ? -90 : -90 + (minuteProgress - arcLength) * 360
-        )
+        if isCompleted {
+            ProgressRing(
+                size: sizes.primaryRing,
+                lineWidth: sizes.primaryLineWidth,
+                progress: 1.0,
+                color: accentColor,
+                backgroundColor: Color.gray.opacity(0.2),
+                rotationDegrees: -90
+            )
+        } else {
+            let lapProgress = isWaitingToStart ? 0 : timerModel.lapProgress
+            CometRing(
+                size: sizes.primaryRing,
+                lineWidth: sizes.primaryLineWidth,
+                // The head points to 12 o'clock at the start of each lap.
+                headAngle: .degrees(lapProgress * 360),
+                color: accentColor
+            )
+        }
     }
 
     // MARK: - Starting On Watch Content
