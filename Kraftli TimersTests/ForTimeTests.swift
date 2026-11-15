@@ -221,16 +221,17 @@ struct ForTimeTests {
         #expect(model.finishTime == 1)
     }
 
-    @Test @MainActor func model_minuteProgressWrapsEveryMinute() {
+    @Test @MainActor func model_lapProgressWrapsEveryLap() {
         let model = ForTimeTimerModel(
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback(),
-            now: { self.at(3 + 75) }
+            now: { self.at(3 + 72.5) }
         )
 
         model.apply(makeState())
 
-        #expect(model.minuteProgress == 0.25)
+        // 72.5 s = 7 laps of 10 s + 2.5 s.
+        #expect(abs(model.lapProgress - 0.25) < 0.001)
         model.reset()
     }
 

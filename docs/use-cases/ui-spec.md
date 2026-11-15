@@ -76,8 +76,9 @@ case wins.
 
 ### For Time Timer
 
-- Like AMRAP, title "Exercise · For Time", orange. An arc circles the ring continuously, one
-  revolution per minute like a stopwatch hand; it freezes while paused.
+- Like AMRAP, title "Exercise · For Time", teal. A comet (solid round head, fading tail) circles
+  the ring continuously, one lap per 10 s like a stopwatch hand; it freezes while paused
+  and closes into a full ring when done.
 - Center: "REPS" + large target rep count.
 - Below: "ELAPSED" + elapsed time counting up; after done, "FINISH TIME".
 - No signals during the workout.
