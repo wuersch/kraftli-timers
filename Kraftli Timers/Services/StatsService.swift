@@ -11,12 +11,16 @@ import Foundation
 struct ExerciseStats: Identifiable {
     let exerciseName: String
     let muscleGroup: MuscleGroup?
-    let totalMinutes: Int
+    /// Recorded seconds added up; rounded only for display (UC-0008).
+    let totalSeconds: TimeInterval
     let totalReps: Int?
     let totalRounds: Int?
     let workoutCount: Int
 
     var id: String { exerciseName }
+
+    /// Total time in whole minutes, rounded down for display.
+    var totalMinutes: Int { Int(totalSeconds / 60) }
 
     /// Summary text (e.g., "45 min · 3 workouts").
     var summaryText: String {
@@ -29,7 +33,11 @@ struct ExerciseStats: Identifiable {
 /// Data point for chart display.
 struct ChartDataPoint: Identifiable {
     let date: Date
-    let minutes: Int
+    /// Recorded seconds in this bucket, added up before rounding.
+    let seconds: TimeInterval
+
+    /// Whole minutes, rounded down for display.
+    var minutes: Int { Int(seconds / 60) }
 
     var id: Date { date }
 }
@@ -37,7 +45,11 @@ struct ChartDataPoint: Identifiable {
 /// Aggregated statistics for a muscle group.
 struct MuscleGroupStats: Identifiable {
     let muscleGroup: MuscleGroup
-    let totalMinutes: Int
+    /// Recorded seconds added up; rounded only for display.
+    let totalSeconds: TimeInterval
+
+    /// Whole minutes, rounded down for display.
+    var totalMinutes: Int { Int(totalSeconds / 60) }
 
     var id: MuscleGroup { muscleGroup }
 }
@@ -137,16 +149,17 @@ final class DefaultStatsService: StatsService {
         let unit = period.bucketUnit
         let buckets = period.allBuckets(referenceDate: referenceDate)
         
-        var totals: [Date: Int] = [:]
+        // Add up seconds, not per-workout minutes: short For Time workouts must count (UC-0008).
+        var totals: [Date: TimeInterval] = [:]
         for workout in workouts {
             let bucketDate = unit.normalizedStart(workout.date)
-            totals[bucketDate, default: 0] += workout.durationMinutes
+            totals[bucketDate, default: 0] += workout.durationSeconds
         }
         
         return buckets.map { bucketDate in
             ChartDataPoint(
                 date: bucketDate,
-                minutes: totals[bucketDate] ?? 0
+                seconds: totals[bucketDate] ?? 0
             )
         }
     }
@@ -170,9 +183,7 @@ final class DefaultStatsService: StatsService {
         for (exerciseName, exerciseWorkouts) in grouped {
             let exercise = exercisesByName[exerciseName]
 
-            let totalMinutes = exerciseWorkouts.reduce(0) { sum, workout in
-                sum + Int(workout.durationMinutes)
-            }
+            let totalSeconds = exerciseWorkouts.reduce(0) { $0 + $1.durationSeconds }
 
             let totalReps = exerciseWorkouts.compactMap(\.repsCompleted).reduce(0, +)
             let totalRounds = exerciseWorkouts.compactMap(\.roundsCompleted).reduce(0, +)
@@ -180,15 +191,15 @@ final class DefaultStatsService: StatsService {
             stats.append(ExerciseStats(
                 exerciseName: exerciseName,
                 muscleGroup: exercise?.muscleGroup,
-                totalMinutes: totalMinutes,
+                totalSeconds: totalSeconds,
                 totalReps: totalReps > 0 ? totalReps : nil,
                 totalRounds: totalRounds > 0 ? totalRounds : nil,
                 workoutCount: exerciseWorkouts.count
             ))
         }
 
-        // Sort by total minutes descending
-        return stats.sorted { $0.totalMinutes > $1.totalMinutes }
+        // Sort by total time descending
+        return stats.sorted { $0.totalSeconds > $1.totalSeconds }
     }
 
     func groupedByMuscleGroup(
@@ -199,7 +210,7 @@ final class DefaultStatsService: StatsService {
         let exercisesByName = buildExerciseLookup(exercises)
 
         // Group workouts by muscle group
-        var grouped: [MuscleGroup: Int] = [:]
+        var grouped: [MuscleGroup: TimeInterval] = [:]
 
         for workout in workouts {
             // Skip workouts for exercises not in the database
@@ -207,17 +218,15 @@ final class DefaultStatsService: StatsService {
                 continue
             }
 
-            let muscleGroup = exercise.muscleGroup
-            let minutes = Int(workout.durationMinutes)
-            grouped[muscleGroup, default: 0] += minutes
+            grouped[exercise.muscleGroup, default: 0] += workout.durationSeconds
         }
 
         // Convert to stats array, sorted by enum order
         return MuscleGroup.allCases.compactMap { muscleGroup in
-            guard let totalMinutes = grouped[muscleGroup] else {
+            guard let totalSeconds = grouped[muscleGroup] else {
                 return nil
             }
-            return MuscleGroupStats(muscleGroup: muscleGroup, totalMinutes: totalMinutes)
+            return MuscleGroupStats(muscleGroup: muscleGroup, totalSeconds: totalSeconds)
         }
     }
 }

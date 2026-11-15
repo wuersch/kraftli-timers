@@ -81,7 +81,7 @@ struct ExerciseStatsCard: View {
         ExerciseStatsCard(stats: ExerciseStats(
             exerciseName: "6-Count Burpees",
             muscleGroup: .fullBody,
-            totalMinutes: 45,
+            totalSeconds: 45 * 60,
             totalReps: 150,
             totalRounds: nil,
             workoutCount: 3
@@ -90,7 +90,7 @@ struct ExerciseStatsCard: View {
         ExerciseStatsCard(stats: ExerciseStats(
             exerciseName: "Pull-ups",
             muscleGroup: .upperBody,
-            totalMinutes: 30,
+            totalSeconds: 30 * 60,
             totalReps: nil,
             totalRounds: 45,
             workoutCount: 2
@@ -99,7 +99,7 @@ struct ExerciseStatsCard: View {
         ExerciseStatsCard(stats: ExerciseStats(
             exerciseName: "Unknown Exercise",
             muscleGroup: nil,
-            totalMinutes: 20,
+            totalSeconds: 20 * 60,
             totalReps: nil,
             totalRounds: nil,
             workoutCount: 1

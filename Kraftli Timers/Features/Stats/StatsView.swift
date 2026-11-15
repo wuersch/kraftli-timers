@@ -33,8 +33,9 @@ struct StatsView: View {
         statsService.groupedByExercise(workouts: filteredWorkouts, exercises: ExerciseRepository.all)
     }
 
+    /// Adds up seconds and rounds only the total, so short workouts still count (UC-0008).
     private var totalMinutes: Int {
-        filteredWorkouts.reduce(0) { $0 + $1.durationMinutes }
+        Int(filteredWorkouts.reduce(0) { $0 + $1.durationSeconds } / 60)
     }
 
     private var workoutCount: Int {
