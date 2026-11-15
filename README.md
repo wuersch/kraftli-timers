@@ -89,7 +89,7 @@ This is a learning project where educational value matters as much as working co
 1. Read through the [documentation](docs/scope.md) to understand patterns and conventions
 2. Follow existing code style and SwiftUI idioms
 3. Keep UI minimalistic - native components, no unnecessary features
-4. Test on iOS Simulator (iPhone 17 Pro recommended)
+4. Test on iOS Simulator (iPhone 18 Pro recommended)
 
 ## License
 

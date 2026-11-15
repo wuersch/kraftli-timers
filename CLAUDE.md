@@ -51,8 +51,8 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Xcode modifies `project.pbxproj` unexpectedly; don't assume uncommitted changes are insignificant
 
 ## Commands
-- Build: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 17 Pro" build`
-- Run tests: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 17 Pro" test`
+- Build: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 18 Pro" build`
+- Run tests: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 18 Pro" test`
 - Run in simulator: Xcode
 - Builds can be run freely without asking.
 - **MANDATORY: Always ask the user before running the full test suite.** Running simulators draws heavy power on Apple Silicon — parallel sim workloads can trigger a protective shutdown. Never run all tests without explicit permission.
