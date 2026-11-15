@@ -41,11 +41,7 @@ struct MuscleGroupCard: View {
                 }
             }
         }
-        .padding()
-        .background(
-            Color(.secondarySystemBackground),
-            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-        )
+        .cardStyle()
     }
 }
 

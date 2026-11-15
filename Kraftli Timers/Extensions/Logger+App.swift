@@ -9,8 +9,13 @@
 import Foundation
 import os
 
-extension Logger {
+/// `nonisolated` so code running off the main actor (delegate callbacks, the audio queue)
+/// can log too; `Logger` itself is thread-safe.
+nonisolated extension Logger {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.kraftli.timers"
+
+    /// Logs related to audio and sound playback
+    static let audio = Logger(subsystem: subsystem, category: "audio")
 
     /// Logs related to data loading and persistence
     static let data = Logger(subsystem: subsystem, category: "data")

@@ -19,7 +19,7 @@ final class StateDriver {
 
     init(emom model: EMOMTimerModel, now: @escaping () -> Date) {
         config = TimerConfig(
-            timerKindRaw: TimerKind.emom.rawValue,
+            kind: .emom,
             totalDuration: model.totalDuration,
             intervalCount: model.totalIntervals,
             exerciseName: "Test"
@@ -30,7 +30,7 @@ final class StateDriver {
 
     init(amrap model: AMRAPTimerModel, now: @escaping () -> Date) {
         config = TimerConfig(
-            timerKindRaw: TimerKind.amrap.rawValue,
+            kind: .amrap,
             totalDuration: model.totalDuration,
             intervalCount: nil,
             exerciseName: "Test"

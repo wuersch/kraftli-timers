@@ -20,7 +20,7 @@ struct ExerciseStats: Identifiable {
     var id: String { exerciseName }
 
     /// Total time in whole minutes, rounded down for display.
-    var totalMinutes: Int { Int(totalSeconds / 60) }
+    var totalMinutes: Int { totalSeconds.wholeMinutes }
 
     /// Summary text (e.g., "45 min · 3 workouts").
     var summaryText: String {
@@ -37,7 +37,7 @@ struct ChartDataPoint: Identifiable {
     let seconds: TimeInterval
 
     /// Whole minutes, rounded down for display.
-    var minutes: Int { Int(seconds / 60) }
+    var minutes: Int { seconds.wholeMinutes }
 
     var id: Date { date }
 }
@@ -49,7 +49,7 @@ struct MuscleGroupStats: Identifiable {
     let totalSeconds: TimeInterval
 
     /// Whole minutes, rounded down for display.
-    var totalMinutes: Int { Int(totalSeconds / 60) }
+    var totalMinutes: Int { totalSeconds.wholeMinutes }
 
     var id: MuscleGroup { muscleGroup }
 }

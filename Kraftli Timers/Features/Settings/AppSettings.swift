@@ -109,9 +109,9 @@ final class AppSettings {
         func makeFeedbackProvider() -> any FeedbackProvider {
             switch self {
             case .cheering:
-                return SystemSoundFeedback()
+                return DefaultFeedback(completionCue: .cheer)
             case .neutral:
-                return NeutralSoundFeedback()
+                return DefaultFeedback(completionCue: .tripleBeep)
             }
         }
     }

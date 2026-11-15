@@ -8,8 +8,7 @@
 import SwiftUI
 
 extension TimerKind {
-    /// Accent color for timer kind display.
-    /// Matches the colors used in timer views (EMOM=blue, AMRAP=indigo, For Time=teal).
+    /// Accent color of the kind, used by its timer screen and wherever the kind is shown.
     var color: Color {
         switch self {
         case .emom: return .blue

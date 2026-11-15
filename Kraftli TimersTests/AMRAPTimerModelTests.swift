@@ -61,7 +61,7 @@ struct AMRAPTimerModelTests {
             workoutID: UUID(),
             owner: .phone,
             config: TimerConfig(
-                timerKindRaw: TimerKind.amrap.rawValue,
+                kind: .amrap,
                 totalDuration: 300,
                 intervalCount: nil,
                 exerciseName: "Pull-ups"
@@ -163,7 +163,7 @@ struct AMRAPTimerModelTests {
             workoutID: UUID(),
             owner: .watch,
             config: TimerConfig(
-                timerKindRaw: TimerKind.amrap.rawValue,
+                kind: .amrap,
                 totalDuration: 300,
                 intervalCount: nil,
                 exerciseName: "Pull-ups"

@@ -91,21 +91,11 @@ struct ActivityChart: View {
     
     /// MARK: - Accessibility
     private var accessibilityDescription: String {
-        "Activity chart: \(totalMinutes) total minutes in the \(periodName)."
+        "Activity chart: \(totalMinutes) total minutes in the \(selectedPeriod.summaryUnit)."
     }
     
     // MARK: - Helpers
 
-    /// Human-readable name for the selected period.
-    private var periodName: String {
-        switch selectedPeriod {
-        case .week: return "last week"
-        case .month: return "last month"
-        case .sixMonths: return "last six months"
-        case .year: return "last year"
-        }
-    }
-    
     /// Formats date for x-axis labels based on the selected period.
     private func xAxisLabel(for date: Date) -> String {
         switch selectedPeriod {

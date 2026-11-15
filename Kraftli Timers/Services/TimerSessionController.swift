@@ -184,7 +184,7 @@ final class TimerSessionController {
         }
         // A viewer can't act before it knows the owner's state: there's no base revision yet.
         guard let role, let confirmed = confirmedState else { return }
-        let isPauseAction = action == .pause || action == .resume
+        let isPauseAction = action.isPauseToggle
         let intent = TimerIntent(
             workoutID: confirmed.workoutID,
             baseRevision: confirmed.revision,
@@ -193,7 +193,7 @@ final class TimerSessionController {
             // Chain to our own unconfirmed pause/resume, so the owner doesn't mistake it
             // for a conflict if the two arrive in separate deliveries.
             previousPauseIntentID: isPauseAction
-                ? pendingIntents.last { $0.action == .pause || $0.action == .resume }?.id
+                ? pendingIntents.last { $0.action.isPauseToggle }?.id
                 : nil
         )
         switch role {
@@ -260,7 +260,7 @@ final class TimerSessionController {
     /// Viewer: takes a newer snapshot from the owner and re-predicts pending intents on top.
     private func adoptConfirmed(_ state: TimerState) {
         let predictedPaused = renderedState?.isPaused
-        let hadPendingPauseState = pendingIntents.contains { $0.action == .pause || $0.action == .resume }
+        let hadPendingPauseState = pendingIntents.contains { $0.action.isPauseToggle }
         pendingIntents.removeAll { state.handledIntentIDs.contains($0.id) }
         confirmedState = state
         render()
@@ -309,8 +309,7 @@ final class TimerSessionController {
         // An open-ended workout has no end time; only a done intent finishes it.
         guard schedulesCompletion, role == .owner, let state = confirmedState,
               state.finish == nil, !state.isPaused,
-              let totalDuration = state.config.totalDuration else { return }
-        let endDate = state.startDate.addingTimeInterval(state.accumulatedPause + totalDuration)
+              let endDate = state.scheduledEndDate else { return }
         let delay = max(0, endDate.timeIntervalSince(now()))
         completionTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))

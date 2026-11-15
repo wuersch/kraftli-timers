@@ -69,7 +69,7 @@ struct WatchForTimeTimerView: View {
 
     private var config: TimerConfig {
         TimerConfig(
-            timerKindRaw: TimerKind.forTime.rawValue,
+            kind: .forTime,
             totalDuration: nil,
             intervalCount: nil,
             exerciseName: exerciseName,

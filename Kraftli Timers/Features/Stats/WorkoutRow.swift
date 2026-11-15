@@ -29,14 +29,15 @@ struct WorkoutRow: View {
                 .foregroundStyle(.secondary)
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
+        .cardStyle(padded: false)
         .contentShape(Rectangle())
         .onTapGesture {
             didTapEdit?(workout)
         }
+        // A tap gesture is invisible to VoiceOver unless the row says it acts like a button.
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(didTapEdit == nil ? [] : .isButton)
+        .accessibilityHint(didTapEdit == nil ? "" : "Edits the workout")
     }
 }
 

@@ -85,8 +85,7 @@ struct Kraftli_TimersApp: App {
             controller: timerSession,
             isWatchAppAvailable: { WatchConnectivityService.shared.isWatchAppAvailable },
             launchWatchApp: { config in
-                let kind = TimerKind(rawValue: config.timerKindRaw) ?? .emom
-                try await healthKitService.startWorkoutOnWatch(activityType: kind.healthKitActivityType)
+                try await healthKitService.startWorkoutOnWatch(activityType: config.kind.healthKitActivityType)
             }
         ))
 

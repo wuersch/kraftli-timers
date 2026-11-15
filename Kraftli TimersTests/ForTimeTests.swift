@@ -28,7 +28,7 @@ struct ForTimeTests {
             workoutID: workoutID,
             owner: .phone,
             config: TimerConfig(
-                timerKindRaw: totalDuration == nil ? TimerKind.forTime.rawValue : TimerKind.amrap.rawValue,
+                kind: totalDuration == nil ? .forTime : .amrap,
                 totalDuration: totalDuration,
                 intervalCount: nil,
                 exerciseName: "Burpees",

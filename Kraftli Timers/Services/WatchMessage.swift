@@ -14,7 +14,7 @@ import Foundation
 ///
 /// Timer state and control travel as `TimerSyncPayload` (ADR-006). The only message left
 /// on this path is the Watch's end-of-workout HealthKit summary.
-enum WatchMessageType: String, Codable {
+nonisolated enum WatchMessageType: String, Codable, Sendable {
     case workoutSessionEnded
 }
 
@@ -22,7 +22,7 @@ enum WatchMessageType: String, Codable {
 
 /// Protocol for all messages sent between iPhone and Watch.
 /// Each message type should be Codable for serialization over WatchConnectivity.
-protocol WatchMessage: Codable {
+nonisolated protocol WatchMessage: Codable, Sendable {
     var messageType: WatchMessageType { get }
 }
 
@@ -33,7 +33,7 @@ protocol WatchMessage: Codable {
 /// Contains the HealthKit workout UUID so iPhone can correlate its
 /// SwiftData WorkoutLog with the Watch's HealthKit workout, plus
 /// workout metrics (heart rate, calories) for the summary screen.
-struct WorkoutSessionEndedMessage: WatchMessage, Equatable {
+nonisolated struct WorkoutSessionEndedMessage: WatchMessage, Equatable {
     var messageType: WatchMessageType { .workoutSessionEnded }
 
     /// UUID of the HKWorkout saved by Watch, if available.
@@ -75,7 +75,7 @@ struct WorkoutSessionEndedMessage: WatchMessage, Equatable {
 ///
 /// WatchConnectivity requires [String: Any] dictionaries, so we wrap
 /// Codable messages in a dictionary with a type discriminator.
-enum WatchMessageCoder {
+nonisolated enum WatchMessageCoder {
 
     private static let typeKey = "messageType"
     private static let payloadKey = "payload"
@@ -115,7 +115,7 @@ enum WatchMessageCoder {
 
 // MARK: - Errors
 
-enum WatchMessageError: Error, LocalizedError {
+nonisolated enum WatchMessageError: Error, LocalizedError {
     case encodingFailed
     case invalidFormat
 

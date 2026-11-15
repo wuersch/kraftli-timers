@@ -36,10 +36,6 @@ nonisolated final class TimerSounds: @unchecked Sendable {
 
     static let shared = TimerSounds()
 
-    private static let log = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.kraftli.timers",
-        category: "audio"
-    )
 
     private let queue = DispatchQueue(label: "com.kraftli.timers.sounds", qos: .userInteractive)
 
@@ -81,7 +77,7 @@ nonisolated final class TimerSounds: @unchecked Sendable {
             try session.setActive(true)
             isSessionActive = true
         } catch {
-            Self.log.error("Audio session setup failed: \(error.localizedDescription)")
+            Logger.audio.error("Audio session setup failed: \(error.localizedDescription)")
         }
     }
 
@@ -89,7 +85,7 @@ nonisolated final class TimerSounds: @unchecked Sendable {
     private func player(for sound: Sound) -> AVAudioPlayer? {
         if let player = players[sound] { return player }
         guard let url = Bundle.main.url(forResource: sound.resourceName, withExtension: "wav") else {
-            Self.log.warning("Sound file not found in bundle: \(sound.resourceName)")
+            Logger.audio.warning("Sound file not found in bundle: \(sound.resourceName)")
             return nil
         }
         do {
@@ -105,7 +101,7 @@ nonisolated final class TimerSounds: @unchecked Sendable {
             players[sound] = player
             return player
         } catch {
-            Self.log.error("Failed to load sound \(sound.resourceName): \(error.localizedDescription)")
+            Logger.audio.error("Failed to load sound \(sound.resourceName): \(error.localizedDescription)")
             return nil
         }
     }

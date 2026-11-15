@@ -73,7 +73,11 @@ final class WatchConnectivityService: NSObject {
 
     /// Routes a received dictionary: timer sync payloads to `onTimerSyncPayload`,
     /// everything else to the legacy `WatchMessage` decoder.
-    private func route(_ dictionary: [String: Any]) {
+    ///
+    /// Runs on WatchConnectivity's background queue: it decodes there and hands the
+    /// result to the main actor. `DispatchQueue.main.async` (rather than a `Task`) keeps
+    /// payloads in the order they arrived.
+    nonisolated private func route(_ dictionary: [String: Any]) {
         if let payload = TimerSyncPayload(dictionary: dictionary) {
             DispatchQueue.main.async { [weak self] in
                 self?.onTimerSyncPayload?(payload)
@@ -94,7 +98,7 @@ final class WatchConnectivityService: NSObject {
     /// Called with every `WatchMessage` from the Watch (the end-of-workout HealthKit summary).
     var onMessageReceived: ((WatchMessage) -> Void)?
 
-    private func handleReceivedMessage(_ dictionary: [String: Any]) {
+    nonisolated private func handleReceivedMessage(_ dictionary: [String: Any]) {
         do {
             let message = try WatchMessageCoder.decode(dictionary)
             DispatchQueue.main.async { [weak self] in
@@ -150,7 +154,7 @@ final class WatchConnectivityService: NSObject {
 
     /// The iPhone sends only timer sync payloads (ADR-006); anything else comes from an
     /// older app version.
-    private func handleReceivedMessage(_ dictionary: [String: Any]) {
+    nonisolated private func handleReceivedMessage(_ dictionary: [String: Any]) {
         Logger.watchConnectivity.info("Ignoring a non-timer-sync message from iPhone")
     }
 
@@ -159,8 +163,10 @@ final class WatchConnectivityService: NSObject {
 
 // MARK: - WCSessionDelegate
 
+/// WatchConnectivity calls its delegate on a background queue, so these methods are
+/// `nonisolated`: they touch no main-actor state and hand their results over via `route`.
 extension WatchConnectivityService: WCSessionDelegate {
-    func session(
+    nonisolated func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
@@ -178,7 +184,7 @@ extension WatchConnectivityService: WCSessionDelegate {
         }
     }
 
-    func sessionReachabilityDidChange(_ session: WCSession) {
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         guard session.isReachable else { return }
         DispatchQueue.main.async {
             self.onReachable?()
@@ -186,14 +192,14 @@ extension WatchConnectivityService: WCSessionDelegate {
     }
 
     #if os(iOS)
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-    func sessionDidDeactivate(_ session: WCSession) {
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
         // Reactivate for switching watches
         session.activate()
     }
     #endif
 
-    func session(
+    nonisolated func session(
         _ session: WCSession,
         didReceiveMessage message: [String: Any],
         replyHandler: @escaping ([String: Any]) -> Void
@@ -204,15 +210,15 @@ extension WatchConnectivityService: WCSessionDelegate {
     }
 
     /// Messages sent without a reply handler (the timer sync fast path) arrive here.
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         route(message)
     }
 
-    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         route(userInfo)
     }
 
-    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         route(applicationContext)
     }
 }

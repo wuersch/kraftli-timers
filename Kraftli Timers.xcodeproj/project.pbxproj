@@ -90,6 +90,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Exercises.json,
+				"Extensions/Logger+App.swift",
 				"Extensions/TimeInterval+Format.swift",
 				"Extensions/TimerKind+UI.swift",
 				Features/Timer/AMRAP/AMRAPTimerModel.swift,

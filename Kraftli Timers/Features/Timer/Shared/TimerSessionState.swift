@@ -21,7 +21,6 @@ final class TimerSessionState {
 
     // MARK: - Private State
     private var hintHideTask: Task<Void, Never>?
-    private var confettiHideTask: Task<Void, Never>?
 
     // MARK: - Timer Event Handlers
 
@@ -50,24 +49,16 @@ final class TimerSessionState {
     }
 
     /// Call when the timer completes (time reaches zero).
-    /// Shows confetti and hint, schedules confetti to hide after 3 seconds.
+    /// Shows the hint and triggers the confetti. `TimerRunnerView` displays the confetti
+    /// and hides it again, since it outlives the timer view into the summary.
     func onTimerCompleted() {
         showConfetti = true
         showHint = true
-
-        confettiHideTask?.cancel()
-        confettiHideTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled else { return }
-            showConfetti = false
-        }
     }
 
     /// Call when the view disappears to clean up resources.
     func cleanup() {
         hintHideTask?.cancel()
-        confettiHideTask?.cancel()
         hintHideTask = nil
-        confettiHideTask = nil
     }
 }

@@ -35,7 +35,7 @@ struct StatsView: View {
 
     /// Adds up seconds and rounds only the total, so short workouts still count (UC-0008).
     private var totalMinutes: Int {
-        Int(filteredWorkouts.reduce(0) { $0 + $1.durationSeconds } / 60)
+        filteredWorkouts.reduce(0) { $0 + $1.durationSeconds }.wholeMinutes
     }
 
     private var workoutCount: Int {

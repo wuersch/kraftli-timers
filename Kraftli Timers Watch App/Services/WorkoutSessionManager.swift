@@ -97,13 +97,13 @@ final class WorkoutSessionManager: NSObject {
 
         let typesToWrite: Set<HKSampleType> = [
             HKObjectType.workoutType(),
-            HKQuantityType.quantityType(forIdentifier: .heartRate)!,
-            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+            HKQuantityType(.heartRate),
+            HKQuantityType(.activeEnergyBurned)
         ]
 
         let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .heartRate)!,
-            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+            HKQuantityType(.heartRate),
+            HKQuantityType(.activeEnergyBurned)
         ]
 
         try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)

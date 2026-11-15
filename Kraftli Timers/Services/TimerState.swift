@@ -36,9 +36,7 @@ nonisolated enum DeviceRole: String, Codable, Sendable {
 
 /// The immutable setup of a workout, fixed when it starts.
 nonisolated struct TimerConfig: Codable, Equatable, Sendable {
-    /// Raw `TimerKind` value. Stored raw so this type
-    /// stays independent of the MainActor-isolated `TimerKind` conformances.
-    let timerKindRaw: String
+    let kind: TimerKind
     /// The workout's length. nil for an open-ended workout (For Time), which counts up
     /// until it is declared done and never completes by itself (ADR-0010).
     let totalDuration: TimeInterval?
@@ -49,17 +47,24 @@ nonisolated struct TimerConfig: Codable, Equatable, Sendable {
     let targetReps: Int?
 
     init(
-        timerKindRaw: String,
+        kind: TimerKind,
         totalDuration: TimeInterval?,
         intervalCount: Int?,
         exerciseName: String,
         targetReps: Int? = nil
     ) {
-        self.timerKindRaw = timerKindRaw
+        self.kind = kind
         self.totalDuration = totalDuration
         self.intervalCount = intervalCount
         self.exerciseName = exerciseName
         self.targetReps = targetReps
+    }
+
+    /// `kind` keeps its original key on the wire, so devices running different app
+    /// versions still understand each other's snapshots and start requests.
+    private enum CodingKeys: String, CodingKey {
+        case kind = "timerKindRaw"
+        case totalDuration, intervalCount, exerciseName, targetReps
     }
 
     /// True for a workout without a duration, which ends only when declared done.
@@ -200,6 +205,12 @@ nonisolated struct TimerState: Codable, Equatable, Sendable {
         pausedAt != nil
     }
 
+    /// When a time-boxed workout reaches zero if it keeps running from here: its start plus
+    /// the pauses so far plus its duration. nil for an open-ended workout.
+    var scheduledEndDate: Date? {
+        config.totalDuration.map { startDate.addingTimeInterval(accumulatedPause + $0) }
+    }
+
     /// True during the shared 3-2-1 countdown.
     func isCountingDown(at now: Date) -> Bool {
         finish == nil && now < startDate
@@ -231,6 +242,12 @@ nonisolated struct TimerIntent: Codable, Equatable, Sendable, Identifiable {
         case stop
         /// Declares an open-ended workout done (ADR-0010).
         case done
+
+        /// True for the two actions that set the paused state. Only the latest of them
+        /// matters, so they are treated as one group when intents are queued.
+        var isPauseToggle: Bool {
+            self == .pause || self == .resume
+        }
     }
 
     /// Dedup key: the owner processes each intent at most once.

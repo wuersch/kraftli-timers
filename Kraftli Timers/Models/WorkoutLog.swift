@@ -35,7 +35,7 @@ final class WorkoutLog {
 
     /// Duration in whole minutes (rounded down).
     var durationMinutes: Int {
-        Int(durationSeconds / 60)
+        durationSeconds.wholeMinutes
     }
 
     /// Formatted date for display (e.g., "Jan 10, 2026").
