@@ -20,7 +20,7 @@ import os
 /// The players live only on that queue (thread confinement), which is why the class can be
 /// `@unchecked Sendable`: the compiler can't see the confinement, so we promise it.
 nonisolated final class TimerSounds: @unchecked Sendable {
-    enum Sound: CaseIterable {
+    enum Sound {
         case beep
         case cheer
 

@@ -7,21 +7,17 @@
 //
 
 import Foundation
-import Combine
 import WatchConnectivity
 import os
 
 /// Manages WatchConnectivity session for real-time timer messaging.
 ///
-/// On iOS: Sends and receives timer control messages (start/pause/stop).
-/// On watchOS: Sends and receives timer control messages.
-final class WatchConnectivityService: NSObject, ObservableObject {
+/// Both devices exchange timer sync payloads (ADR-006) through the raw dictionary methods.
+/// The Watch also sends the iPhone its end-of-workout HealthKit summary as a `WatchMessage`.
+final class WatchConnectivityService: NSObject {
     static let shared = WatchConnectivityService()
 
     private var session: WCSession?
-
-    /// Whether the Watch is paired and reachable for immediate communication.
-    @Published private(set) var isReachable = false
 
     private override init() {
         super.init()
@@ -111,31 +107,22 @@ final class WatchConnectivityService: NSObject, ObservableObject {
     #endif
 
     #if os(watchOS)
-    /// Sends a message to iPhone for immediate delivery.
-    ///
-    /// - Parameters:
-    ///   - message: The message to send
-    ///   - completion: Called with success/failure result
-    func sendMessage(
-        _ message: WatchMessage,
-        completion: ((Result<Void, Error>) -> Void)? = nil
-    ) {
-        guard let session = session,
+    /// Sends a message to iPhone for immediate delivery if it is reachable. Best-effort:
+    /// pair it with `transferUserInfo(_:)` for messages that must arrive.
+    func sendMessage(_ message: WatchMessage) {
+        guard let session,
               session.activationState == .activated,
               session.isReachable else {
-            completion?(.failure(WatchConnectivityError.iPhoneNotReachable))
             return
         }
 
         do {
             let encoded = try WatchMessageCoder.encode(message)
-            session.sendMessage(encoded, replyHandler: { _ in
-                completion?(.success(()))
-            }, errorHandler: { error in
-                completion?(.failure(error))
-            })
+            session.sendMessage(encoded, replyHandler: nil) { error in
+                Logger.watchConnectivity.debug("Immediate send to iPhone failed: \(error.localizedDescription)")
+            }
         } catch {
-            completion?(.failure(error))
+            Logger.watchConnectivity.error("Failed to encode message: \(error.localizedDescription)")
         }
     }
 
@@ -147,8 +134,7 @@ final class WatchConnectivityService: NSObject, ObservableObject {
     ///
     /// - Parameter message: The message to transfer
     func transferUserInfo(_ message: WatchMessage) {
-        guard let session = session,
-              session.activationState == .activated else {
+        guard let session, session.activationState == .activated else {
             Logger.watchConnectivity.warning("Cannot transfer user info: session not activated")
             return
         }
@@ -179,10 +165,6 @@ extension WatchConnectivityService: WCSessionDelegate {
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
-        DispatchQueue.main.async {
-            self.isReachable = session.isReachable
-        }
-
         // Consume any application context that arrived while the app wasn't
         // running — the cold-launch path: e.g. startWatchApp(toHandle:) opens the
         // Watch app, and the persisted context holds the current timer command or
@@ -197,12 +179,9 @@ extension WatchConnectivityService: WCSessionDelegate {
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
-        let reachable = session.isReachable
+        guard session.isReachable else { return }
         DispatchQueue.main.async {
-            self.isReachable = reachable
-            if reachable {
-                self.onReachable?()
-            }
+            self.onReachable?()
         }
     }
 
@@ -235,21 +214,5 @@ extension WatchConnectivityService: WCSessionDelegate {
 
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         route(applicationContext)
-    }
-}
-
-// MARK: - Errors
-
-enum WatchConnectivityError: Error, LocalizedError {
-    case watchNotReachable
-    case iPhoneNotReachable
-
-    var errorDescription: String? {
-        switch self {
-        case .watchNotReachable:
-            return "Apple Watch is not reachable"
-        case .iPhoneNotReachable:
-            return "iPhone is not reachable"
-        }
     }
 }

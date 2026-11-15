@@ -40,11 +40,7 @@ final class WorkoutAppDelegate: NSObject, WKApplicationDelegate {
         Logger.workoutSession.info("Active workout recovery requested")
 
         Task {
-            do {
-                try await workoutSessionManager.recoverActiveSession()
-            } catch {
-                Logger.workoutSession.error("Failed to recover workout session: \(error.localizedDescription)")
-            }
+            await workoutSessionManager.recoverActiveSession()
         }
     }
 }

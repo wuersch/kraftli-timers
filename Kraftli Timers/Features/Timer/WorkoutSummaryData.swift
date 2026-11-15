@@ -11,9 +11,7 @@ import Foundation
 ///
 /// Contains all information needed to display a post-workout summary,
 /// including exercise details and health metrics from Apple Watch.
-struct WorkoutSummaryData: Identifiable {
-    /// Unique identifier for SwiftUI sheet presentation.
-    let id = UUID()
+struct WorkoutSummaryData {
     /// Name of the exercise performed.
     let exerciseName: String
 

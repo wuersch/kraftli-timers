@@ -30,15 +30,6 @@ import Foundation
 nonisolated enum DeviceRole: String, Codable, Sendable {
     case watch
     case phone
-
-    /// The device this code is running on.
-    static var current: DeviceRole {
-        #if os(watchOS)
-        .watch
-        #else
-        .phone
-        #endif
-    }
 }
 
 // MARK: - TimerConfig

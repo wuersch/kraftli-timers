@@ -1,5 +1,5 @@
 //
-//  EMOMTimer.swift
+//  EMOMTimerModel.swift
 //  Kraftli Timers
 //
 //  Created by Michael Würsch on 20.12.2025.
@@ -125,7 +125,7 @@ public class EMOMTimerModel: WorkoutTimer {
         self._totalIntervals = intervalCount
         self.intervalDuration = intervalDuration
         self.intervalWarningThreshold = intervalWarningThreshold
-        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider, now: now)
+        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
         self.feedbackProvider = feedbackProvider
         self.now = now
         self.totalTimeRemaining = totalDuration
@@ -257,7 +257,7 @@ public class EMOMTimerModel: WorkoutTimer {
         }
 
         if isRunning, !timerCoordinator.isActive {
-            timerCoordinator.start(startDate: state.startDate) { [weak self] in
+            timerCoordinator.start { [weak self] in
                 self?.update()
             }
         } else if !isRunning {

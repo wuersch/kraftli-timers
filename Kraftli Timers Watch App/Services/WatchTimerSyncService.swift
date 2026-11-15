@@ -24,14 +24,12 @@ protocol WatchTimerSyncService {
     ///   - averageHeartRate: Average HR during the workout (BPM)
     ///   - maxHeartRate: Maximum HR during the workout (BPM)
     ///   - activeCalories: Active calories burned (kcal)
-    ///   - completion: Called with the result of the immediate send attempt
     func sendWorkoutSessionEnded(
         healthKitUUID: UUID?,
         correlationID: UUID?,
         averageHeartRate: Double?,
         maxHeartRate: Double?,
-        activeCalories: Double?,
-        completion: ((Result<Void, Error>) -> Void)?
+        activeCalories: Double?
     )
 }
 
@@ -50,8 +48,7 @@ final class DefaultWatchTimerSyncService: WatchTimerSyncService {
         correlationID: UUID?,
         averageHeartRate: Double?,
         maxHeartRate: Double?,
-        activeCalories: Double?,
-        completion: ((Result<Void, Error>) -> Void)? = nil
+        activeCalories: Double?
     ) {
         let message = WorkoutSessionEndedMessage(
             healthKitWorkoutUUID: healthKitUUID,
@@ -65,7 +62,7 @@ final class DefaultWatchTimerSyncService: WatchTimerSyncService {
         // immediate delivery when iPhone is already reachable.
         // iPhone deduplicates messages that arrive via both paths.
         connectivity.transferUserInfo(message)
-        connectivity.sendMessage(message, completion: completion)
+        connectivity.sendMessage(message)
         Logger.healthKit.info("Sent workoutSessionEnded (dual delivery), UUID: \(healthKitUUID?.uuidString ?? "none"), correlationID: \(correlationID?.uuidString ?? "none"), avgHR: \(averageHeartRate.map { String(format: "%.0f", $0) } ?? "none")")
     }
 }
@@ -79,8 +76,7 @@ final class SilentWatchTimerSyncService: WatchTimerSyncService {
         correlationID: UUID?,
         averageHeartRate: Double?,
         maxHeartRate: Double?,
-        activeCalories: Double?,
-        completion: ((Result<Void, Error>) -> Void)?
+        activeCalories: Double?
     ) {
         // No-op
     }

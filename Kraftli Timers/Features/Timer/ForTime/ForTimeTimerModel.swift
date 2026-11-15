@@ -85,7 +85,7 @@ class ForTimeTimerModel: WorkoutTimer {
     ) {
         precondition(targetReps > 0, "targetReps must be > 0")
         self.targetReps = targetReps
-        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider, now: now)
+        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
         self.feedbackProvider = feedbackProvider
         self.now = now
     }
@@ -131,7 +131,7 @@ class ForTimeTimerModel: WorkoutTimer {
         }
 
         if isRunning, !timerCoordinator.isActive {
-            timerCoordinator.start(startDate: state.startDate) { [weak self] in
+            timerCoordinator.start { [weak self] in
                 self?.update()
             }
         } else if !isRunning {

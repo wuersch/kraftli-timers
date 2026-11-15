@@ -19,16 +19,7 @@ struct ExerciseData: Codable, Identifiable {
 }
 
 /// Loads exercises from bundled JSON file.
-/// Designed for future extension to support remote loading with bundled fallback.
 enum ExerciseLoader {
-
-    /// Load exercises asynchronously.
-    /// Currently loads from bundle; will support remote loading with bundled fallback.
-    static func load() async -> [ExerciseData] {
-        // Future: try remote first, fall back to bundled
-        // if let remote = try? await fetchRemote() { return remote }
-        loadBundled()
-    }
 
     /// Load exercises from bundled Exercises.json (synchronous).
     /// Used for initial seeding during app launch.

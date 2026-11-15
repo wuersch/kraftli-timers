@@ -101,20 +101,9 @@ final class AppSettings {
     // MARK: - Types
 
     /// Available completion sound styles.
-    enum CompletionSoundStyle: String, CaseIterable, Identifiable {
+    enum CompletionSoundStyle: String {
         case cheering = "Cheering"
         case neutral = "Neutral"
-
-        var id: String { rawValue }
-
-        var description: String {
-            switch self {
-            case .cheering:
-                return "Crowd cheering sound"
-            case .neutral:
-                return "Simple beep sounds"
-            }
-        }
 
         /// Creates the appropriate feedback provider for this sound style.
         func makeFeedbackProvider() -> any FeedbackProvider {

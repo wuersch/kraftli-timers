@@ -69,7 +69,7 @@ nonisolated enum TimerStateReducer {
                     next.pauseStateIntentID = intent.id
                 }
             case .incrementRound:
-                incrementRound(&next, at: intent.at, now: now)
+                incrementRound(&next, at: intent.at)
             case .stop:
                 stop(&next, at: intent.at, now: now)
             case .done:
@@ -135,7 +135,7 @@ nonisolated enum TimerStateReducer {
         state.lastTransitionAt = effective
     }
 
-    private static func incrementRound(_ state: inout TimerState, at date: Date, now: Date) {
+    private static func incrementRound(_ state: inout TimerState, at date: Date) {
         // Count a round tapped while the workout was live, even if the intent arrives
         // after the timer reached zero — but not one tapped after the workout ended.
         guard !state.isCountingDown(at: date), endDate(of: state).map({ date < $0 }) ?? true else { return }

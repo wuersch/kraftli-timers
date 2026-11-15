@@ -3,7 +3,7 @@
 //  Kraftli Timers
 //
 //  Responsive sizing calculations for timer views.
-//  Provides consistent sizing across EMOM and AMRAP timers.
+//  Provides consistent sizing across the EMOM, AMRAP and For Time timers.
 //
 
 import SwiftUI

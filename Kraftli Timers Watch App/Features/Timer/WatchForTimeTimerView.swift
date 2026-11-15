@@ -28,7 +28,7 @@ struct WatchForTimeTimerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    /// Shared workout session manager injected from WorkoutAppDelegate.
+    /// Shared workout session manager owned by `WatchTimerRuntime`.
     @Environment(WorkoutSessionManager.self) private var sessionManager
     @Environment(TimerSessionController.self) private var timerSession
     @Environment(WatchWorkoutStarter.self) private var starter
@@ -206,8 +206,7 @@ struct WatchForTimeTimerView: View {
         .toolbar(.hidden)
         .watchTimerLifecycle(
             timer: timerModel,
-            sessionManager: sessionManager,
-            onPause: { timerSession.pause() }
+            sessionManager: sessionManager
         )
         .onAppear {
             // Run setup exactly once (see WatchAMRAPTimerView).

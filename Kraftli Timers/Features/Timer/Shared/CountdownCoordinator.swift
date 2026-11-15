@@ -3,7 +3,6 @@
 //  Kraftli Timers
 //
 //  Coordinates pre-workout countdown (3, 2, 1, GO) before timers start.
-//  Provides a hook point for future HealthKit workout session integration.
 //
 
 #if os(iOS)
@@ -18,14 +17,10 @@ import Foundation
 /// ```swift
 /// @State private var countdown = CountdownCoordinator()
 ///
-/// countdown.startCountdown(scheduledStartTime: Date() + 3.0) {
-///     timerModel.start()
+/// countdown.startCountdown(scheduledStartTime: state.startDate) {
+///     // The countdown is over: the timer model already follows the state.
 /// }
 /// ```
-///
-/// ## HealthKit Hook
-/// The `onCountdownComplete` callback provides a clean integration point
-/// for future HealthKit workout session initialization.
 @Observable
 @MainActor
 final class CountdownCoordinator {
@@ -37,14 +32,9 @@ final class CountdownCoordinator {
     /// Whether a countdown is currently in progress.
     private(set) var isCountingDown: Bool = false
 
-    /// Optional callback invoked just before completion.
-    /// Use this for HealthKit workout session initialization.
-    var onCountdownComplete: (() -> Void)?
-
     // MARK: - Private State
 
     private var countdownTask: Task<Void, Never>?
-    private var scheduledStartTime: Date?
 
     // MARK: - Initialization
 
@@ -69,7 +59,6 @@ final class CountdownCoordinator {
         // Cancel any existing countdown
         cancelCountdown()
 
-        self.scheduledStartTime = scheduledStartTime
         isCountingDown = true
 
         countdownTask = Task { [weak self] in
@@ -123,18 +112,13 @@ final class CountdownCoordinator {
         countdownTask = nil
         countdownValue = nil
         isCountingDown = false
-        scheduledStartTime = nil
     }
 
     // MARK: - Private Methods
 
     private func finishCountdown(completion: () -> Void) {
-        // Invoke HealthKit hook before starting timer
-        onCountdownComplete?()
-
         countdownValue = nil
         isCountingDown = false
-        scheduledStartTime = nil
 
         completion()
     }

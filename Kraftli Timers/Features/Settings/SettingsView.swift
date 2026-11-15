@@ -9,7 +9,6 @@ import SwiftUI
 import SwiftData
 
 struct SettingsView: View {
-    @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
 
     @Query private var workouts: [WorkoutLog]
