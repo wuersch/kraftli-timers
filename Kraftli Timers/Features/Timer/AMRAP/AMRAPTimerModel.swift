@@ -1,5 +1,5 @@
 //
-//  AMRAPTimer.swift
+//  AMRAPTimerModel.swift
 //  Kraftli Timers
 //
 //  Created by Michael Würsch on 20.12.2025.
@@ -74,7 +74,7 @@ class AMRAPTimerModel: WorkoutTimer {
         now: @escaping () -> Date = { Date() }
     ) {
         self.totalDuration = totalDuration
-        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider, now: now)
+        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
         self.totalTimeRemaining = totalDuration
         self.feedbackProvider = feedbackProvider
         self.now = now
@@ -134,7 +134,7 @@ class AMRAPTimerModel: WorkoutTimer {
         }
 
         if isRunning, !timerCoordinator.isActive {
-            timerCoordinator.start(startDate: state.startDate) { [weak self] in
+            timerCoordinator.start { [weak self] in
                 self?.update()
             }
         } else if !isRunning {

@@ -32,10 +32,4 @@ struct ExerciseLoaderTests {
             #expect(MuscleGroup.allCases.contains(exercise.muscleGroup))
         }
     }
-
-    @Test func load_async_returnsExercises() async {
-        let exercises = await ExerciseLoader.load()
-
-        #expect(!exercises.isEmpty)
-    }
 }

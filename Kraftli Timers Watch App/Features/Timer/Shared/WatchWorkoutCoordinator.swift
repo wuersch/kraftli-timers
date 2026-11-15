@@ -139,8 +139,7 @@ struct WatchWorkoutCoordinator {
             correlationID: config.workoutID,
             averageHeartRate: averageHeartRate,
             maxHeartRate: maxHeartRate,
-            activeCalories: activeCalories,
-            completion: nil
+            activeCalories: activeCalories
         )
     }
 }

@@ -33,10 +33,6 @@ final class TimerPreset {
         TimerKind(rawValue: kindRawValue) ?? .emom
     }
 
-    var duration: Duration {
-        .seconds(durationInterval)
-    }
-
     /// Look up exercise details from the in-memory repository.
     /// Returns nil if no exerciseId is set or exercise not found.
     var exerciseInfo: ExerciseInfo? {

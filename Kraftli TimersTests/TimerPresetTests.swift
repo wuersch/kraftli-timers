@@ -19,16 +19,6 @@ struct TimerPresetTests {
         #expect(preset.durationInterval == 1200)
     }
 
-    @Test func duration_convertsToSwiftDuration() {
-        let preset = TimerPreset(
-            kind: .emom,
-            durationInterval: 1200,
-            targetReps: 100
-        )
-
-        #expect(preset.duration == .seconds(1200))
-    }
-
     @Test func primaryText_formatsEMOMCorrectly() {
         let preset = TimerPreset(
             kind: .emom,

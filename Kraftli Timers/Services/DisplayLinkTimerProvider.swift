@@ -20,9 +20,7 @@ final class DisplayLinkTimerProvider: TimerProvider {
             }),
             selector: #selector(DisplayLinkTarget.fire)
         )
-        if #available(iOS 15.0, *) {
-              displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 120, preferred: 60)
-        }
+        displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 120, preferred: 60)
         displayLink.add(to: .main, forMode: .common)
         return displayLink
     }

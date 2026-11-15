@@ -10,7 +10,7 @@ import SwiftData
 
 @main
 struct Kraftli_Timers_Watch_AppApp: App {
-    /// Receives HKWorkoutConfiguration from iPhone and owns the shared WorkoutSessionManager.
+    /// Receives HKWorkoutConfiguration from iPhone. The workout objects live in `WatchTimerRuntime`.
     @WKApplicationDelegateAdaptor private var appDelegate: WorkoutAppDelegate
 
     let modelContainer: ModelContainer

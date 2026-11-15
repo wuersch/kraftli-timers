@@ -67,15 +67,6 @@ struct WorkoutSessionEndedMessage: WatchMessage, Equatable {
         self.maxHeartRate = maxHeartRate
         self.activeCalories = activeCalories
     }
-
-    // Custom Codable to exclude computed messageType
-    private enum CodingKeys: String, CodingKey {
-        case healthKitWorkoutUUID
-        case correlationID
-        case averageHeartRate
-        case maxHeartRate
-        case activeCalories
-    }
 }
 
 // MARK: - Message Encoding/Decoding
@@ -127,7 +118,6 @@ enum WatchMessageCoder {
 enum WatchMessageError: Error, LocalizedError {
     case encodingFailed
     case invalidFormat
-    case unknownMessageType
 
     var errorDescription: String? {
         switch self {
@@ -135,8 +125,6 @@ enum WatchMessageError: Error, LocalizedError {
             return "Failed to encode message for WatchConnectivity"
         case .invalidFormat:
             return "Received message has invalid format"
-        case .unknownMessageType:
-            return "Received unknown message type"
         }
     }
 }

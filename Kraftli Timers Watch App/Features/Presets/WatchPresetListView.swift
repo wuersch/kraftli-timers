@@ -28,7 +28,7 @@ enum ActiveEditor: Identifiable {
 /// Captures all timer configuration at tap time, ensuring data is available when the cover presents.
 /// This avoids SwiftUI state timing issues with `fullScreenCover(isPresented:)`.
 enum TimerPresentation: Identifiable, Equatable {
-    // Both run through the timer session (ADR-006), started on either device.
+    // All run through the timer session (ADR-006), started on either device.
     case emom(
         duration: TimeInterval,
         intervalCount: Int,

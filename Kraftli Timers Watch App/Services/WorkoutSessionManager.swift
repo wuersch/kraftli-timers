@@ -3,8 +3,8 @@
 //  Kraftli Timers Watch App
 //
 //  Manages HKWorkoutSession and HKLiveWorkoutBuilder lifecycle on Apple Watch.
-//  Replaces WKExtendedRuntimeSession for keeping the app alive during workouts,
-//  while also collecting heart rate and calorie data via Watch sensors.
+//  The session keeps the app alive during workouts, while also collecting heart
+//  rate and calorie data via Watch sensors.
 //
 //  ## How It Works
 //  `HKWorkoutSession` keeps sensors active and the app running in the background.
@@ -290,7 +290,7 @@ final class WorkoutSessionManager: NSObject {
     /// prompt auto-relaunch path. The app metadata (exercise name, kind, correlation ID) was
     /// lost in the crash, so we deliberately don't write a SwiftData `WorkoutLog` or notify the
     /// iPhone — landing the workout in Apple Health is the win. See ADR-002.
-    func recoverActiveSession() async throws {
+    func recoverActiveSession() async {
         Logger.workoutSession.info("Attempting to recover active session")
 
         do {
@@ -336,11 +336,7 @@ final class WorkoutSessionManager: NSObject {
         // Only run when we have no session reference (fresh launch)
         guard session == nil, sessionState == .idle else { return }
 
-        do {
-            try await recoverActiveSession()
-        } catch {
-            // No orphan found — this is the happy path
-        }
+        await recoverActiveSession()
     }
 
     /// Reset manager to idle state (for cleanup after workout is fully processed).
@@ -445,7 +441,7 @@ extension WorkoutSessionManager: HKWorkoutSessionDelegate {
 
 extension WorkoutSessionManager: HKLiveWorkoutBuilderDelegate {
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {
-        // Workout events (pause, resume, etc.) are automatically handled
+        // Required by the protocol. Workout events (pause, resume, etc.) need no handling.
     }
 
     nonisolated func workoutBuilder(

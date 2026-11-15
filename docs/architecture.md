@@ -145,7 +145,7 @@ enum TimePeriod: String, CaseIterable {
 
 ## Settings Architecture
 
-User preferences are managed via `AppSettings`, an `@Observable` class with `@AppStorage` properties.
+User preferences are managed via `AppSettings`, an `@Observable` class whose stored properties persist to `UserDefaults` in `didSet`.
 
 See [ADR-0001: Settings Pattern](adr/ADR-0001-settings-pattern.md) for full decision rationale and implementation details.
 
@@ -254,7 +254,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `PhoneWorkoutStarter` | iPhone: start handshake with the Watch, fallback to iPhone ownership (@Observable) |
 | `PhoneMessageCoordinator` | iPhone: links the Watch's Health UUID to the `WorkoutLog`, publishes its summary |
 | `MirroredWorkoutObserver` | iPhone: holds the Watch's mirrored session for the HealthKit channel |
-| `AppSettings` | User preferences (@Observable + @AppStorage) |
+| `AppSettings` | User preferences (@Observable + UserDefaults) |
 
 ### UI Components
 | Component | Purpose |

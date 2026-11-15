@@ -33,7 +33,7 @@ protocol HealthKitService: Sendable {
 
     /// Save a workout directly to HealthKit (iPhone-only scenario).
     ///
-    /// Used for Scenario A when no Watch is involved. Saves duration only,
+    /// Used when the iPhone owns the workout (no Watch involved). Saves duration only,
     /// no heart rate or calorie data (those require Watch sensors).
     ///
     /// - Parameters:
@@ -49,7 +49,7 @@ protocol HealthKitService: Sendable {
         metadata: [String: Any]?
     ) async throws -> UUID
 
-    /// Start a workout on Apple Watch from iPhone (Scenario C).
+    /// Start a workout on Apple Watch from iPhone.
     ///
     /// This calls `HKHealthStore.startWatchApp(toHandle:)` which causes watchOS
     /// to launch our Watch app and deliver the configuration to our `WKApplicationDelegate`.
@@ -59,7 +59,7 @@ protocol HealthKitService: Sendable {
 
     /// Set up handler to receive mirrored workout sessions from Watch.
     ///
-    /// When Watch starts a mirrored session (Scenarios C and D), iPhone receives
+    /// When Watch starts a mirrored session (for any workout it owns), iPhone receives
     /// the session via this handler. Call once during app setup.
     ///
     /// - Parameter handler: Called on the main actor when a mirrored session starts

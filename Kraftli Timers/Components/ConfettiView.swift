@@ -110,18 +110,14 @@ private final class ConfettiEmitterContainerView: UIView {
             .systemPurple, .systemPink, .systemCyan, .systemMint, .systemIndigo
         ]
 
-        let shapes: [(image: CGImage, name: String)] = [
-            (ShapeImages.rectangle, "rectangle"),
-            (ShapeImages.circle, "circle"),
-            (ShapeImages.triangle, "triangle")
-        ]
+        let shapes: [CGImage] = [ShapeImages.rectangle, ShapeImages.circle, ShapeImages.triangle]
 
         // 30 cells total: 10 colors × 3 shapes
         // birthRate per cell = 120 particles / 30 cells / 0.5s = 8
         var cells: [CAEmitterCell] = []
 
         for color in colors {
-            for (image, _) in shapes {
+            for image in shapes {
                 let cell = CAEmitterCell()
                 cell.contents = image
                 cell.color = color.cgColor
