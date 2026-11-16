@@ -15,60 +15,19 @@ struct TimerPresetEditorView: View {
 
     let presetToEdit: TimerPreset?
 
-    @State private var timerKind: TimerKind
-    @State private var selectedExerciseId: UUID?
-    @State private var durationMinutes: Int
-    @State private var targetReps: Int
+    /// The values being edited. Nothing reaches the stored preset until Save.
+    @State private var draft: PresetDraft
     @State private var showingExerciseSelection = false
 
     init(presetToEdit: TimerPreset? = nil) {
         self.presetToEdit = presetToEdit
-
-        // Initialize state from preset or use defaults
-        if let preset = presetToEdit {
-            _timerKind = State(initialValue: preset.kind)
-            _selectedExerciseId = State(initialValue: preset.exerciseId)
-            // For Time presets store no duration (0); offer the default if the kind changes.
-            _durationMinutes = State(
-                initialValue: preset.durationInterval > 0 ? Int(preset.durationInterval / 60) : 20
-            )
-            _targetReps = State(initialValue: preset.targetReps ?? TimerPreset.defaultForTimeReps)
-        } else {
-            _timerKind = State(initialValue: .emom)
-            _selectedExerciseId = State(initialValue: nil)
-            _durationMinutes = State(initialValue: 20)
-            _targetReps = State(initialValue: TimerPreset.defaultForTimeReps)
-        }
-    }
-
-    // MARK: - Computed Properties
-
-    private var selectedExercise: ExerciseInfo? {
-        guard let id = selectedExerciseId else {
-            return ExerciseRepository.all.first
-        }
-        return ExerciseRepository.exercise(byId: id)
-    }
-
-    /// Maximum reps based on duration (uses shared constant for minimum interval).
-    private var maxReps: Int {
-        TimerPreset.maximumReps(forDuration: TimeInterval(durationMinutes * 60))
-    }
-
-    /// Calculated interval duration for display.
-    private var intervalDuration: TimeInterval {
-        guard targetReps > 0 else { return 0 }
-        return TimeInterval(durationMinutes * 60) / Double(targetReps)
-    }
-
-    private var intervalDescription: String {
-        intervalDuration.intervalDescription()
+        _draft = State(initialValue: presetToEdit.map(PresetDraft.init(preset:)) ?? PresetDraft())
     }
 
     // MARK: - Subviews
 
     private var durationPicker: some View {
-        Picker("Duration", selection: $durationMinutes) {
+        Picker("Duration", selection: $draft.durationMinutes) {
             ForEach(1...60, id: \.self) { minutes in
                 Text("\(minutes) min").tag(minutes)
             }
@@ -77,14 +36,9 @@ struct TimerPresetEditorView: View {
         .labelsHidden()
     }
 
-    /// EMOM caps the reps by the duration; For Time allows 1–999.
-    private var repsRange: ClosedRange<Int> {
-        timerKind == .forTime ? TimerPreset.forTimeRepsRange : 1...maxReps
-    }
-
     private var targetRepsPicker: some View {
-        Picker("Total Reps", selection: $targetReps) {
-            ForEach(repsRange, id: \.self) { reps in
+        Picker("Total Reps", selection: $draft.targetReps) {
+            ForEach(draft.repsRange, id: \.self) { reps in
                 Text("\(reps)").tag(reps)
             }
         }
@@ -95,7 +49,7 @@ struct TimerPresetEditorView: View {
     private var exerciseButtonContent: some View {
         VStack(alignment: .leading) {
             HStack {
-                if let exercise = selectedExercise {
+                if let exercise = draft.selectedExercise {
                     Text(exercise.name)
                         .font(.body)
                         .foregroundStyle(.primary)
@@ -112,7 +66,7 @@ struct TimerPresetEditorView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            if let exercise = selectedExercise {
+            if let exercise = draft.selectedExercise {
                 Divider()
 
                 HStack(spacing: 8) {
@@ -135,14 +89,14 @@ struct TimerPresetEditorView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Timer Kind", selection: $timerKind) {
+                    Picker("Timer Kind", selection: $draft.kind) {
                         ForEach(TimerKind.allCases, id: \.self) { kind in
                             Text(kind.rawValue).tag(kind)
                         }
                     }
                     .pickerStyle(.segmented)
 
-                    switch timerKind {
+                    switch draft.kind {
                     case .amrap:
                         Text(
                             "A time-capped workout where you perform as many reps or rounds as possible."
@@ -170,13 +124,13 @@ struct TimerPresetEditorView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(
-                        selectedExercise.map { "Exercise: \($0.name)" }
+                        draft.selectedExercise.map { "Exercise: \($0.name)" }
                             ?? "Select exercise"
                     )
                     .accessibilityHint("Opens exercise selection")
                 }
 
-                switch timerKind {
+                switch draft.kind {
                 case .amrap:
                     Section {
 
@@ -193,7 +147,7 @@ struct TimerPresetEditorView: View {
                             Text("Duration and Total Reps")
                                 .font(.body)
                                 .foregroundStyle(.primary)
-                            Text(intervalDescription)
+                            Text(draft.intervalDuration.intervalDescription())
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
 
@@ -213,12 +167,11 @@ struct TimerPresetEditorView: View {
                     }
                 }
             }
-            .onChange(of: durationMinutes) { _, _ in
-                clampTargetReps()
+            .onChange(of: draft.durationMinutes) { _, _ in
+                draft.clampTargetReps()
             }
-            .onChange(of: timerKind) { _, _ in
-                // Switching from For Time (up to 999) to EMOM may exceed the duration's cap.
-                clampTargetReps()
+            .onChange(of: draft.kind) { _, _ in
+                draft.clampTargetReps()
             }
             .navigationTitle(presetToEdit == nil ? "New Timer" : "Edit Timer")
             .navigationBarTitleDisplayMode(.inline)
@@ -244,45 +197,18 @@ struct TimerPresetEditorView: View {
                 }
             }
             .onAppear {
-                // Set default exercise if none selected
-                if selectedExerciseId == nil, let first = ExerciseRepository.all.first {
-                    selectedExerciseId = first.id
-                }
+                draft.selectDefaultExerciseIfNeeded()
             }
             .sheet(isPresented: $showingExerciseSelection) {
-                ExerciseSelectionView(selectedExerciseId: $selectedExerciseId)
+                ExerciseSelectionView(selectedExerciseId: $draft.exerciseId)
             }
         }
     }
 
     // MARK: - Actions
 
-    /// Keeps the reps within the current kind's range.
-    private func clampTargetReps() {
-        targetReps = min(max(targetReps, repsRange.lowerBound), repsRange.upperBound)
-    }
-
     private func savePreset() {
-        // For Time has no duration; AMRAP has no reps.
-        let duration: TimeInterval = timerKind.hasFixedDuration ? TimeInterval(durationMinutes * 60) : 0
-        let reps: Int? = timerKind == .amrap ? nil : targetReps
-        if let existingPreset = presetToEdit {
-            // Update existing preset
-            existingPreset.kindRawValue = timerKind.rawValue
-            existingPreset.durationInterval = duration
-            existingPreset.targetReps = reps
-            existingPreset.exerciseId = selectedExerciseId
-        } else {
-            // Create new preset at end of list
-            let preset = TimerPreset(
-                kind: timerKind,
-                durationInterval: duration,
-                targetReps: reps,
-                sortOrder: PresetMaintenance.nextSortOrder(after: presets),
-                exerciseId: selectedExerciseId
-            )
-            modelContext.insert(preset)
-        }
+        draft.save(editing: presetToEdit, in: modelContext, after: presets)
         dismiss()
     }
 }
