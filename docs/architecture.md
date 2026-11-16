@@ -227,6 +227,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 ### Timer Models
 | Model | Purpose |
 |-------|---------|
+| `TimerStateRendering` | Protocol + extension shared by the three timer models: adopts a `TimerState`, ticks while it runs, detects completion. Its stored state lives in `TimerRenderCore` (shared with the Watch) |
 | `EMOMTimerModel` | Renders an EMOM `TimerState`: interval display and feedback (@Observable) |
 | `AMRAPTimerModel` | Renders an AMRAP `TimerState`: remaining time and rounds (@Observable) |
 | `ForTimeTimerModel` | Renders an open-ended `TimerState`: elapsed time, finish time and pace (@Observable, shared with the Watch) |

@@ -10,28 +10,18 @@ import Foundation
 /// Renders a For Time workout from a `TimerState` (ADR-006, ADR-0010).
 ///
 /// The workout is open-ended: the state has no duration, and only a `done` intent —
-/// sent through `TimerSessionController.done()` — completes it. Like the other models,
-/// this one keeps no stopwatch of its own; it derives the elapsed time from
-/// `state.elapsed(at: now())` on every tick. It gives no signals during the workout.
+/// sent through `TimerSessionController.done()` — completes it. It gives no signals
+/// during the workout. Adopting states, ticking and completion come from
+/// `TimerStateRendering`.
 @Observable
-class ForTimeTimerModel: WorkoutTimer {
+final class ForTimeTimerModel: TimerStateRendering {
     // MARK: - Published Properties (MainActor isolated)
     /// Active time so far, pauses excluded; frozen while paused and once finished.
     @MainActor private(set) var elapsedTime: TimeInterval = 0
-    @MainActor private(set) var isRunning = false
-    /// Explicit completion signal — set true only when the workout was declared done,
-    /// never by a pause or a stop.
-    @MainActor private(set) var didComplete = false
 
     // MARK: - Private Properties
     let targetReps: Int
-    private let timerCoordinator: TimerCoordinator
-    private let feedbackProvider: FeedbackProvider
-    /// Wall-clock source. Injectable so tests can drive time deterministically.
-    private let now: () -> Date
-
-    /// The timing source of truth. nil until the workout starts (and after `reset()`).
-    @MainActor private var state: TimerState?
+    let core: TimerRenderCore
 
     // MARK: - Computed Properties
 
@@ -85,64 +75,18 @@ class ForTimeTimerModel: WorkoutTimer {
     ) {
         precondition(targetReps > 0, "targetReps must be > 0")
         self.targetReps = targetReps
-        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
-        self.feedbackProvider = feedbackProvider
-        self.now = now
+        self.core = TimerRenderCore(timerProvider: timerProvider, feedbackProvider: feedbackProvider, now: now)
     }
 
-    // MARK: - State-Driven API (ADR-006)
+    // MARK: - TimerStateRendering
 
-    /// Adopts a state published by the workout's owner and re-renders. No start feedback plays.
     @MainActor
-    func apply(_ newState: TimerState) {
-        if state?.workoutID != newState.workoutID {
-            didComplete = false
-        }
-        state = newState
-        refresh(at: now())
+    func render(elapsed: TimeInterval) {
+        elapsedTime = elapsed
     }
 
-    // MARK: - Public Methods
     @MainActor
-    func reset() {
-        timerCoordinator.stop()
-        state = nil
-        isRunning = false
+    func resetDisplay() {
         elapsedTime = 0
-        didComplete = false
-    }
-
-    // MARK: - Private Methods
-
-    /// Re-renders from the state at `date`: elapsed time, running flag, ticking and completion.
-    @MainActor
-    private func refresh(at date: Date) {
-        guard let state else { return }
-        let wasRunning = isRunning
-        elapsedTime = state.elapsed(at: date)
-        isRunning = !state.isPaused && !state.isFinished(at: date)
-
-        // Only a declared done completes an open-ended workout; a stop never does.
-        if case .completed = state.finish, !didComplete {
-            didComplete = true
-            if wasRunning {
-                feedbackProvider.onWorkoutComplete()
-            }
-        }
-
-        if isRunning, !timerCoordinator.isActive {
-            timerCoordinator.start { [weak self] in
-                self?.update()
-            }
-        } else if !isRunning {
-            timerCoordinator.stop()
-        }
-    }
-
-    @MainActor
-    private func update() {
-        // Ignore a stray tick enqueued before a pause or finish.
-        guard isRunning else { return }
-        refresh(at: now())
     }
 }
