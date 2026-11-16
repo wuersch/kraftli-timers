@@ -25,42 +25,19 @@ enum ActiveEditor: Identifiable {
     }
 }
 
-/// Captures all timer configuration at tap time, ensuring data is available when the cover presents.
+/// The workout to present: its configuration is captured at tap time (or taken from the
+/// iPhone's start request), ensuring the data is available when the cover presents.
 /// This avoids SwiftUI state timing issues with `fullScreenCover(isPresented:)`.
-enum TimerPresentation: Identifiable, Equatable {
-    // All run through the timer session (ADR-006), started on either device.
-    case emom(
-        duration: TimeInterval,
-        intervalCount: Int,
-        exerciseName: String,
-        workoutID: UUID = UUID(),
-        startedOnPhone: Bool = false
-    )
-    case amrap(
-        duration: TimeInterval,
-        exerciseName: String,
-        workoutID: UUID = UUID(),
-        startedOnPhone: Bool = false
-    )
-    case forTime(
-        targetReps: Int,
-        exerciseName: String,
-        workoutID: UUID = UUID(),
-        startedOnPhone: Bool = false
-    )
+///
+/// All kinds run through the timer session (ADR-006), started on either device.
+struct TimerPresentation: Identifiable, Equatable {
+    let config: TimerConfig
+    var workoutID = UUID()
+    var startedOnPhone = false
 
     // The workout ID is the identity: a new start for the same preset must
     // re-create the timer view, not reuse the already-started one.
-    var id: String {
-        switch self {
-        case .emom(_, _, _, let workoutID, _):
-            return "emom-\(workoutID.uuidString)"
-        case .amrap(_, _, let workoutID, _):
-            return "amrap-\(workoutID.uuidString)"
-        case .forTime(_, _, let workoutID, _):
-            return "fortime-\(workoutID.uuidString)"
-        }
-    }
+    var id: UUID { workoutID }
 }
 
 // MARK: - WatchPresetListView
@@ -97,30 +74,7 @@ struct WatchPresetListView: View {
             presentRequestedWorkout(request)
         }
         .fullScreenCover(item: $activeTimer) { timer in
-            switch timer {
-            case .emom(let duration, let intervalCount, let exerciseName, let workoutID, let startedOnPhone):
-                WatchEMOMTimerView(
-                    totalDuration: duration,
-                    intervalCount: intervalCount,
-                    exerciseName: exerciseName,
-                    workoutID: workoutID,
-                    startedOnPhone: startedOnPhone
-                )
-            case .amrap(let duration, let exerciseName, let workoutID, let startedOnPhone):
-                WatchAMRAPTimerView(
-                    totalDuration: duration,
-                    exerciseName: exerciseName,
-                    workoutID: workoutID,
-                    startedOnPhone: startedOnPhone
-                )
-            case .forTime(let targetReps, let exerciseName, let workoutID, let startedOnPhone):
-                WatchForTimeTimerView(
-                    targetReps: targetReps,
-                    exerciseName: exerciseName,
-                    workoutID: workoutID,
-                    startedOnPhone: startedOnPhone
-                )
-            }
+            timerView(for: timer)
         }
         .sheet(item: $activeEditor) { editor in
             switch editor {
@@ -202,25 +156,45 @@ struct WatchPresetListView: View {
 
     // MARK: - Actions
 
-    private func launchTimer(for preset: TimerPreset) {
-        switch preset.kind {
+    /// The timer view for the workout's kind.
+    @ViewBuilder
+    private func timerView(for timer: TimerPresentation) -> some View {
+        let config = timer.config
+        switch config.kind {
         case .emom:
-            activeTimer = .emom(
-                duration: preset.durationInterval,
-                intervalCount: preset.targetReps ?? 1,
-                exerciseName: preset.exerciseInfo?.name ?? "EMOM Workout"
+            WatchEMOMTimerView(
+                totalDuration: config.totalDuration ?? 0,
+                intervalCount: config.intervalCount ?? 1,
+                exerciseName: config.exerciseName,
+                workoutID: timer.workoutID,
+                startedOnPhone: timer.startedOnPhone
             )
         case .amrap:
-            activeTimer = .amrap(
-                duration: preset.durationInterval,
-                exerciseName: preset.exerciseInfo?.name ?? "AMRAP Workout"
+            WatchAMRAPTimerView(
+                totalDuration: config.totalDuration ?? 0,
+                exerciseName: config.exerciseName,
+                workoutID: timer.workoutID,
+                startedOnPhone: timer.startedOnPhone
             )
         case .forTime:
-            activeTimer = .forTime(
-                targetReps: preset.targetReps ?? TimerPreset.defaultForTimeReps,
-                exerciseName: preset.exerciseInfo?.name ?? "For Time Workout"
+            WatchForTimeTimerView(
+                targetReps: config.targetReps ?? TimerPreset.defaultForTimeReps,
+                exerciseName: config.exerciseName,
+                workoutID: timer.workoutID,
+                startedOnPhone: timer.startedOnPhone
             )
         }
+    }
+
+    private func launchTimer(for preset: TimerPreset) {
+        let kind = preset.kind
+        activeTimer = TimerPresentation(config: TimerConfig(
+            kind: kind,
+            totalDuration: kind.hasFixedDuration ? preset.durationInterval : nil,
+            intervalCount: kind == .emom ? preset.targetReps ?? 1 : nil,
+            exerciseName: preset.exerciseInfo?.name ?? "\(kind.rawValue) Workout",
+            targetReps: kind == .forTime ? preset.targetReps ?? TimerPreset.defaultForTimeReps : nil
+        ))
     }
 
     private func deletePreset(_ preset: TimerPreset) {
@@ -232,31 +206,18 @@ struct WatchPresetListView: View {
     /// Presents an iPhone-started workout the starter accepted (ADR-006).
     private func presentRequestedWorkout(_ request: StartRequest) {
         workoutStarter.requestPresented()
+        // A time-boxed workout needs a duration. One without it can't have come from this
+        // app's iPhone side; presenting it would build a timer that can't run.
         let config = request.config
-        switch config.kind {
-        case .emom:
-            activeTimer = .emom(
-                duration: config.totalDuration ?? 0,
-                intervalCount: request.config.intervalCount ?? 1,
-                exerciseName: request.config.exerciseName,
-                workoutID: request.workoutID,
-                startedOnPhone: true
-            )
-        case .amrap:
-            activeTimer = .amrap(
-                duration: config.totalDuration ?? 0,
-                exerciseName: config.exerciseName,
-                workoutID: request.workoutID,
-                startedOnPhone: true
-            )
-        case .forTime:
-            activeTimer = .forTime(
-                targetReps: config.targetReps ?? TimerPreset.defaultForTimeReps,
-                exerciseName: config.exerciseName,
-                workoutID: request.workoutID,
-                startedOnPhone: true
-            )
+        guard !config.kind.hasFixedDuration || (config.totalDuration ?? 0) > 0 else {
+            Logger.timerSync.error("Ignoring a \(config.kind.rawValue) start request without a duration")
+            return
         }
+        activeTimer = TimerPresentation(
+            config: config,
+            workoutID: request.workoutID,
+            startedOnPhone: true
+        )
     }
 }
 

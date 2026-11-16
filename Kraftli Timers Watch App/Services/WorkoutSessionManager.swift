@@ -53,6 +53,26 @@ final class WorkoutSessionManager: NSObject {
         case ended
     }
 
+    /// What a finished session leaves behind: the saved workout's ID and the metrics
+    /// collected during it. Handed out by `endSession()`, which clears the live values.
+    struct Summary: Equatable {
+        /// UUID of the saved HealthKit workout; nil if nothing was saved.
+        var healthKitUUID: UUID?
+        var averageHeartRate: Double?
+        var maxHeartRate: Double?
+        var activeCalories: Double?
+    }
+
+    /// The metrics collected so far, without a saved workout.
+    var metricsSummary: Summary {
+        Summary(
+            healthKitUUID: nil,
+            averageHeartRate: averageHeartRate,
+            maxHeartRate: maxHeartRate,
+            activeCalories: activeCalories
+        )
+    }
+
     // MARK: - Timer Sync (ADR-006)
 
     /// The primary session, for sending data over its HealthKit channel
@@ -75,7 +95,7 @@ final class WorkoutSessionManager: NSObject {
 
     /// The save in progress while `endSession()` awaits HealthKit. A second caller joins it
     /// instead of finalizing the same builder twice.
-    private var endTask: Task<UUID?, Never>?
+    private var endTask: Task<Summary, Never>?
 
     /// True while the session is being saved to HealthKit. Whoever started the save also
     /// records the workout, so others should leave it alone.
@@ -122,7 +142,7 @@ final class WorkoutSessionManager: NSObject {
     func startSession(configuration: HKWorkoutConfiguration) async throws {
         if sessionState != .idle {
             Logger.workoutSession.warning("Ending stale session (state: \(String(describing: self.sessionState))) before starting new one")
-            _ = await endSession()
+            await endSession()
             resetToIdle()
         }
 
@@ -201,8 +221,9 @@ final class WorkoutSessionManager: NSObject {
     /// Ending is idempotent: a call made while an earlier one is still saving waits for
     /// that save and returns its result.
     ///
-    /// - Returns: UUID of the saved HealthKit workout, or nil if save failed
-    func endSession() async -> UUID? {
+    /// - Returns: The session's summary. Its `healthKitUUID` is nil if the save failed.
+    @discardableResult
+    func endSession() async -> Summary {
         if let endTask {
             return await endTask.value
         }
@@ -210,7 +231,7 @@ final class WorkoutSessionManager: NSObject {
             Logger.workoutSession.warning("Cannot end session: no active session")
             // Clean up state even without session objects (e.g. stale state after crash)
             if sessionState != .idle { sessionState = .ended }
-            return nil
+            return metricsSummary
         }
 
         // An unstructured Task (rather than awaiting inline) gives later callers a handle
@@ -219,13 +240,15 @@ final class WorkoutSessionManager: NSObject {
             await finish(session, builder: builder)
         }
         endTask = task
-        let workoutUUID = await task.value
+        let summary = await task.value
         endTask = nil
-        return workoutUUID
+        return summary
     }
 
     /// Finalizes the builder, ends the session and clears the session state.
-    private func finish(_ session: HKWorkoutSession, builder: HKLiveWorkoutBuilder) async -> UUID? {
+    private func finish(_ session: HKWorkoutSession, builder: HKLiveWorkoutBuilder) async -> Summary {
+        // Read the metrics before the cleanup below clears them.
+        var summary = metricsSummary
         defer { cleanupSession() }
 
         do {
@@ -235,11 +258,12 @@ final class WorkoutSessionManager: NSObject {
             session.end()
             let workoutUUID = workout?.uuid
             Logger.workoutSession.info("Workout saved, UUID: \(workoutUUID?.uuidString ?? "nil")")
-            return workoutUUID
+            summary.healthKitUUID = workoutUUID
+            return summary
         } catch {
             session.end()
             Logger.workoutSession.error("Failed to save workout: \(error.localizedDescription)")
-            return nil
+            return summary
         }
     }
 
