@@ -14,36 +14,10 @@ struct StatsView: View {
 
     @State private var selectedPeriod: TimePeriod = .week
 
-    private let statsService: StatsService = DefaultStatsService()
+    private let statsService: StatsService
 
-    // MARK: - Computed Properties
-    private var filteredWorkouts: [WorkoutLog] {
-        statsService.filterByPeriod(
-            workouts: allWorkouts,
-            period: selectedPeriod,
-            referenceDate: Date()
-        )
-    }
-
-    private var chartData: [ChartDataPoint] {
-        statsService.totalMinutesPerBucket(workouts: filteredWorkouts, period: selectedPeriod, referenceDate: Date())
-    }
-
-    private var exerciseStats: [ExerciseStats] {
-        statsService.groupedByExercise(workouts: filteredWorkouts, exercises: ExerciseRepository.all)
-    }
-
-    /// Adds up seconds and rounds only the total, so short workouts still count (UC-0008).
-    private var totalMinutes: Int {
-        filteredWorkouts.reduce(0) { $0 + $1.durationSeconds }.wholeMinutes
-    }
-
-    private var workoutCount: Int {
-        filteredWorkouts.count
-    }
-
-    private var muscleGroupStats: [MuscleGroupStats] {
-        statsService.groupedByMuscleGroup(workouts: filteredWorkouts, exercises: ExerciseRepository.all)
+    init(statsService: StatsService = DefaultStatsService()) {
+        self.statsService = statsService
     }
 
     // MARK: - Body
@@ -69,14 +43,26 @@ struct StatsView: View {
 
     // MARK: - Stats Content
     private var statsContent: some View {
-        ScrollView {
+        // One snapshot per render: every section shows the same period as of the same "now".
+        let stats = statsService.snapshot(
+            of: allWorkouts,
+            period: selectedPeriod,
+            exercises: ExerciseRepository.all,
+            referenceDate: Date()
+        )
+
+        return ScrollView {
             VStack(spacing: 16) {
                 periodPicker
-                summarySection
-                muscleGroupSection
-                chartSection
+                summarySection(stats)
+                MuscleGroupCard(stats: stats.muscleGroupStats)
+                ActivityChart(
+                    chartData: stats.chartData,
+                    selectedPeriod: selectedPeriod,
+                    totalMinutes: stats.totalMinutes // Used in accessibility description
+                )
                 allWorkoutsLink
-                exercisesSection
+                exercisesSection(stats)
             }
             .padding()
         }
@@ -93,11 +79,11 @@ struct StatsView: View {
     }
 
     // MARK: - Summary Section
-    private var summarySection: some View {
+    private func summarySection(_ stats: StatsSnapshot) -> some View {
         HStack(spacing: 16) {
             SummaryCard(
                 title: "Total Time",
-                value: "\(totalMinutes)",
+                value: "\(stats.totalMinutes)",
                 unit: "min",
                 systemImage: "clock.fill",
                 iconColor: .teal
@@ -105,7 +91,7 @@ struct StatsView: View {
 
             SummaryCard(
                 title: "Workouts",
-                value: "\(workoutCount)",
+                value: "\(stats.workoutCount)",
                 unit: selectedPeriod.summaryUnit,
                 systemImage: "flame.fill",
                 iconColor: .orange
@@ -113,25 +99,10 @@ struct StatsView: View {
         }
     }
 
-    // MARK: - Muscle Group Section
-    private var muscleGroupSection: some View {
-        MuscleGroupCard(stats: muscleGroupStats)
-    }
-
-    // MARK: - Chart Section
-    @ViewBuilder
-    private var chartSection: some View {
-        ActivityChart(
-            chartData: chartData,
-            selectedPeriod: selectedPeriod,
-            totalMinutes: totalMinutes // Used in accessibility description
-        )
-    }
-
     // MARK: - All Workouts Link
     private var allWorkoutsLink: some View {
         NavigationLink {
-            AllWorkoutsView()
+            WorkoutListView(title: "All Workouts", emptyDescription: "Complete a workout to see it here")
         } label: {
             HStack {
                 Label("All Workouts", systemImage: "list.bullet")
@@ -146,22 +117,24 @@ struct StatsView: View {
     }
 
     // MARK: - Exercises Section
-    private var exercisesSection: some View {
+    private func exercisesSection(_ stats: StatsSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("By Exercise")
                 .font(.headline)
 
-            if exerciseStats.isEmpty {
+            if stats.exerciseStats.isEmpty {
                 Text("No exercises in this period")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
             } else {
-                ForEach(exerciseStats) { stat in
+                ForEach(stats.exerciseStats) { stat in
                     NavigationLink {
                         WorkoutListView(
-                            workouts: filteredWorkouts.filter { $0.exerciseName == stat.exerciseName },
-                            title: stat.exerciseName
+                            title: stat.exerciseName,
+                            emptyDescription: "No workouts found for this selection",
+                            exerciseName: stat.exerciseName,
+                            since: stats.periodStart
                         )
                     } label: {
                         ExerciseStatsCard(stats: stat)

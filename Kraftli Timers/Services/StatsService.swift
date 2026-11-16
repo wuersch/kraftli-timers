@@ -54,6 +54,24 @@ struct MuscleGroupStats: Identifiable {
     var id: MuscleGroup { muscleGroup }
 }
 
+/// Everything the stats screen shows for one period, computed in one pass.
+struct StatsSnapshot {
+    /// The first moment of the period (the start of its first day or month).
+    let periodStart: Date
+    /// The workouts within the period.
+    let workouts: [WorkoutLog]
+    let chartData: [ChartDataPoint]
+    let exerciseStats: [ExerciseStats]
+    let muscleGroupStats: [MuscleGroupStats]
+
+    var workoutCount: Int { workouts.count }
+
+    /// Adds up seconds and rounds only the total, so short workouts still count (UC-0008).
+    var totalMinutes: Int {
+        workouts.reduce(0) { $0 + $1.durationSeconds }.wholeMinutes
+    }
+}
+
 /// Protocol for computing workout statistics.
 ///
 /// Abstracted as a protocol to enable testing with mock data.
@@ -110,6 +128,28 @@ protocol StatsService {
         workouts: [WorkoutLog],
         exercises: [ExerciseInfo]
     ) -> [MuscleGroupStats]
+}
+
+extension StatsService {
+    /// Computes the stats of `period` as of `referenceDate`.
+    ///
+    /// One call per render: the period is filtered once and every figure is derived
+    /// from the same workouts and the same "now".
+    func snapshot(
+        of workouts: [WorkoutLog],
+        period: TimePeriod,
+        exercises: [ExerciseInfo],
+        referenceDate: Date
+    ) -> StatsSnapshot {
+        let filtered = filterByPeriod(workouts: workouts, period: period, referenceDate: referenceDate)
+        return StatsSnapshot(
+            periodStart: period.dateRange(from: referenceDate).start,
+            workouts: filtered,
+            chartData: totalMinutesPerBucket(workouts: filtered, period: period, referenceDate: referenceDate),
+            exerciseStats: groupedByExercise(workouts: filtered, exercises: exercises),
+            muscleGroupStats: groupedByMuscleGroup(workouts: filtered, exercises: exercises)
+        )
+    }
 }
 
 /// Default implementation of StatsService.

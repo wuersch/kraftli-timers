@@ -2,44 +2,76 @@
 //  WorkoutListView.swift
 //  Kraftli Timers
 //
-//  Displays a list of workout logs with optional editing.
+//  Displays a list of workout logs with editing and deleting.
 //
 
 import SwiftData
 import SwiftUI
 
-// MARK: - Sheet State
-
-/// Sheet state for workout editing.
-enum WorkoutActiveSheet: Identifiable {
-    case edit(WorkoutLog)
-
-    var id: String {
-        switch self {
-        case .edit(let workout): return workout.id.uuidString
-        }
-    }
-}
-
-// MARK: - Workout List View
-
+/// A list of recorded workouts, newest first: all of them, or those of one exercise
+/// since a given date.
+///
+/// ## SwiftUI: a query configured in `init`
+/// The view fetches its own workouts with `@Query` instead of being handed an array.
+/// A `@Query` is normally declared with fixed arguments; when the filter depends on the
+/// view's parameters, it is built in `init` and assigned to the property wrapper's
+/// storage (`_workouts`). Because the query is live, a deleted or edited workout
+/// updates the list at once. An array passed in from the parent would be a snapshot
+/// that still holds a workout after it was deleted.
 struct WorkoutListView: View {
     // MARK: - Properties
     @Environment(\.modelContext) private var modelContext
+    @Query private var workouts: [WorkoutLog]
 
-    let workouts: [WorkoutLog]
-    let title: String
+    private let title: String
+    private let emptyDescription: String
 
-    @State private var activeSheet: WorkoutActiveSheet?
+    @State private var workoutToEdit: WorkoutLog?
     @State private var editMode: EditMode = .inactive
+
+    /// - Parameters:
+    ///   - title: The navigation title.
+    ///   - emptyDescription: Shown when no workout matches.
+    ///   - exerciseName: Only this exercise's workouts; nil for all exercises.
+    ///   - start: Only workouts from this date on; nil for all time.
+    init(
+        title: String,
+        emptyDescription: String,
+        exerciseName: String? = nil,
+        since start: Date? = nil
+    ) {
+        self.title = title
+        self.emptyDescription = emptyDescription
+
+        let start = start ?? .distantPast
+        let filter: Predicate<WorkoutLog>
+        if let exerciseName {
+            filter = #Predicate { $0.exerciseName == exerciseName && $0.date >= start }
+        } else {
+            filter = #Predicate { $0.date >= start }
+        }
+        _workouts = Query(filter: filter, sort: \.date, order: .reverse)
+    }
 
     // MARK: - Body
     var body: some View {
-        Group {
+        List {
+            ForEach(workouts) { workout in
+                WorkoutRow(workout: workout) { tappedWorkout in
+                    workoutToEdit = tappedWorkout
+                }
+                .cardListRow()
+            }
+            .onDelete(perform: deleteWorkouts)
+        }
+        .cardListStyle(isEmpty: workouts.isEmpty)
+        .overlay {
             if workouts.isEmpty {
-                emptyStateView
-            } else {
-                workoutList
+                ContentUnavailableView(
+                    "No Workouts",
+                    systemImage: "list.bullet",
+                    description: Text(emptyDescription)
+                )
             }
         }
         .navigationTitle(title)
@@ -60,35 +92,14 @@ struct WorkoutListView: View {
             }
         }
         .environment(\.editMode, $editMode)
-        .sheet(item: $activeSheet) { sheet in
-            switch sheet {
-            case .edit(let workout):
-                WorkoutLogEditorView(workout: workout)
+        .sheet(item: $workoutToEdit) { workout in
+            WorkoutLogEditorView(workout: workout)
+        }
+        .onChange(of: workouts.isEmpty) { _, isEmpty in
+            if isEmpty {
+                editMode = .inactive
             }
         }
-    }
-
-    // MARK: - Empty State
-    private var emptyStateView: some View {
-        ContentUnavailableView(
-            "No Workouts",
-            systemImage: "list.bullet",
-            description: Text("No workouts found for this selection")
-        )
-    }
-
-    // MARK: - Workout List
-    private var workoutList: some View {
-        List {
-            ForEach(workouts) { workout in
-                WorkoutRow(workout: workout) { tappedWorkout in
-                    activeSheet = .edit(tappedWorkout)
-                }
-                .cardListRow()
-            }
-            .onDelete(perform: deleteWorkouts)
-        }
-        .cardListStyle(isEmpty: workouts.isEmpty)
     }
 
     // MARK: - Actions
@@ -101,39 +112,42 @@ struct WorkoutListView: View {
 }
 
 // MARK: - Preview
-#Preview("With Workouts") {
+#Preview("All Workouts") {
+    NavigationStack {
+        WorkoutListView(title: "All Workouts", emptyDescription: "Complete a workout to see it here")
+    }
+    .modelContainer(previewContainer)
+}
+
+#Preview("One Exercise") {
     NavigationStack {
         WorkoutListView(
-            workouts: [
-                WorkoutLog(
-                    exerciseName: "6-Count Burpees",
-                    timerKind: .emom,
-                    durationSeconds: 1200,
-                    repsCompleted: 100,
-                    roundsCompleted: nil
-                ),
-                WorkoutLog(
-                    exerciseName: "Pull-ups",
-                    timerKind: .amrap,
-                    durationSeconds: 900,
-                    repsCompleted: nil,
-                    roundsCompleted: 15
-                ),
-                WorkoutLog(
-                    exerciseName: "Squats",
-                    timerKind: .amrap,
-                    durationSeconds: 600,
-                    repsCompleted: nil,
-                    roundsCompleted: 30
-                ),
-            ],
-            title: "Recent Workouts"
+            title: "Pull-ups",
+            emptyDescription: "No workouts found for this selection",
+            exerciseName: "Pull-ups"
         )
     }
+    .modelContainer(previewContainer)
 }
 
 #Preview("Empty") {
     NavigationStack {
-        WorkoutListView(workouts: [], title: "Workouts")
+        WorkoutListView(title: "Workouts", emptyDescription: "No workouts found for this selection")
     }
+    .modelContainer(for: WorkoutLog.self, inMemory: true)
 }
+
+@MainActor
+private let previewContainer: ModelContainer = {
+    let container = try! ModelContainer(
+        for: WorkoutLog.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    let workouts = [
+        WorkoutLog(exerciseName: "6-Count Burpees", timerKind: .emom, durationSeconds: 1200, repsCompleted: 100),
+        WorkoutLog(exerciseName: "Pull-ups", timerKind: .amrap, durationSeconds: 900, roundsCompleted: 15),
+        WorkoutLog(exerciseName: "Squats", timerKind: .amrap, durationSeconds: 600, roundsCompleted: 30)
+    ]
+    workouts.forEach(container.mainContext.insert)
+    return container
+}()

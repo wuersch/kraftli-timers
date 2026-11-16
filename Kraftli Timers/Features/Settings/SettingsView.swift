@@ -44,26 +44,18 @@ struct SettingsView: View {
     // MARK: - Actions
 
     private func clearWorkouts() {
-        for workout in workouts {
-            modelContext.delete(workout)
-        }
+        workouts.forEach(modelContext.delete)
         saveContext()
     }
 
     private func clearPresets() {
-        for preset in presets {
-            modelContext.delete(preset)
-        }
+        presets.forEach(modelContext.delete)
         saveContext()
     }
 
     private func clearAll() {
-        for workout in workouts {
-            modelContext.delete(workout)
-        }
-        for preset in presets {
-            modelContext.delete(preset)
-        }
+        workouts.forEach(modelContext.delete)
+        presets.forEach(modelContext.delete)
         saveContext()
     }
 
