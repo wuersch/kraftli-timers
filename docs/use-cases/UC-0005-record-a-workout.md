@@ -95,6 +95,12 @@ A workout ends.
     saves one Health workout for the whole session, with the time between steps as pauses, and
     each step's entry is linked to it.
   - 3d2. Use case continues at step 6.
+- 3e. The Watch ran the workout but had not begun tracking it when the workout ended:
+  - 3e1. No Health workout is saved for it. Tracking that begins only after the workout has ended
+    is discarded, because it would cover a time span in which no workout took place.
+  - 3e2. The history entry is kept. System tells the athlete that the workout wasn't saved to
+    Apple Health, as in 3a.
+  - 3e3. Use case continues at step 6.
 - 4a. The devices are out of contact when the workout ends:
   - 4a1. The report is delivered once contact returns, possibly after the athlete has left the summary.
   - 4a2. Use case continues at step 5.
@@ -104,7 +110,11 @@ A workout ends.
 ## Special Requirements
 
 - Permission to use Apple Health is requested when it is first needed, never at app launch. On the
-  iPhone this is the first Health save; on the Watch, the first workout start.
+  iPhone this is the first Health save. On the Watch it is the first workout start, and the
+  workout begins only once the athlete has answered
+  ([UC-0004](UC-0004-run-a-workout-on-apple-watch.md) extension 1a). A workout started on the
+  iPhone doesn't wait for the Watch's answer: the iPhone runs it itself
+  ([UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md) extension 1a).
 - History entries sync through the athlete's private iCloud database
   ([ADR-0008](../adr/ADR-0008-swiftdata-cloudkit-persistence.md)).
 - The app's history is the source of truth; the Apple Health entry is a linked copy. Deleting a
@@ -119,4 +129,6 @@ A workout ends.
     saves only a partial Health workout.
   - The iPhone's Health workout spans the nominal duration ending at completion, ignoring the
     actual start and pauses (step 3).
-  - A failed or denied Health save is silent today (3a, 3b).
+  - A failed or denied Health save is silent today (3a, 3b, 3e).
+  - When the Watch begins tracking only after the workout has ended, that tracking is saved to
+    Apple Health with the wrong time span instead of being discarded (3e).
