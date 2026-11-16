@@ -19,7 +19,10 @@
 //     a viewer, kept on screen by a keep-alive session.
 //
 //  ## Watch-started workout
-//  The Watch owns it from the first moment and starts its session alongside.
+//  The Watch owns it from the first moment and starts its session alongside. The one
+//  exception is the very first workout: while the athlete has not yet decided on Apple
+//  Health access, the Watch asks first and takes ownership only after the answer
+//  (UC-0004 extension 1a), so the workout doesn't run behind the question.
 //
 
 import Foundation
@@ -43,9 +46,15 @@ final class WatchWorkoutStarter {
     /// An iPhone-started workout the UI should present. Cleared with `requestPresented()`.
     private(set) var requestedWorkout: StartRequest?
 
+    /// A Watch-started workout that is waiting for the athlete's answer about Apple Health
+    /// access before it starts. The UI shows it as starting.
+    private(set) var workoutAwaitingHealthAccess: UUID?
+
     @ObservationIgnored private let controller: TimerSessionController
     @ObservationIgnored private let startHealthSession: (TimerKind) async throws -> Void
     @ObservationIgnored private let discardHealthSession: () -> Void
+    @ObservationIgnored private let isHealthAccessUndecided: () -> Bool
+    @ObservationIgnored private let requestHealthAccess: () async -> Void
     @ObservationIgnored private let startKeepAlive: () -> Void
     @ObservationIgnored private let endKeepAlive: () -> Void
     @ObservationIgnored private let now: () -> Date
@@ -59,11 +68,18 @@ final class WatchWorkoutStarter {
     /// The HealthKit session start for the current request, exposed so tests can await it.
     @ObservationIgnored private(set) var ownershipTask: Task<Void, Never>?
 
+    /// The start of the current Watch-started workout: the wait for the Health access answer
+    /// (if one is needed) and the session start that follows. Exposed so tests can await it.
+    @ObservationIgnored private(set) var watchStartTask: Task<Void, Never>?
+
     /// - Parameters:
     ///   - controller: The Watch's timer session.
     ///   - transport: Its transport, whose start requests this starter handles.
     ///   - startHealthSession: Starts (and mirrors) a HealthKit workout session.
     ///   - discardHealthSession: Ends the current session without saving it.
+    ///   - isHealthAccessUndecided: True while the athlete has never been asked for Apple
+    ///     Health access.
+    ///   - requestHealthAccess: Asks for it and returns once the athlete has answered.
     ///   - startKeepAlive / endKeepAlive: Keep the app on screen without a HealthKit session.
     ///   - now: Wall-clock source. Injectable so tests can drive time deterministically.
     ///   - schedulesWatchdog: Tests turn it off and call `watchdogFired()` directly.
@@ -72,6 +88,8 @@ final class WatchWorkoutStarter {
         transport: CompositeTimerSyncTransport,
         startHealthSession: @escaping (TimerKind) async throws -> Void,
         discardHealthSession: @escaping () -> Void,
+        isHealthAccessUndecided: @escaping () -> Bool = { false },
+        requestHealthAccess: @escaping () async -> Void = {},
         startKeepAlive: @escaping () -> Void = {},
         endKeepAlive: @escaping () -> Void = {},
         now: @escaping () -> Date = { Date() },
@@ -80,6 +98,8 @@ final class WatchWorkoutStarter {
         self.controller = controller
         self.startHealthSession = startHealthSession
         self.discardHealthSession = discardHealthSession
+        self.isHealthAccessUndecided = isHealthAccessUndecided
+        self.requestHealthAccess = requestHealthAccess
         self.startKeepAlive = startKeepAlive
         self.endKeepAlive = endKeepAlive
         self.now = now
@@ -120,14 +140,29 @@ final class WatchWorkoutStarter {
         _ = ensureHealthSession(startSession)
     }
 
-    /// Starts a workout from the Watch itself: owned here from the first moment.
+    /// Starts a workout from the Watch itself: owned here from the first moment — or, while
+    /// Apple Health access is still undecided, from the moment the athlete has answered.
     func startOnWatch(workoutID: UUID, config: TimerConfig) {
         cancelWatchdog()
+        cancelWatchStart()
         yieldedWorkoutID = nil
-        controller.startAsOwner(TimerState(workoutID: workoutID, owner: .watch, config: config, now: now()))
-        sessionStart = nil
-        _ = ensureHealthSession { [startHealthSession] in
-            try await startHealthSession(config.kind)
+
+        guard isHealthAccessUndecided() else {
+            beginWatchOwnedWorkout(workoutID: workoutID, config: config)
+            return
+        }
+
+        // Ask first (UC-0004 1a). The workout never starts without an answer: the request
+        // returns only once the athlete has decided, whichever way.
+        Logger.timerSync.info("Health access undecided; asking before starting workout \(workoutID)")
+        workoutAwaitingHealthAccess = workoutID
+        watchStartTask = Task { [weak self, requestHealthAccess] in
+            await requestHealthAccess()
+            // The screen may have closed while the question was open.
+            guard let self, !Task.isCancelled, self.workoutAwaitingHealthAccess == workoutID else { return }
+            self.workoutAwaitingHealthAccess = nil
+            self.beginWatchOwnedWorkout(workoutID: workoutID, config: config)
+            await self.watchStartTask?.value
         }
     }
 
@@ -140,6 +175,7 @@ final class WatchWorkoutStarter {
     /// the HealthKit session itself before calling this.
     func workoutEnded() {
         cancelWatchdog()
+        cancelWatchStart()
         ownershipTask = nil
         sessionStart = nil
         sessionStartedAt = nil
@@ -157,6 +193,44 @@ final class WatchWorkoutStarter {
     }
 
     // MARK: - Private
+
+    /// Takes ownership of a Watch-started workout and starts its HealthKit session alongside.
+    private func beginWatchOwnedWorkout(workoutID: UUID, config: TimerConfig) {
+        controller.startAsOwner(TimerState(workoutID: workoutID, owner: .watch, config: config, now: now()))
+        sessionStart = nil
+        let session = ensureHealthSession { [startHealthSession] in
+            try await startHealthSession(config.kind)
+        }
+        watchStartTask = Task { [weak self] in
+            guard await session.value else { return }
+            self?.watchSessionFinishedStarting(for: workoutID)
+        }
+    }
+
+    /// The session of a Watch-started workout is running. If the workout has ended
+    /// meanwhile, the session would only record time in which no workout took place, so
+    /// it is discarded instead of being saved later (UC-0005 extension 3e).
+    private func watchSessionFinishedStarting(for workoutID: UUID) {
+        let hasEnded: Bool
+        if controller.workoutID == workoutID {
+            hasEnded = controller.confirmedState?.isFinished(at: now()) ?? true
+        } else {
+            // Its screen closed. A newer workout may be using the session manager by now;
+            // only discard when none is.
+            hasEnded = controller.workoutID == nil
+        }
+        guard hasEnded else { return }
+        Logger.workoutSession.info("Session for workout \(workoutID) started after the workout ended; discarding it")
+        discardHealthSession()
+        sessionStart = nil
+        sessionStartedAt = nil
+    }
+
+    private func cancelWatchStart() {
+        watchStartTask?.cancel()
+        watchStartTask = nil
+        workoutAwaitingHealthAccess = nil
+    }
 
     /// Returns the shared session start, beginning one if none is recent enough.
     private func ensureHealthSession(_ start: @escaping () async throws -> Void) -> Task<Bool, Never> {

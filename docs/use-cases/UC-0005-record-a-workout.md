@@ -130,5 +130,3 @@ A workout ends.
   - The iPhone's Health workout spans the nominal duration ending at completion, ignoring the
     actual start and pauses (step 3).
   - A failed or denied Health save is silent today (3a, 3b, 3e).
-  - When the Watch begins tracking only after the workout has ended, that tracking is saved to
-    Apple Health with the wrong time span instead of being discarded (3e).
