@@ -39,7 +39,7 @@ struct WatchWorkoutCoordinator {
     /// to the iPhone for iPhone-started workouts, and dismisses.
     func stopAndCleanup(
         timer: some WorkoutTimer,
-        countdown: WatchCountdownCoordinator,
+        countdown: CountdownCoordinator,
         dismiss: DismissAction
     ) {
         countdown.cancelCountdown()

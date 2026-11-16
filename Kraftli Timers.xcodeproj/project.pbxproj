@@ -96,6 +96,7 @@
 				Features/Timer/AMRAP/AMRAPTimerModel.swift,
 				Features/Timer/EMOM/EMOMTimerModel.swift,
 				Features/Timer/ForTime/ForTimeTimerModel.swift,
+				Features/Timer/Shared/CountdownCoordinator.swift,
 				Features/Timer/Shared/TimerCoordinator.swift,
 				Features/Timer/Shared/TimerStateRendering.swift,
 				Features/Timer/Shared/UISeparator.swift,

@@ -215,9 +215,11 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `TimerPresetView` | Preset list with CRUD operations |
 | `TimerPresetEditorView` | Create/edit preset sheet |
 | `ExerciseSelectionView` | Exercise browser with filtering |
-| `EMOMTimerView` | Full-screen EMOM timer |
-| `AMRAPTimerView` | Full-screen AMRAP timer |
-| `ForTimeTimerView` | Full-screen For Time timer: circling arc, tap = done |
+| `TimerScreen` | The screen all three timer kinds run on: starts the workout, follows the timer session, countdown, gestures. A container view; the kinds fill its ring and center slots |
+| `EMOMTimerView` | EMOM face of `TimerScreen`: two rings, interval time |
+| `AMRAPTimerView` | AMRAP face of `TimerScreen`: one ring, round count |
+| `ForTimeTimerView` | For Time face of `TimerScreen`: circling arc, tap = done |
+| `CountdownCoordinator` | 3-2-1-GO display toward the shared start date (shared with the Watch; the iPhone beeps on each count) |
 | `StatsView` | Workout statistics dashboard |
 | `WorkoutListView` | Filtered workout list (by exercise) |
 | `AllWorkoutsView` | Global workout list with edit/delete |
@@ -288,9 +290,10 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `WatchPresetEditorView` | Create/edit preset with Digital Crown input |
 | `WatchExerciseListView` | Simple exercise picker with checkmark selection |
 | `DigitalCrownStepperView` | Reusable Digital Crown numeric input |
-| `WatchEMOMTimerView` | Full-screen EMOM timer for Watch |
-| `WatchAMRAPTimerView` | Full-screen AMRAP timer for Watch |
-| `WatchForTimeTimerView` | Full-screen For Time timer for Watch (tap = done) |
+| `WatchWorkoutScreen` | The screen all three timer kinds run on, on the Watch: starts or joins the workout, countdown, controls page, heart rate and calories. The kinds supply their metric rows |
+| `WatchEMOMTimerView` | EMOM face of `WatchWorkoutScreen` |
+| `WatchAMRAPTimerView` | AMRAP face of `WatchWorkoutScreen` (tap = round) |
+| `WatchForTimeTimerView` | For Time face of `WatchWorkoutScreen` (tap = done) |
 
 ### watchOS Services
 | Service | Purpose |
@@ -298,7 +301,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `WatchTimerRuntime` | Watch: app-lifetime owner of session manager, timer session and starter (shared instance) |
 | `WatchWorkoutStarter` | Watch: answers start requests, takes ownership or yields, Watch-started workouts (@Observable) |
 | `WatchTimerSyncService` | Watch: sends `WorkoutSessionEndedMessage` to iPhone (protocol → default → silent) |
-| `WatchWorkoutCoordinator` | Watch: end-of-workout logic shared by all Watch timer views (end session, log or report) |
+| `WatchWorkoutCoordinator` | Watch: end-of-workout logic of `WatchWorkoutScreen` (end session, log or report) |
 | `WorkoutSessionManager` | HKWorkoutSession/HKLiveWorkoutBuilder lifecycle (@Observable) |
 | `WorkoutAppDelegate` | WKApplicationDelegate: receives workout configs from iPhone |
 
