@@ -3,8 +3,8 @@
 //  Kraftli Timers
 //
 //  Startup data maintenance for TimerPreset records, shared by the iPhone
-//  and Watch targets. Consolidates migration + CloudKit deduplication that
-//  was previously copy-pasted into each app's entry point (and had diverged).
+//  and Watch targets: CloudKit deduplication, kept in one place for both
+//  apps' entry points.
 //
 
 import Foundation
@@ -20,13 +20,7 @@ import os
 @MainActor
 enum PresetMaintenance {
 
-    /// Runs all maintenance in the required order: migration before dedup.
-    ///
-    /// Migration backfills `exerciseId` from the legacy `exercise` relationship,
-    /// which `contentIdentity` keys on. Identity already falls back to
-    /// `exercise?.id` so grouping is correct even for un-migrated rows, but
-    /// migrating first ensures any surviving preset ends up with `exerciseId`
-    /// populated. A single entry point keeps that ordering in one place.
+    /// Runs all startup maintenance. A single entry point for both apps.
     ///
     /// - Parameter deletesDuplicates: Pass `true` on the iPhone only. Restricting
     ///   deletion to a single device class makes cross-device double-deletion
@@ -35,45 +29,7 @@ enum PresetMaintenance {
     ///   copies of a synced pair (issue #43). The Watch instead defers — the
     ///   iPhone's deletions sync back to it.
     static func performStartupMaintenance(in context: ModelContext, deletesDuplicates: Bool) {
-        migrateExerciseRelationships(in: context)
         deduplicatePresets(in: context, deletesDuplicates: deletesDuplicates)
-    }
-
-    // MARK: - Migration
-
-    /// Migrates presets from the legacy `exercise` relationship to `exerciseId`,
-    /// allowing exercises to stop being persisted while keeping preset data intact.
-    static func migrateExerciseRelationships(in context: ModelContext) {
-        let descriptor = FetchDescriptor<TimerPreset>()
-        let presets: [TimerPreset]
-        do {
-            presets = try context.fetch(descriptor)
-        } catch {
-            Logger.data.error("Preset migration fetch failed: \(error)")
-            return
-        }
-
-        var migrated = false
-        for preset in presets where backfillExerciseId(preset) {
-            migrated = true
-        }
-
-        guard migrated else { return }
-        do {
-            try context.save()
-        } catch {
-            Logger.data.error("Preset migration save failed: \(error)")
-        }
-    }
-
-    /// Pure per-preset migration rule: if a preset carries the legacy `exercise`
-    /// relationship but no `exerciseId`, copy the id across. Returns whether it
-    /// mutated the preset. Internal so it can be unit-tested without a store.
-    @discardableResult
-    static func backfillExerciseId(_ preset: TimerPreset) -> Bool {
-        guard let exercise = preset.exercise, preset.exerciseId == nil else { return false }
-        preset.exerciseId = exercise.id
-        return true
     }
 
     // MARK: - Deduplication

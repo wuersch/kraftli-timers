@@ -33,7 +33,7 @@ data that never changes doesn't need persistence or sync, and that removes the d
 - **Loading:** `ExerciseRepository` loads the JSON into `ExerciseInfo` values at startup on both devices.
 - **Presets** store an `exerciseId` instead of a relationship. A one-time migration copied existing relationships into it.
 - **Workout logs** store the exercise name as a copy, so the history stays readable if the library changes.
-- **Legacy model:** the old `Exercise` model stays in the SwiftData schema only so the migration can read old data.
+- **Legacy model:** the old `Exercise` model and the `TimerPreset.exercise` relationship stay in the SwiftData schema, unused. The migration has run on all devices and its code is removed (2026-11-16); the schema itself is left alone because CloudKit schema changes must be additive (ADR-0008).
 
 ### Consequences
 
@@ -44,8 +44,8 @@ data that never changes doesn't need persistence or sync, and that removes the d
   its workouts are logged as "Unknown" (UC-0006, UC-0005).
 - Bad, because stats match logs to muscle groups by name, so renaming an exercise detaches its
   older logs from their muscle group (UC-0008).
-- Bad, because a failure to load the library degrades silently to an empty list, and duplicate IDs in the JSON crash at startup.
-- Neutral: the legacy `Exercise` entity remains in the CloudKit schema until a cleanup migration removes it.
+- Bad, because a failure to load the library degrades silently to an empty list. (Duplicate IDs in the JSON no longer crash at startup: the first entry wins.)
+- Neutral: the legacy `Exercise` entity remains in the local and CloudKit schema, unused.
 
 ## Pros and Cons of the Options
 

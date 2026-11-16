@@ -8,7 +8,9 @@
 import Foundation
 import SwiftData
 
-/// A persistable exercise model.
+/// The former persisted exercise model. No code reads or writes it any more: exercises
+/// are bundled reference data (`ExerciseInfo`, ADR-0009). It stays in the schema because
+/// the store syncs with CloudKit, where schema changes must be additive (ADR-0008).
 @Model
 final class Exercise {
     // MARK: - Persisted Properties
@@ -51,17 +53,5 @@ final class Exercise {
         self.formTips = formTips
         self.muscleGroup = muscleGroup
         self.difficulty = difficulty
-    }
-
-    /// Create Exercise from ExerciseData (JSON DTO)
-    convenience init(from data: ExerciseData) {
-        self.init(
-            id: data.id,
-            name: data.name,
-            exerciseDescription: data.description,
-            formTips: data.formTips,
-            muscleGroup: data.muscleGroup,
-            difficulty: data.difficulty
-        )
     }
 }

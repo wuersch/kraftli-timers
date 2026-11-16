@@ -7,7 +7,7 @@
 //  primary-device guard prevents cross-device data loss. See issue #43.
 //
 //  These exercise the *pure decision* functions (`duplicatesToDelete`,
-//  `electSurvivor`, `backfillExerciseId`, `contentIdentity`, `nextSortOrder`) on
+//  `electSurvivor`, `contentIdentity`, `nextSortOrder`) on
 //  constructed presets. We deliberately avoid a ModelContext/`save()`: saving the
 //  TimerPreset↔Exercise graph in a test container crashes under the CloudKit app
 //  host (a SwiftData trap unrelated to this logic), and the decisions are exactly
@@ -41,10 +41,6 @@ struct PresetMaintenanceTests {
         )
     }
 
-    private func makeExercise() -> Exercise {
-        Exercise(name: "Burpees", exerciseDescription: "", formTips: [], muscleGroup: .fullBody)
-    }
-
     // MARK: - Content identity
 
     @Test func contentIdentity_ignoresIdAndSortOrder() {
@@ -64,17 +60,6 @@ struct PresetMaintenanceTests {
         #expect(base.contentIdentity != differentDuration.contentIdentity)
         #expect(base.contentIdentity != differentReps.contentIdentity)
         #expect(base.contentIdentity != differentExercise.contentIdentity)
-    }
-
-    @Test func contentIdentity_fallsBackToLegacyExerciseRelationship() {
-        let exercise = makeExercise()
-        // Un-migrated row: exercise relationship set, exerciseId still nil.
-        let legacy = makePreset(exerciseId: nil)
-        legacy.exercise = exercise
-        // Already-migrated row pointing at the same exercise.
-        let migrated = makePreset(exerciseId: exercise.id)
-        // The fallback makes them identical regardless of migration state.
-        #expect(legacy.contentIdentity == migrated.contentIdentity)
     }
 
     // MARK: - Election
@@ -119,31 +104,6 @@ struct PresetMaintenanceTests {
         // Watch defers all deletion — what makes cross-device loss impossible.
         let losers = PresetMaintenance.duplicatesToDelete(among: identical, deletesDuplicates: false)
         #expect(losers.isEmpty)
-    }
-
-    // MARK: - Migration rule
-
-    @Test func backfillExerciseId_copiesFromLegacyRelationship() {
-        let exercise = makeExercise()
-        let preset = makePreset(exerciseId: nil)
-        preset.exercise = exercise
-
-        #expect(PresetMaintenance.backfillExerciseId(preset) == true)
-        #expect(preset.exerciseId == exercise.id)
-    }
-
-    @Test func backfillExerciseId_noOpWhenNothingToMigrate() {
-        let exercise = makeExercise()
-        // Already has an id → unchanged.
-        let migrated = makePreset(exerciseId: exercise.id)
-        migrated.exercise = exercise
-        #expect(PresetMaintenance.backfillExerciseId(migrated) == false)
-        #expect(migrated.exerciseId == exercise.id)
-
-        // No legacy relationship at all → unchanged.
-        let bare = makePreset(exerciseId: nil)
-        #expect(PresetMaintenance.backfillExerciseId(bare) == false)
-        #expect(bare.exerciseId == nil)
     }
 
     // MARK: - Sort order

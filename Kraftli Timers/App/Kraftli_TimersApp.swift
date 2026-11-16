@@ -39,7 +39,7 @@ struct Kraftli_TimersApp: App {
         let launchEnabled = UserDefaults.standard.object(forKey: "launchScreenEnabled") as? Bool ?? true
         _showLaunchScreen = State(initialValue: launchEnabled)
 
-        // Keep Exercise.self in schema for migration (reading old relationship data)
+        // Exercise.self is unused but stays in the schema: CloudKit schema changes are additive only (ADR-0008)
         let schema = Schema([
             Exercise.self,
             TimerPreset.self,
@@ -117,7 +117,7 @@ struct Kraftli_TimersApp: App {
                 }
             }
             .task {
-                // Run data migrations after the UI is up to minimize SQLite lock time
+                // Run data maintenance after the UI is up to minimize SQLite lock time
                 // during launch. Holding a DB lock while suspended causes 0xdead10cc kills.
                 // iPhone is the primary device: it alone deletes CloudKit duplicates.
                 PresetMaintenance.performStartupMaintenance(
