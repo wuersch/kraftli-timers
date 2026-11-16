@@ -300,7 +300,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | Service | Purpose |
 |---------|---------|
 | `WatchTimerRuntime` | Watch: app-lifetime owner of session manager, timer session and starter (shared instance) |
-| `WatchWorkoutStarter` | Watch: answers start requests, takes ownership or yields, Watch-started workouts (@Observable) |
+| `WatchWorkoutStarter` | Watch: answers start requests, takes ownership or yields, Watch-started workouts (asks for Health access first while undecided; discards a session that starts after its workout ended) (@Observable) |
 | `WatchTimerSyncService` | Watch: sends `WorkoutSessionEndedMessage` to iPhone (protocol → default → silent) |
 | `WatchWorkoutCoordinator` | Watch: end-of-workout logic of `WatchWorkoutScreen` (end session, log or report) |
 | `WorkoutSessionManager` | HKWorkoutSession/HKLiveWorkoutBuilder lifecycle (@Observable) |

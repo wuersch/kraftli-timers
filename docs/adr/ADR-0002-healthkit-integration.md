@@ -1,6 +1,6 @@
 # ADR-0002: Integrate Apple Health via HealthKit workout sessions on the Watch, linked to app logs by workout ID
 
-- **Status:** approved
+- **Status:** implemented
 - **Date:** 2026-02-03 (amended 2026-10-25 by ADR-0006; migrated 2026-10-31; amended 2026-11-16)
 - **Deciders:** Michael Würsch
 
@@ -128,7 +128,7 @@ runtime, and it allows exactly one save per workout.
 
 - Amended by [ADR-0006](ADR-0006-single-owner-timer-state.md): ownership decides the Health save,
   replacing `watchHandledWorkout`.
-- **Amendment 2026-11-16** (not yet implemented), on Watch authorization and late sessions:
+- **Amendment 2026-11-16**, on Watch authorization and late sessions:
   - Problem: a Watch-started workout took ownership at once and started its session alongside.
     On first use the session start raised the permission question while the timer was already
     running. A short workout could complete behind the question; the session then started

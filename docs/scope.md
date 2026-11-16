@@ -43,7 +43,7 @@ Interaction design (screens, gestures, copy): [use-cases/ui-spec.md](use-cases/u
 | ID | Decision | Status |
 |----|----------|--------|
 | [ADR-0001](adr/ADR-0001-settings-pattern.md) | User preferences in one @Observable object backed by UserDefaults | draft |
-| [ADR-0002](adr/ADR-0002-healthkit-integration.md) | Apple Health via HealthKit workout sessions on the Watch | approved |
+| [ADR-0002](adr/ADR-0002-healthkit-integration.md) | Apple Health via HealthKit workout sessions on the Watch | implemented |
 | [ADR-0003](adr/ADR-0003-cross-device-timer-anchoring.md) | Anchor pause/resume on HealthKit's transition date | superseded by ADR-0006 |
 | [ADR-0004](adr/ADR-0004-application-context-timer-command.md) | Application context as timer-command channel | superseded by ADR-0006 |
 | [ADR-0005](adr/ADR-0005-mirrored-control-arbitration.md) | HealthKit as sole pause/resume channel while mirrored | superseded by ADR-0006 |

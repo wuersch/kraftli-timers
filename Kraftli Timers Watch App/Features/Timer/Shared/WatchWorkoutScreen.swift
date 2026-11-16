@@ -79,9 +79,11 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
     /// Drives the accent color and the top-left glyph.
     private var timerKind: TimerKind { config.kind }
 
-    /// True while waiting to own (or follow) an iPhone-started workout.
+    /// True while waiting to own (or follow) an iPhone-started workout, or for the
+    /// athlete's answer about Apple Health access before the first Watch-started one.
     private var isStarting: Bool {
-        timerSession.isAwaitingOwner && timerSession.workoutID == workoutID
+        (timerSession.isAwaitingOwner && timerSession.workoutID == workoutID)
+            || starter.workoutAwaitingHealthAccess == workoutID
     }
 
     /// Live heart rate as an integer string, or "--" before the first sample.

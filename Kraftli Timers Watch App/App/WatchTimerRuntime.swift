@@ -52,6 +52,15 @@ final class WatchTimerRuntime {
                 try await Self.startSession(on: sessionManager, configuration: Self.configuration(for: kind))
             },
             discardHealthSession: { sessionManager.discardSession() },
+            isHealthAccessUndecided: { sessionManager.isAuthorizationUndecided },
+            requestHealthAccess: {
+                do {
+                    try await sessionManager.requestAuthorization()
+                } catch {
+                    // HealthKit couldn't ask. The workout runs without Health (UC-0004 2a).
+                    Logger.healthKit.error("Health access request failed: \(error.localizedDescription)")
+                }
+            },
             startKeepAlive: { startKeepAlive() },
             endKeepAlive: { endKeepAlive() }
         )

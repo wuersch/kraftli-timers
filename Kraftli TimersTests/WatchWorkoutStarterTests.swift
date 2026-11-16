@@ -33,9 +33,30 @@ struct WatchWorkoutStarterTests {
         var keepAliveEnds = 0
         var fails = false
 
+        /// True while the athlete has never been asked for Health access.
+        var accessUndecided = false
+        var accessRequests = 0
+        /// Held open by a test to keep the Health access question unanswered.
+        var answer: CheckedContinuation<Void, Never>?
+        var waitsForAnswer = false
+
         func start() throws {
             starts += 1
             if fails { throw SessionFailed() }
+        }
+
+        func requestAccess() async {
+            accessRequests += 1
+            if waitsForAnswer {
+                await withCheckedContinuation { answer = $0 }
+            }
+            accessUndecided = false
+        }
+
+        /// The athlete answers the Health access question.
+        func answerRequest() {
+            answer?.resume()
+            answer = nil
         }
     }
 
@@ -70,6 +91,8 @@ struct WatchWorkoutStarterTests {
                 transport: watchTransport,
                 startHealthSession: { _ in try health.start() },
                 discardHealthSession: { health.discards += 1 },
+                isHealthAccessUndecided: { health.accessUndecided },
+                requestHealthAccess: { await health.requestAccess() },
                 startKeepAlive: { health.keepAliveStarts += 1 },
                 endKeepAlive: { health.keepAliveEnds += 1 },
                 now: { clock.now },
@@ -242,5 +265,100 @@ struct WatchWorkoutStarterTests {
 
         #expect(setup.watch.role == nil)
         #expect(setup.health.keepAliveEnds == 1)
+    }
+
+    // MARK: - Watch-started workouts and Health access (UC-0004 1a, UC-0005 3e)
+
+    @Test func watchStart_accessDecided_ownsAtOnce() async {
+        let setup = Setup()
+        let workoutID = UUID()
+
+        setup.starter.startOnWatch(workoutID: workoutID, config: setup.config)
+
+        #expect(setup.watch.role == .owner && setup.watch.workoutID == workoutID)
+        #expect(setup.starter.workoutAwaitingHealthAccess == nil)
+        #expect(setup.health.accessRequests == 0)
+        await setup.starter.watchStartTask?.value
+        #expect(setup.health.starts == 1 && setup.health.discards == 0)
+    }
+
+    /// The workout must not run behind the Health access question.
+    @Test func watchStart_accessUndecided_waitsForTheAnswer() async {
+        let setup = Setup()
+        setup.health.accessUndecided = true
+        setup.health.waitsForAnswer = true
+        let workoutID = UUID()
+
+        setup.starter.startOnWatch(workoutID: workoutID, config: setup.config)
+        await Task.yield()
+
+        #expect(setup.starter.workoutAwaitingHealthAccess == workoutID)  // the UI shows "Starting…"
+        #expect(setup.watch.workoutID == nil)  // no timer state, so no countdown yet
+        #expect(setup.health.starts == 0)
+
+        // However long the question stays open, nothing starts.
+        setup.clock.advance(600)
+        await Task.yield()
+        #expect(setup.watch.workoutID == nil)
+
+        let task = setup.starter.watchStartTask
+        setup.health.answerRequest()
+        await task?.value
+
+        #expect(setup.starter.workoutAwaitingHealthAccess == nil)
+        #expect(setup.watch.role == .owner && setup.watch.workoutID == workoutID)
+        // The countdown starts from the answer, not from the tap.
+        #expect(setup.watch.renderedState?.startDate == setup.clock.now.addingTimeInterval(TimerState.countdownDuration))
+        #expect(setup.health.accessRequests == 1 && setup.health.starts == 1)
+    }
+
+    @Test func watchStart_screenClosedWhileAsking_neverStarts() async {
+        let setup = Setup()
+        setup.health.accessUndecided = true
+        setup.health.waitsForAnswer = true
+
+        setup.starter.startOnWatch(workoutID: UUID(), config: setup.config)
+        await Task.yield()
+        let task = setup.starter.watchStartTask
+        setup.starter.workoutEnded()
+        setup.health.answerRequest()
+        await task?.value
+
+        #expect(setup.watch.workoutID == nil)
+        #expect(setup.health.starts == 0)
+    }
+
+    /// Tracking that begins only after the workout has ended is discarded, not saved.
+    @Test func watchStart_sessionStartsAfterWorkoutCompleted_isDiscarded() async {
+        let setup = Setup()
+
+        setup.starter.startOnWatch(workoutID: UUID(), config: setup.config)
+        // The workout runs out before the session start is noticed.
+        setup.clock.advance(TimerState.countdownDuration + 600)
+        setup.watch.checkCompletion()
+        await setup.starter.watchStartTask?.value
+
+        #expect(setup.health.starts == 1 && setup.health.discards == 1)
+    }
+
+    @Test func watchStart_sessionStartsAfterScreenClosed_isDiscarded() async {
+        let setup = Setup()
+
+        setup.starter.startOnWatch(workoutID: UUID(), config: setup.config)
+        let task = setup.starter.watchStartTask
+        setup.starter.workoutEnded()
+        await task?.value
+
+        #expect(setup.health.discards == 1)
+    }
+
+    @Test func watchStart_sessionStartsWhileWorkoutRuns_isKept() async {
+        let setup = Setup()
+
+        setup.starter.startOnWatch(workoutID: UUID(), config: setup.config)
+        setup.clock.advance(TimerState.countdownDuration + 30)
+        await setup.starter.watchStartTask?.value
+
+        #expect(setup.health.starts == 1 && setup.health.discards == 0)
     }
 }

@@ -89,6 +89,3 @@ The athlete starts a preset on the Watch.
   Sessions can't be started on the Watch ([UC-0015](UC-0015-run-a-training-session.md)).
 - Out of scope (backlog): the iPhone following a workout started on the Watch
   ([backlog](../backlog.md)).
-- Known deviations (fix candidates):
-  - The first time, the countdown and the workout start while the question about Apple Health is
-    still open, so the workout runs behind it (1a).

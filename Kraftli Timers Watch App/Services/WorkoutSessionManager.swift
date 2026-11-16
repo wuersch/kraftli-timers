@@ -105,6 +105,15 @@ final class WorkoutSessionManager: NSObject {
 
     // MARK: - Authorization
 
+    /// True while the athlete has never been asked for Apple Health access on this Watch.
+    ///
+    /// HealthKit only reveals the *write* status, and that is all this needs: all types
+    /// are requested together, so an undecided workout type means the question was never
+    /// shown.
+    var isAuthorizationUndecided: Bool {
+        healthStore.authorizationStatus(for: HKObjectType.workoutType()) == .notDetermined
+    }
+
     /// Request authorization for workout-related HealthKit types.
     ///
     /// On Watch, we need write access for workouts, heart rate, and active energy.
