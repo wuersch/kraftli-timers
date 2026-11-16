@@ -45,6 +45,11 @@ The athlete starts a preset on the Watch.
 
 ## Extensions
 
+- 1a. Athlete has not yet decided whether the app may use Apple Health on the Watch:
+  - 1a1. System asks the athlete for access to Apple Health and waits for the answer. Neither the
+    countdown nor the workout begins before the athlete has answered, however long that takes.
+  - 1a2. Athlete answers.
+  - 1a3. Use case continues at step 2. If the athlete declined, extension 2a applies.
 - 2a. Access to Apple Health was denied on the Watch:
   - 2a1. The workout runs without heart rate and calories and isn't saved to Apple Health
     ([UC-0005](UC-0005-record-a-workout.md) extension 3a).
@@ -84,3 +89,6 @@ The athlete starts a preset on the Watch.
   Sessions can't be started on the Watch ([UC-0015](UC-0015-run-a-training-session.md)).
 - Out of scope (backlog): the iPhone following a workout started on the Watch
   ([backlog](../backlog.md)).
+- Known deviations (fix candidates):
+  - The first time, the countdown and the workout start while the question about Apple Health is
+    still open, so the workout runs behind it (1a).

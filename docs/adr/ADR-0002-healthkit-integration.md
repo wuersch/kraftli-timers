@@ -1,7 +1,7 @@
 # ADR-0002: Integrate Apple Health via HealthKit workout sessions on the Watch, linked to app logs by workout ID
 
-- **Status:** implemented
-- **Date:** 2026-02-03 (amended 2026-10-25 by ADR-0006; migrated 2026-10-31)
+- **Status:** approved
+- **Date:** 2026-02-03 (amended 2026-10-25 by ADR-0006; migrated 2026-10-31; amended 2026-11-16)
 - **Deciders:** Michael Würsch
 
 ## Context and Problem Statement
@@ -59,6 +59,15 @@ runtime, and it allows exactly one save per workout.
   - **iPhone**, at its first Health save: write workouts, read heart rate.
   - **Watch**, at every session start: write workouts, heart rate and active energy; read heart
     rate and active energy.
+  - **Watch-started workouts wait for the first answer** (amendment 2026-11-16): while HealthKit
+    reports that the request has never been shown, the Watch requests authorization *before* it
+    takes ownership of the workout, so the timer state, and with it the countdown, only starts
+    once the athlete has answered. Once decided, the request is a no-op and the workout starts at
+    once, as before.
+- **A session that starts too late is discarded** (amendment 2026-11-16): when a session finishes
+  starting for a workout that has already ended, the Watch discards it instead of saving it. This
+  extends the existing rule that a session is discarded when the iPhone turned out to own the
+  workout.
 - **Crash recovery** (issue #49): an orphaned session recovered after a crash or watchdog kill is
   **finalized** to Health (`endCollection(at:)` + `finishWorkout()`, end = recovery time), not
   discarded. A partial workout the user earned belongs in Health, and the user can delete it there. No
@@ -79,6 +88,10 @@ runtime, and it allows exactly one save per workout.
 - Bad, because iPhone-only workouts carry no heart rate or calories.
 - Bad, because a crash-recovered workout lands in Health without a matching in-app log, and its
   end date is the recovery time, which can inflate its duration.
+- Bad, because the very first Watch-started workout is held up by the permission question, and an
+  athlete who leaves it unanswered gets no workout at all.
+- Bad, because a workout whose session started too late has no Health entry, although the athlete
+  did the work. The history entry is kept.
 - Neutral: the Watch target needs the HealthKit capability and the "Workout processing" background
   mode. The extended runtime session type is "None".
 
@@ -115,6 +128,19 @@ runtime, and it allows exactly one save per workout.
 
 - Amended by [ADR-0006](ADR-0006-single-owner-timer-state.md): ownership decides the Health save,
   replacing `watchHandledWorkout`.
+- **Amendment 2026-11-16** (not yet implemented), on Watch authorization and late sessions:
+  - Problem: a Watch-started workout took ownership at once and started its session alongside.
+    On first use the session start raised the permission question while the timer was already
+    running. A short workout could complete behind the question; the session then started
+    afterwards and was saved with a time span in which no workout took place.
+  - Options considered: ask before the first workout starts (chosen); discard a session that
+    starts after its workout ended (chosen, as a safety net for any slow session start); ask at a
+    calmer moment such as first launch or the first preset (rejected: it contradicts "never at
+    launch" and adds a screen for a question that matters only once a workout starts).
+  - iPhone-started workouts are unchanged: the iPhone doesn't wait for the Watch's answer, takes
+    over after its timeout, and the Watch discards its session (ADR-0006 §4).
+  - Requirements: [UC-0004](../use-cases/UC-0004-run-a-workout-on-apple-watch.md) extension 1a,
+    [UC-0005](../use-cases/UC-0005-record-a-workout.md) extension 3e.
 - Requirements this decision serves: [UC-0005](../use-cases/UC-0005-record-a-workout.md).
 - Reference values:
   - Activity type: `.highIntensityIntervalTraining` for both EMOM and AMRAP, location indoor.
