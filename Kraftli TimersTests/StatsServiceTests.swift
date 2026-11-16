@@ -37,6 +37,28 @@ struct StatsServiceTests {
         Calendar.current.date(byAdding: .day, value: -daysAgo, to: reference) ?? reference
     }
 
+    // MARK: - snapshot Tests
+
+    /// Every figure of a snapshot comes from the same period's workouts.
+    @Test func snapshot_derivesAllFiguresFromThePeriodsWorkouts() {
+        let calendar = Calendar.current
+        let now = calendar.date(from: DateComponents(year: 2026, month: 1, day: 15, hour: 18))!
+        let workouts = [
+            makeWorkout(date: date(daysAgo: 0, from: now), exerciseName: "Burpees", durationMinutes: 20),
+            makeWorkout(date: date(daysAgo: 2, from: now), exerciseName: "Squats", durationMinutes: 10),
+            makeWorkout(date: date(daysAgo: 30, from: now), exerciseName: "Burpees", durationMinutes: 40)
+        ]
+
+        let stats = service.snapshot(of: workouts, period: .week, exercises: [], referenceDate: now)
+
+        #expect(stats.periodStart == calendar.date(from: DateComponents(year: 2026, month: 1, day: 9))!)
+        #expect(stats.workoutCount == 2)
+        #expect(stats.totalMinutes == 30)
+        #expect(stats.chartData.count == 7)
+        #expect(stats.chartData.reduce(0) { $0 + $1.minutes } == 30)
+        #expect(Set(stats.exerciseStats.map(\.exerciseName)) == ["Burpees", "Squats"])
+    }
+
     // MARK: - filterByPeriod Tests
 
     @Test func filterByPeriod_weekFilter_includesWorkoutsInCurrentWeek() {

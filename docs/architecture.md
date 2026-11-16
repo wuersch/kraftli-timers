@@ -221,8 +221,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `ForTimeTimerView` | For Time face of `TimerScreen`: circling arc, tap = done |
 | `CountdownCoordinator` | 3-2-1-GO display toward the shared start date (shared with the Watch; the iPhone beeps on each count) |
 | `StatsView` | Workout statistics dashboard |
-| `WorkoutListView` | Filtered workout list (by exercise) |
-| `AllWorkoutsView` | Global workout list with edit/delete |
+| `WorkoutListView` | Workout list with edit/delete: all workouts, or one exercise's within the chosen period. Runs its own query |
 | `WorkoutLogEditorView` | Edit reps/rounds for a workout |
 | `SettingsView` | User preferences and app info |
 
