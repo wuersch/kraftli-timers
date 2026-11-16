@@ -10,11 +10,11 @@ import Foundation
 
 /// Lightweight exercise data for in-memory use.
 ///
-/// This struct replaces the @Model Exercise class for runtime use.
-/// Exercises are static reference data loaded from bundled JSON at app startup.
+/// Exercises are static reference data, decoded straight from the bundled JSON at app
+/// startup (ADR-0009).
 /// Only the exercise ID is persisted in TimerPreset; exercise details are
 /// looked up from ExerciseRepository when needed.
-struct ExerciseInfo: Identifiable, Hashable, Sendable {
+struct ExerciseInfo: Identifiable, Hashable, Sendable, Decodable {
     let id: UUID
     let name: String
     let description: String
@@ -36,15 +36,5 @@ struct ExerciseInfo: Identifiable, Hashable, Sendable {
         self.formTips = formTips
         self.muscleGroup = muscleGroup
         self.difficulty = difficulty
-    }
-
-    /// Create ExerciseInfo from ExerciseData (JSON DTO).
-    init(from data: ExerciseData) {
-        self.id = data.id
-        self.name = data.name
-        self.description = data.description
-        self.formTips = data.formTips
-        self.muscleGroup = data.muscleGroup
-        self.difficulty = data.difficulty
     }
 }

@@ -7,99 +7,44 @@ import Foundation
 import Testing
 @testable import Kraftli_Timers
 
-// MARK: - Exercise @Model Tests (legacy, for migration)
-
-struct ExerciseTests {
-
-    @Test func init_fromExerciseData_mapsAllFields() {
-        let data = ExerciseData(
-            id: UUID(),
-            name: "Test Exercise",
-            description: "A test exercise for unit testing",
-            formTips: ["Keep back straight", "Breathe steadily"],
-            muscleGroup: .fullBody,
-            difficulty: .intermediate
-        )
-
-        let exercise = Exercise(from: data)
-
-        #expect(exercise.id == data.id)
-        #expect(exercise.name == data.name)
-        #expect(exercise.exerciseDescription == data.description)
-        #expect(exercise.formTips == data.formTips)
-        #expect(exercise.muscleGroup == data.muscleGroup)
-        #expect(exercise.difficulty == data.difficulty)
-    }
-
-    @Test func init_fromExerciseData_handlesNilDifficulty() {
-        let data = ExerciseData(
-            id: UUID(),
-            name: "Easy Exercise",
-            description: "No difficulty specified",
-            formTips: [],
-            muscleGroup: .core,
-            difficulty: nil
-        )
-
-        let exercise = Exercise(from: data)
-
-        #expect(exercise.difficulty == nil)
-        #expect(exercise.muscleGroup == .core)
-    }
-
-    @Test func init_fromExerciseData_preservesFormTips() {
-        let tips = ["Tip 1", "Tip 2", "Tip 3"]
-        let data = ExerciseData(
-            id: UUID(),
-            name: "Exercise with Tips",
-            description: "Has multiple form tips",
-            formTips: tips,
-            muscleGroup: .upperBody,
-            difficulty: .beginner
-        )
-
-        let exercise = Exercise(from: data)
-
-        #expect(exercise.formTips.count == 3)
-        #expect(exercise.formTips == tips)
-    }
-}
-
 // MARK: - ExerciseInfo Struct Tests
 
 struct ExerciseInfoTests {
 
-    @Test func init_fromExerciseData_mapsAllFields() {
-        let data = ExerciseData(
-            id: UUID(),
-            name: "Test Exercise",
-            description: "A test exercise for unit testing",
-            formTips: ["Keep back straight", "Breathe steadily"],
-            muscleGroup: .fullBody,
-            difficulty: .intermediate
-        )
+    @Test func decode_mapsAllFields() throws {
+        let json = Data("""
+        {
+            "id": "11111111-2222-3333-4444-555555555555",
+            "name": "Test Exercise",
+            "description": "A test exercise for unit testing",
+            "formTips": ["Keep back straight", "Breathe steadily"],
+            "muscleGroup": "\(MuscleGroup.fullBody.rawValue)",
+            "difficulty": "\(Difficulty.intermediate.rawValue)"
+        }
+        """.utf8)
 
-        let exerciseInfo = ExerciseInfo(from: data)
+        let exerciseInfo = try JSONDecoder().decode(ExerciseInfo.self, from: json)
 
-        #expect(exerciseInfo.id == data.id)
-        #expect(exerciseInfo.name == data.name)
-        #expect(exerciseInfo.description == data.description)
-        #expect(exerciseInfo.formTips == data.formTips)
-        #expect(exerciseInfo.muscleGroup == data.muscleGroup)
-        #expect(exerciseInfo.difficulty == data.difficulty)
+        #expect(exerciseInfo.id == UUID(uuidString: "11111111-2222-3333-4444-555555555555"))
+        #expect(exerciseInfo.name == "Test Exercise")
+        #expect(exerciseInfo.description == "A test exercise for unit testing")
+        #expect(exerciseInfo.formTips == ["Keep back straight", "Breathe steadily"])
+        #expect(exerciseInfo.muscleGroup == .fullBody)
+        #expect(exerciseInfo.difficulty == .intermediate)
     }
 
-    @Test func init_fromExerciseData_handlesNilDifficulty() {
-        let data = ExerciseData(
-            id: UUID(),
-            name: "Easy Exercise",
-            description: "No difficulty specified",
-            formTips: [],
-            muscleGroup: .core,
-            difficulty: nil
-        )
+    @Test func decode_handlesMissingDifficulty() throws {
+        let json = Data("""
+        {
+            "id": "11111111-2222-3333-4444-555555555555",
+            "name": "Easy Exercise",
+            "description": "No difficulty specified",
+            "formTips": [],
+            "muscleGroup": "\(MuscleGroup.core.rawValue)"
+        }
+        """.utf8)
 
-        let exerciseInfo = ExerciseInfo(from: data)
+        let exerciseInfo = try JSONDecoder().decode(ExerciseInfo.self, from: json)
 
         #expect(exerciseInfo.difficulty == nil)
         #expect(exerciseInfo.muscleGroup == .core)

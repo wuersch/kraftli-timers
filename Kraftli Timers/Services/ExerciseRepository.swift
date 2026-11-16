@@ -30,8 +30,7 @@ enum ExerciseRepository {
     /// This populates the in-memory cache with exercises from Exercises.json.
     /// Must be called before accessing `all` or `exercise(byId:)`.
     static func load() {
-        let data = ExerciseLoader.loadBundled()
-        exercises = data.map { ExerciseInfo(from: $0) }.sorted { $0.name < $1.name }
+        exercises = ExerciseLoader.loadBundled().sorted { $0.name < $1.name }
         exercisesById = Dictionary(exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 

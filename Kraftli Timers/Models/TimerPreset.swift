@@ -24,8 +24,9 @@ final class TimerPreset {
     /// This replaces the SwiftData relationship to avoid CloudKit sync issues.
     var exerciseId: UUID?
 
-    // MARK: - Relationships (kept for migration)
-    // TODO: Remove after migration has run on all devices
+    // MARK: - Legacy relationship
+    /// Unused since presets reference exercises by `exerciseId`. Kept because the store
+    /// syncs with CloudKit, where schema changes must be additive (ADR-0008).
     var exercise: Exercise?
 
     // MARK: - Computed Properties
@@ -141,8 +142,7 @@ extension TimerPreset {
             kindRawValue: kindRawValue,
             durationInterval: durationInterval,
             targetReps: targetReps,
-            // Fall back to the legacy relationship for any row not yet migrated.
-            exerciseId: exerciseId ?? exercise?.id
+            exerciseId: exerciseId
         )
     }
 }

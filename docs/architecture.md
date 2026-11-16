@@ -13,7 +13,7 @@ Quick reference for the core domain types:
 | `TimerPreset` | Saved timer configuration: id, kind, duration (0 for For Time), exerciseId, reps (EMOM, For Time), sortOrder |
 | `TimerKind` | Enum: EMOM \| AMRAP \| For Time |
 | `ExerciseInfo` | Bundled, in-memory exercise reference data: id, name, description, formTips, muscleGroup, difficulty ([ADR-0009](adr/ADR-0009-bundled-exercise-library.md)) |
-| `Exercise` | Legacy SwiftData model, kept in the schema for migration only |
+| `Exercise` | Legacy SwiftData model, unused; kept in the schema because CloudKit schema changes are additive only |
 | `WorkoutLog` | Completed workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID |
 | `MuscleGroup` | Enum: fullBody \| upperBody \| lowerBody \| core |
 | `Difficulty` | Enum: beginner \| intermediate \| advanced |
@@ -42,7 +42,7 @@ final class TimerPreset {
     var targetReps: Int?          // EMOM and For Time; nil for AMRAP
     var sortOrder: Int            // For list ordering
     var exerciseId: UUID?         // Reference into the bundled library
-    var exercise: Exercise?       // Legacy relationship (migration only)
+    var exercise: Exercise?       // Legacy relationship (unused)
 
     // Computed
     var kind: TimerKind
@@ -81,8 +81,8 @@ struct ExerciseInfo: Identifiable, Hashable, Sendable {
     let muscleGroup: MuscleGroup
     let difficulty: Difficulty?
 }
-// ExerciseRepository loads Exercises.json at startup; the legacy `Exercise` @Model stays in the
-// schema only so the exerciseId migration can read old relationships (ADR-0009).
+// ExerciseRepository decodes Exercises.json into ExerciseInfo at startup; the legacy `Exercise`
+// @Model stays in the schema, unused (ADR-0009).
 ```
 
 ### WorkoutLog (SwiftData @Model)

@@ -26,7 +26,7 @@ struct Kraftli_Timers_Watch_AppApp: App {
         // Activate WatchConnectivity for real-time sync with iPhone
         WatchConnectivityService.shared.activate()
 
-        // Keep Exercise.self in schema for migration (reading old relationship data)
+        // Exercise.self is unused but stays in the schema: CloudKit schema changes are additive only (ADR-0008)
         let schema = Schema([
             Exercise.self,
             TimerPreset.self,

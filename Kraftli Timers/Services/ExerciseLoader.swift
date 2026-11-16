@@ -8,22 +8,12 @@
 import Foundation
 import os
 
-/// Data transfer object for JSON decoding
-struct ExerciseData: Codable, Identifiable {
-    let id: UUID
-    let name: String
-    let description: String
-    let formTips: [String]
-    let muscleGroup: MuscleGroup
-    let difficulty: Difficulty?
-}
-
 /// Loads exercises from bundled JSON file.
 enum ExerciseLoader {
 
     /// Load exercises from bundled Exercises.json (synchronous).
     /// Used for initial seeding during app launch.
-    static func loadBundled() -> [ExerciseData] {
+    static func loadBundled() -> [ExerciseInfo] {
         guard let url = Bundle.main.url(forResource: "Exercises", withExtension: "json") else {
             Logger.data.warning("Exercises.json not found in bundle")
             return []
@@ -31,7 +21,7 @@ enum ExerciseLoader {
 
         do {
             let data = try Data(contentsOf: url)
-            return try JSONDecoder().decode([ExerciseData].self, from: data)
+            return try JSONDecoder().decode([ExerciseInfo].self, from: data)
         } catch {
             Logger.data.error("Failed to load exercises: \(error.localizedDescription)")
             return []
