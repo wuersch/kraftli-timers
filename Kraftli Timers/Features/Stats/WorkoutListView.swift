@@ -43,14 +43,22 @@ struct WorkoutListView: View {
         self.title = title
         self.emptyDescription = emptyDescription
 
+        _workouts = Query(
+            filter: Self.filter(exerciseName: exerciseName, since: start),
+            sort: \.date,
+            order: .reverse
+        )
+    }
+
+    /// The workouts the list shows. A function of its own so tests can run the same
+    /// predicate against a store: a `#Predicate` is only translated when it is used.
+    static func filter(exerciseName: String?, since start: Date?) -> Predicate<WorkoutLog> {
         let start = start ?? .distantPast
-        let filter: Predicate<WorkoutLog>
         if let exerciseName {
-            filter = #Predicate { $0.exerciseName == exerciseName && $0.date >= start }
+            return #Predicate { $0.exerciseName == exerciseName && $0.date >= start }
         } else {
-            filter = #Predicate { $0.date >= start }
+            return #Predicate { $0.date >= start }
         }
-        _workouts = Query(filter: filter, sort: \.date, order: .reverse)
     }
 
     // MARK: - Body
