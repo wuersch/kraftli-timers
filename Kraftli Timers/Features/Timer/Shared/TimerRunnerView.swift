@@ -186,16 +186,8 @@ struct TimerRunnerView: View {
                     timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
-                onWorkoutCompleted: makeLoggingClosure(),
                 showRepsInCenter: settings.emomShowRepsInCenter,
-                exerciseName: exerciseName,
-                workoutID: correlationID,
-                autoStart: true,
-                isSwipeDisabled: $isSwipeDisabled,
-                showHint: $showHint,
-                showConfetti: $showConfetti,
-                onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
-                onDismissRequested: { dismiss() }
+                link: timerScreenLink
             )
         case .amrap:
             AMRAPTimerView(
@@ -204,15 +196,7 @@ struct TimerRunnerView: View {
                     timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
-                onWorkoutCompleted: makeLoggingClosure(),
-                exerciseName: exerciseName,
-                workoutID: correlationID,
-                autoStart: true,
-                isSwipeDisabled: $isSwipeDisabled,
-                showHint: $showHint,
-                showConfetti: $showConfetti,
-                onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
-                onDismissRequested: { dismiss() }
+                link: timerScreenLink
             )
         case .forTime:
             ForTimeTimerView(
@@ -221,17 +205,25 @@ struct TimerRunnerView: View {
                     timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
-                onWorkoutCompleted: makeLoggingClosure(),
-                exerciseName: exerciseName,
-                workoutID: correlationID,
-                autoStart: true,
-                isSwipeDisabled: $isSwipeDisabled,
-                showHint: $showHint,
-                showConfetti: $showConfetti,
-                onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
-                onDismissRequested: { dismiss() }
+                link: timerScreenLink
             )
         }
+    }
+
+    /// Connects the timer screen to this view: logging, the swipe/hint/confetti state it
+    /// reports, and the two ways the screen is closed.
+    private var timerScreenLink: TimerScreenLink {
+        TimerScreenLink(
+            onWorkoutCompleted: makeLoggingClosure(),
+            exerciseName: exerciseName,
+            workoutID: correlationID,
+            autoStart: true,
+            isSwipeDisabled: $isSwipeDisabled,
+            showHint: $showHint,
+            showConfetti: $showConfetti,
+            onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
+            onDismissRequested: { dismiss() }
+        )
     }
 
     /// Handles the workout session ended message from Watch.
