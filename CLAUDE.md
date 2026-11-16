@@ -55,7 +55,15 @@ Learning project: educational value matters as much as working code. Explain Swi
 - Run tests: `xcodebuild -scheme "Kraftli Timers" -destination "platform=iOS Simulator,name=iPhone 18 Pro" test`
 - Run in simulator: Xcode
 - Builds can be run freely without asking.
-- **MANDATORY: Always ask the user before running the full test suite.** Running simulators draws heavy power on Apple Silicon — parallel sim workloads can trigger a protective shutdown. Never run all tests without explicit permission.
+- Run some tests: add `-parallel-testing-enabled NO -only-testing:"Kraftli TimersTests/<Suite>"` to the
+  test command. Prefer this over the full suite; it may be run without asking.
+- Watch tests: scheme `"Kraftli Timers Watch App"`, destination `platform=watchOS Simulator,name=Apple Watch Series 12 (46mm)`.
+- **MANDATORY: Always ask the user before running the full test suite.** Parallel simulator runs pin
+  every core, and the power draw can exceed what the charger delivers: on 2026-11-16 the MacBook Air
+  hard-reset (undervoltage) on a 35W adapter although it was on AC. So being on AC is not enough:
+  - check the charger first (`system_profiler SPPowerDataType | grep Wattage`); below 60W, don't run a full suite
+  - run one suite at a time, with `-parallel-testing-enabled NO`, never right after another full run
+  - never run all tests without explicit permission
 
 ## Xcode Project
 - Xcode automatically adds new files to the target whose folder they belong to. No manual step needed for single-target files.
