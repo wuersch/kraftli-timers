@@ -2,9 +2,9 @@
 //  WatchWorkoutCoordinator.swift
 //  Kraftli Timers Watch App
 //
-//  Shared end-of-workout logic for the Watch timer views (EMOM, AMRAP, For Time):
-//  ending the HealthKit session, then logging the workout (Watch-started) or
-//  reporting it to the iPhone (iPhone-started).
+//  Shared end-of-workout logic for the Watch timer screen: ending the HealthKit
+//  session, then logging the workout (Watch-started) or reporting it to the
+//  iPhone (iPhone-started).
 //
 //  Starting, pausing and stopping go through `TimerSessionController` (ADR-006);
 //  this coordinator only handles what happens once a workout is over.
@@ -14,11 +14,15 @@ import SwiftUI
 import SwiftData
 import os
 
-/// Configuration for a Watch workout, capturing the timer-specific details
-/// that differ between the timer kinds.
-struct WatchWorkoutConfig {
+/// Ends a Watch workout's HealthKit session and records the result.
+///
+/// ## SwiftUI Integration
+/// This is a plain struct with methods, not an `@Observable` class. The timer
+/// screen owns the state (`model`, `countdown`) and passes references to the
+/// coordinator's methods. This avoids duplicating state ownership and keeps
+/// SwiftUI's observation system working correctly.
+struct WatchWorkoutCoordinator {
     let timerKind: TimerKind
-    let exerciseName: String
 
     /// Identifies the workout on both devices; the iPhone's `WorkoutLog.id` for
     /// iPhone-started workouts.
@@ -28,21 +32,6 @@ struct WatchWorkoutConfig {
     /// so the Watch reports its HealthKit data instead of logging.
     let startedOnPhone: Bool
 
-    /// Creates a `WorkoutLog` from the completed workout data.
-    /// AMRAP uses `roundsCompleted`; EMOM and For Time use `repsCompleted`.
-    /// Called as soon as the workout completes, while the timer model still holds its result.
-    let makeWorkoutLog: (_ healthKitUUID: UUID?) -> WorkoutLog
-}
-
-/// Ends a Watch workout's HealthKit session and records the result.
-///
-/// ## SwiftUI Integration
-/// This is a plain struct with methods, not an `@Observable` class. The timer
-/// views own the state (`timerModel`, `countdown`) and pass references to the
-/// coordinator's methods. This avoids duplicating state ownership and keeps
-/// SwiftUI's observation system working correctly.
-struct WatchWorkoutCoordinator {
-    let config: WatchWorkoutConfig
     let syncService: WatchTimerSyncService
     let sessionManager: WorkoutSessionManager
 
@@ -59,22 +48,12 @@ struct WatchWorkoutCoordinator {
         // A completed workout that is still saving (`handleWorkoutCompleted` is awaiting
         // HealthKit) finishes there: ending it again here would report it twice.
         if sessionManager.sessionState != .idle, !sessionManager.isEndingSession {
-            // Capture metrics before ending session (they're cleared on end)
-            let averageHeartRate = sessionManager.averageHeartRate
-            let maxHeartRate = sessionManager.maxHeartRate
-            let activeCalories = sessionManager.activeCalories
-
             Task {
-                let uuid = await sessionManager.endSession()
+                let summary = await sessionManager.endSession()
                 sessionManager.resetToIdle()
 
-                if config.startedOnPhone {
-                    sendWorkoutSessionEnded(
-                        healthKitUUID: uuid,
-                        averageHeartRate: averageHeartRate,
-                        maxHeartRate: maxHeartRate,
-                        activeCalories: activeCalories
-                    )
+                if startedOnPhone {
+                    report(summary)
                 }
             }
         }
@@ -82,25 +61,22 @@ struct WatchWorkoutCoordinator {
         dismiss()
     }
 
-    /// Handles workout completion: ends the HealthKit session and either logs locally
+    /// Handles workout completion: ends the HealthKit session and either saves the log
     /// (Watch-started) or sends the HealthKit summary to the iPhone (iPhone-started).
-    func handleWorkoutCompleted(modelContext: ModelContext) async {
-        // Capture metrics before ending session (they're cleared on end)
-        let averageHeartRate = sessionManager.averageHeartRate
-        let maxHeartRate = sessionManager.maxHeartRate
-        let activeCalories = sessionManager.activeCalories
-
-        // Build the log before awaiting HealthKit: End pressed during the save resets the
-        // timer model, which would record e.g. an AMRAP with 0 rounds.
-        let log = config.startedOnPhone ? nil : config.makeWorkoutLog(nil)
-
-        var healthKitUUID: UUID? = nil
+    ///
+    /// - Parameter log: The completed workout, for a Watch-started one. Built by the
+    ///   caller the moment the workout completes, while the timer model still holds its
+    ///   result: End pressed during the save below resets the model.
+    func handleWorkoutCompleted(log: WorkoutLog?, modelContext: ModelContext) async {
+        let summary: WorkoutSessionManager.Summary
         if sessionManager.sessionState == .running || sessionManager.sessionState == .paused {
-            healthKitUUID = await sessionManager.endSession()
+            summary = await sessionManager.endSession()
+        } else {
+            summary = sessionManager.metricsSummary
         }
 
         if let log {
-            log.healthKitWorkoutUUID = healthKitUUID
+            log.healthKitWorkoutUUID = summary.healthKitUUID
             modelContext.insert(log)
             // Surface a save failure: this is the only SwiftData record of a
             // standalone workout, saved just as watchOS is most likely to suspend
@@ -111,15 +87,10 @@ struct WatchWorkoutCoordinator {
                 Logger.workoutLogging.error("Failed to save standalone Watch workout log: \(error.localizedDescription)")
             }
         } else {
-            sendWorkoutSessionEnded(
-                healthKitUUID: healthKitUUID,
-                averageHeartRate: averageHeartRate,
-                maxHeartRate: maxHeartRate,
-                activeCalories: activeCalories
-            )
+            report(summary)
         }
 
-        Logger.healthKit.info("Watch \(config.timerKind.rawValue) workout completed, HealthKit UUID: \(healthKitUUID?.uuidString ?? "none"), startedOnPhone: \(config.startedOnPhone), avgHR: \(averageHeartRate.map { String(format: "%.0f", $0) } ?? "none")")
+        Logger.healthKit.info("Watch \(timerKind.rawValue) workout completed, HealthKit UUID: \(summary.healthKitUUID?.uuidString ?? "none"), startedOnPhone: \(startedOnPhone), avgHR: \(summary.averageHeartRate.map { String(format: "%.0f", $0) } ?? "none")")
 
         // Reset to idle so the next timer run can start a fresh HK session.
         // Without this, sessionState stays .ended and startSession() bails out.
@@ -128,18 +99,14 @@ struct WatchWorkoutCoordinator {
 
     // MARK: - Private
 
-    private func sendWorkoutSessionEnded(
-        healthKitUUID: UUID?,
-        averageHeartRate: Double?,
-        maxHeartRate: Double?,
-        activeCalories: Double?
-    ) {
+    /// Sends the session's HealthKit results to the iPhone, which wrote the workout log.
+    private func report(_ summary: WorkoutSessionManager.Summary) {
         syncService.sendWorkoutSessionEnded(
-            healthKitUUID: healthKitUUID,
-            correlationID: config.workoutID,
-            averageHeartRate: averageHeartRate,
-            maxHeartRate: maxHeartRate,
-            activeCalories: activeCalories
+            healthKitUUID: summary.healthKitUUID,
+            correlationID: workoutID,
+            averageHeartRate: summary.averageHeartRate,
+            maxHeartRate: summary.maxHeartRate,
+            activeCalories: summary.activeCalories
         )
     }
 }
