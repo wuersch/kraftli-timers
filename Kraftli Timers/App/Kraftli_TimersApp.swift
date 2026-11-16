@@ -7,26 +7,14 @@
 
 import SwiftUI
 import SwiftData
-import os
 
 @main
 struct Kraftli_TimersApp: App {
     let modelContainer: ModelContainer
     @State private var settings = AppSettings()
-    /// Holds the Watch's mirrored workout session for the HealthKit sync channel.
-    private let mirroredWorkoutObserver: MirroredWorkoutObserver
 
-    /// The app's one timer session (ADR-006). One instance for the app's lifetime, because
-    /// its WatchConnectivity transport is the only receiver of timer sync payloads.
-    @State private var timerSession: TimerSessionController
-
-    /// Starts iPhone-initiated workouts through the Watch handshake (ADR-006 §4).
-    @State private var workoutStarter: PhoneWorkoutStarter
-
-    /// Routes Watch messages for the whole app lifetime.
-    /// Created in `init` (with the model context already wired) so the handler exists before any
-    /// message arrives — including a background WCSession launch with no scene.
-    @State private var phoneMessageCoordinator: PhoneMessageCoordinator
+    /// The workout objects that live as long as the app (ADR-006).
+    private let runtime: PhoneTimerRuntime
 
     // Capture launch screen preference once at startup (not reactive to mid-session changes)
     @State private var showLaunchScreen: Bool
@@ -36,8 +24,7 @@ struct Kraftli_TimersApp: App {
         ExerciseRepository.load()
 
         // Determine if launch screen should show (before settings is fully initialized)
-        let launchEnabled = UserDefaults.standard.object(forKey: "launchScreenEnabled") as? Bool ?? true
-        _showLaunchScreen = State(initialValue: launchEnabled)
+        _showLaunchScreen = State(initialValue: AppSettings.isLaunchScreenEnabled)
 
         // Exercise.self is unused but stays in the schema: CloudKit schema changes are additive only (ADR-0008)
         let schema = Schema([
@@ -57,47 +44,7 @@ struct Kraftli_TimersApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
 
-        // Create the message coordinator with the model context already wired, so a Watch
-        // WorkoutSessionEndedMessage can link its HealthKit UUID to the WorkoutLog even on a
-        // background WCSession launch (terminated app, no scene → the WindowGroup's onAppear,
-        // where this used to be wired, never fires).
-        _phoneMessageCoordinator = State(
-            initialValue: PhoneMessageCoordinator(modelContext: modelContainer.mainContext)
-        )
-
-        let healthKitService = DefaultHealthKitService()
-        let mirroredWorkoutObserver = MirroredWorkoutObserver()
-        self.mirroredWorkoutObserver = mirroredWorkoutObserver
-
-        // Timer sync (ADR-006): publish on WatchConnectivity and, while the Watch mirrors a
-        // workout, on the HealthKit session's data channel.
-        let healthKitTransport = HealthKitTimerSyncTransport { mirroredWorkoutObserver.currentSession }
-        mirroredWorkoutObserver.onRemoteData = { healthKitTransport.receive($0) }
-        mirroredWorkoutObserver.onSessionConnected = { healthKitTransport.sessionDidConnect() }
-        let timerSession = TimerSessionController(
-            transport: CompositeTimerSyncTransport(transports: [
-                WatchConnectivityTimerSyncTransport(connectivity: .shared),
-                healthKitTransport
-            ])
-        )
-        _timerSession = State(initialValue: timerSession)
-        _workoutStarter = State(initialValue: PhoneWorkoutStarter(
-            controller: timerSession,
-            isWatchAppAvailable: { WatchConnectivityService.shared.isWatchAppAvailable },
-            launchWatchApp: { config in
-                try await healthKitService.startWorkoutOnWatch(activityType: config.kind.healthKitActivityType)
-            }
-        ))
-
-        // Receive the Watch's mirrored workout session. Set here rather than in a view's
-        // onAppear, so a session mirrored during a background launch isn't missed.
-        healthKitService.setupMirroringHandler { session in
-            Logger.healthKit.info("Received mirrored workout session from Watch")
-            mirroredWorkoutObserver.setSession(session)
-        }
-
-        // Activate WatchConnectivity *after* the coordinator's message handler is registered.
-        WatchConnectivityService.shared.activate()
+        runtime = PhoneTimerRuntime(modelContext: modelContainer.mainContext)
     }
 
     var body: some Scene {
@@ -105,9 +52,10 @@ struct Kraftli_TimersApp: App {
             ZStack {
                 ContentView()
                     .environment(settings)
-                    .environment(phoneMessageCoordinator)
-                    .environment(timerSession)
-                    .environment(workoutStarter)
+                    .environment(runtime.messageCoordinator)
+                    .environment(runtime.timerSession)
+                    .environment(runtime.workoutStarter)
+                    .environment(\.workoutRecorder, runtime.workoutRecorder)
 
                 if showLaunchScreen {
                     LaunchScreenView {

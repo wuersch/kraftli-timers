@@ -81,6 +81,12 @@ final class AppSettings {
         self.emomShowRepsInCenter = Self.load(.emomShowRepsInCenter, default: false)
     }
 
+    /// The stored launch screen preference, readable before an `AppSettings` exists
+    /// (the app decides whether to show the launch screen while it is still starting up).
+    static var isLaunchScreenEnabled: Bool {
+        load(.launchScreenEnabled, default: true)
+    }
+
     // MARK: - Persistence Helpers
 
     private func save(_ value: Any, for key: Key) {

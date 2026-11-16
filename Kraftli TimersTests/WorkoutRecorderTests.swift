@@ -1,0 +1,135 @@
+//
+//  WorkoutRecorderTests.swift
+//  Kraftli TimersTests
+//
+//  The recorder writes the workout log and decides who saves the Health workout
+//  (ADR-006 §1): the iPhone for a workout it owned, the Watch for one it owned.
+//
+
+import Foundation
+import HealthKit
+import SwiftData
+import Testing
+@testable import Kraftli_Timers
+
+@MainActor
+struct WorkoutRecorderTests {
+
+    /// Records what the recorder asks HealthKit to save.
+    private final class FakeHealthKitService: HealthKitService, @unchecked Sendable {
+        var isAvailable = true
+        var failsToSave = false
+        let savedUUID = UUID()
+        private(set) var saves: [(start: Date, end: Date, metadata: [String: Any]?)] = []
+
+        func requestAuthorization() async throws {}
+
+        func saveWorkout(
+            activityType: HKWorkoutActivityType,
+            start: Date,
+            end: Date,
+            metadata: [String: Any]?
+        ) async throws -> UUID {
+            if failsToSave { throw HealthKitServiceError.saveFailed }
+            saves.append((start, end, metadata))
+            return savedUUID
+        }
+
+        func startWorkoutOnWatch(activityType: HKWorkoutActivityType) async throws {}
+        func setupMirroringHandler(_ handler: @escaping @MainActor (HKWorkoutSession) -> Void) {}
+    }
+
+    private let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    private func makeRecorder(
+        _ healthKit: FakeHealthKitService
+    ) throws -> (recorder: DefaultWorkoutRecorder, context: ModelContext) {
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
+        let context = ModelContext(container)
+        let now = now
+        return (DefaultWorkoutRecorder(modelContext: context, healthKit: healthKit, now: { now }), context)
+    }
+
+    private func completion(ownedByWatch: Bool, workoutID: UUID = UUID()) -> WorkoutCompletionData {
+        var data = WorkoutCompletionData(durationSeconds: 600, repsCompleted: nil, roundsCompleted: 7)
+        data.ownedByWatch = ownedByWatch
+        data.correlationID = workoutID
+        return data
+    }
+
+    private func logs(in context: ModelContext) throws -> [WorkoutLog] {
+        try context.fetch(FetchDescriptor<WorkoutLog>())
+    }
+
+    @Test func phoneOwned_savesLogWithWorkoutIDAndHealthUUID() async throws {
+        let healthKit = FakeHealthKitService()
+        let (recorder, context) = try makeRecorder(healthKit)
+        let workoutID = UUID()
+
+        await recorder.record(
+            completion(ownedByWatch: false, workoutID: workoutID),
+            exerciseName: "Burpees",
+            timerKind: .amrap
+        ).value
+
+        let log = try #require(try logs(in: context).first)
+        #expect(log.id == workoutID)
+        #expect(log.exerciseName == "Burpees")
+        #expect(log.roundsCompleted == 7)
+        #expect(log.healthKitWorkoutUUID == healthKit.savedUUID)
+    }
+
+    @Test func phoneOwned_healthWorkoutEndsNowAndSpansTheDuration() async throws {
+        let healthKit = FakeHealthKitService()
+        let (recorder, _) = try makeRecorder(healthKit)
+        let workoutID = UUID()
+
+        await recorder.record(
+            completion(ownedByWatch: false, workoutID: workoutID),
+            exerciseName: "Burpees",
+            timerKind: .amrap
+        ).value
+
+        let save = try #require(healthKit.saves.first)
+        #expect(save.end == now)
+        #expect(save.start == now.addingTimeInterval(-600))
+        #expect(save.metadata?[HKMetadataKeyExternalUUID] as? String == workoutID.uuidString)
+        #expect(save.metadata?[DefaultWorkoutRecorder.MetadataKey.timerKind] as? String == "AMRAP")
+        #expect(save.metadata?[DefaultWorkoutRecorder.MetadataKey.exercise] as? String == "Burpees")
+    }
+
+    /// The Watch saves the Health workout of a workout it owned; a second one from the
+    /// iPhone would be a duplicate.
+    @Test func watchOwned_savesLogButNoHealthWorkout() async throws {
+        let healthKit = FakeHealthKitService()
+        let (recorder, context) = try makeRecorder(healthKit)
+
+        await recorder.record(completion(ownedByWatch: true), exerciseName: "Burpees", timerKind: .amrap).value
+
+        let log = try #require(try logs(in: context).first)
+        #expect(log.healthKitWorkoutUUID == nil)
+        #expect(healthKit.saves.isEmpty)
+    }
+
+    @Test func healthKitFailure_keepsTheLog() async throws {
+        let healthKit = FakeHealthKitService()
+        healthKit.failsToSave = true
+        let (recorder, context) = try makeRecorder(healthKit)
+
+        await recorder.record(completion(ownedByWatch: false), exerciseName: "Burpees", timerKind: .amrap).value
+
+        let log = try #require(try logs(in: context).first)
+        #expect(log.healthKitWorkoutUUID == nil)
+    }
+
+    @Test func healthKitUnavailable_keepsTheLog() async throws {
+        let healthKit = FakeHealthKitService()
+        healthKit.isAvailable = false
+        let (recorder, context) = try makeRecorder(healthKit)
+
+        await recorder.record(completion(ownedByWatch: false), exerciseName: "Burpees", timerKind: .amrap).value
+
+        #expect(try logs(in: context).count == 1)
+        #expect(healthKit.saves.isEmpty)
+    }
+}
