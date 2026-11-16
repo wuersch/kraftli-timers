@@ -152,7 +152,8 @@ struct TimerRunnerView: View {
         dismiss()
     }
 
-    /// The exercise's name as shown, synced to the Watch and recorded with the workout.
+    /// The exercise's name as shown on both devices. The workout log falls back to
+    /// "Unknown" instead (see `makeLoggingClosure`).
     private var exerciseName: String {
         preset.exerciseInfo?.name ?? "Workout"
     }
@@ -299,7 +300,9 @@ struct TimerRunnerView: View {
     ///
     /// If HealthKit fails, the workout is still saved locally to SwiftData.
     private func makeLoggingClosure() -> (WorkoutCompletionData) -> Void {
-        let exerciseName = exerciseName
+        // A preset whose exercise left the library is recorded as "Unknown" (UC-0005 2a1),
+        // even though the screen shows the generic "Workout".
+        let exerciseName = preset.exerciseInfo?.name ?? "Unknown"
         let timerKind = preset.kind
         let context = modelContext
         let healthKit = healthKitService
