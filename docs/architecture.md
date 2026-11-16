@@ -246,6 +246,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `DefaultFeedback` | Interval beep + completion cue (cheering or three beeps) |
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
+| `WorkoutRecorder` | iPhone: records a completed workout — the log always, the Health workout when the iPhone owned the timer (ADR-0006 §1). Injected through the environment; silent by default |
 | `ExerciseRepository` / `ExerciseLoader` | Load the bundled exercise library into memory |
 | `PresetMaintenance` | Startup migration + CloudKit duplicate cleanup (deletes on iPhone only) |
 | `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |
@@ -255,6 +256,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `HealthKitTimerSyncTransport` | Shared: payloads over the mirrored `HKWorkoutSession` data channel |
 | `PhoneWorkoutStarter` | iPhone: start handshake with the Watch, fallback to iPhone ownership (@Observable) |
 | `PhoneMessageCoordinator` | iPhone: links the Watch's Health UUID to the `WorkoutLog`, publishes its summary |
+| `PhoneTimerRuntime` | iPhone: app-lifetime owner of timer session, starter, message coordinator and recorder; built in `App.init` |
 | `MirroredWorkoutObserver` | iPhone: holds the Watch's mirrored session for the HealthKit channel |
 | `AppSettings` | User preferences (@Observable + UserDefaults) |
 

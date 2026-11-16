@@ -7,19 +7,16 @@
 
 import SwiftUI
 import SwiftData
-import HealthKit
-import os
 
 struct TimerRunnerView: View {
     let preset: TimerPreset
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
     @Environment(PhoneMessageCoordinator.self) private var messageCoordinator
 
-    /// Service for saving workouts to HealthKit.
-    private let healthKitService: any HealthKitService
+    /// Writes the workout log and, for an iPhone-owned workout, the Health workout.
+    @Environment(\.workoutRecorder) private var workoutRecorder
 
     /// Data for the workout summary screen, set when Watch sends completion message.
     @State private var summaryData: WorkoutSummaryData?
@@ -60,14 +57,6 @@ struct TimerRunnerView: View {
     /// environment), not in `body`: SwiftUI re-evaluates `body` on every state change here, and
     /// each new provider would set up the audio session and load its sounds again.
     @State private var feedbackProvider: (any FeedbackProvider)?
-
-    init(
-        preset: TimerPreset,
-        healthKitService: any HealthKitService = DefaultHealthKitService()
-    ) {
-        self.preset = preset
-        self.healthKitService = healthKitService
-    }
 
     var body: some View {
         NavigationStack {
@@ -153,7 +142,7 @@ struct TimerRunnerView: View {
     }
 
     /// The exercise's name as shown on both devices. The workout log falls back to
-    /// "Unknown" instead (see `makeLoggingClosure`).
+    /// "Unknown" instead (see `workoutCompleted`).
     private var exerciseName: String {
         preset.exerciseInfo?.name ?? "Workout"
     }
@@ -214,7 +203,7 @@ struct TimerRunnerView: View {
     /// reports, and the two ways the screen is closed.
     private var timerScreenLink: TimerScreenLink {
         TimerScreenLink(
-            onWorkoutCompleted: makeLoggingClosure(),
+            onWorkoutCompleted: workoutCompleted,
             exerciseName: exerciseName,
             workoutID: correlationID,
             autoStart: true,
@@ -282,83 +271,27 @@ struct TimerRunnerView: View {
         }
     }
 
-    /// Creates a closure that logs the completed workout to HealthKit and SwiftData.
-    ///
-    /// The iPhone always writes the `WorkoutLog` of a workout it started. The Health save
-    /// follows the workout's owner (ADR-006 §1):
-    /// - **iPhone owner**: Save to HealthKit on iPhone, then SwiftData with UUID.
-    /// - **Watch owner**: Skip the iPhone HealthKit save (the Watch saves it). Save to
-    ///   SwiftData without UUID initially; the Watch sends its UUID via `workoutSessionEnded`.
-    ///
-    /// If HealthKit fails, the workout is still saved locally to SwiftData.
-    private func makeLoggingClosure() -> (WorkoutCompletionData) -> Void {
-        // A preset whose exercise left the library is recorded as "Unknown" (UC-0005 2a1),
-        // even though the screen shows the generic "Workout".
-        let exerciseName = preset.exerciseInfo?.name ?? "Unknown"
-        let timerKind = preset.kind
-        let context = modelContext
-        let healthKit = healthKitService
+    /// The timer completed: record the workout and move on to the summary.
+    private func workoutCompleted(_ completionData: WorkoutCompletionData) {
+        // Store completion data for the workout summary
+        lastCompletionData = completionData
 
-        return { [self] completionData in
-            // Store completion data for the workout summary
-            self.lastCompletionData = completionData
-
-            // Schedule auto-transition to summary after a short delay
-            // (confetti plays during the delay, timer stays frozen at 0:00)
-            self.summaryTransitionTask = Task { @MainActor in
-                try? await Task.sleep(for: .seconds(0.3))
-                guard !Task.isCancelled else { return }
-                self.transitionToSummary()
-            }
-
-            Task { @MainActor in
-                // 1. Save to SwiftData first (always, regardless of HealthKit)
-                let loggingService = DefaultWorkoutLoggingService(modelContext: context)
-                let workoutLog = loggingService.logWorkout(
-                    exerciseName: exerciseName,
-                    timerKind: timerKind,
-                    durationSeconds: completionData.durationSeconds,
-                    repsCompleted: completionData.repsCompleted,
-                    roundsCompleted: completionData.roundsCompleted,
-                    // The pre-generated correlation ID, so the Watch can match its
-                    // HealthKit UUID to this exact log (instead of a "latest" heuristic).
-                    id: completionData.correlationID
-                )
-
-                // 2. Save to HealthKit (if iPhone is handling it)
-                if completionData.ownedByWatch {
-                    // The Watch owned the workout and saves it to Health — skip ours to avoid
-                    // duplicates. Its UUID arrives via the workoutSessionEnded message.
-                    Logger.healthKit.info("Watch owned the workout, skipping iPhone HealthKit save")
-                } else if healthKit.isAvailable {
-                    // iPhone-only: save duration (no calories — those require Watch sensors)
-                    let endDate = Date()
-                    let startDate = endDate.addingTimeInterval(-completionData.durationSeconds)
-                    do {
-                        let healthKitUUID = try await healthKit.saveWorkout(
-                            activityType: timerKind.healthKitActivityType,
-                            start: startDate,
-                            end: endDate,
-                            metadata: [
-                                HKMetadataKeyExternalUUID: workoutLog.id.uuidString,
-                                "com.kraftli.timer.kind": timerKind.rawValue,
-                                "com.kraftli.timer.exercise": exerciseName
-                            ]
-                        )
-
-                        // Update SwiftData record with HealthKit UUID for correlation
-                        workoutLog.healthKitWorkoutUUID = healthKitUUID
-                        do {
-                            try context.save()
-                        } catch {
-                            Logger.workoutLogging.error("Failed to save the HealthKit UUID to the workout log: \(error.localizedDescription)")
-                        }
-                    } catch {
-                        Logger.healthKit.error("Failed to save workout to HealthKit: \(error.localizedDescription)")
-                    }
-                }
-            }
+        // Schedule auto-transition to summary after a short delay
+        // (confetti plays during the delay, timer stays frozen at 0:00)
+        summaryTransitionTask?.cancel()
+        summaryTransitionTask = Task {
+            try? await Task.sleep(for: .seconds(0.3))
+            guard !Task.isCancelled else { return }
+            transitionToSummary()
         }
+
+        workoutRecorder.record(
+            completionData,
+            // A preset whose exercise left the library is recorded as "Unknown" (UC-0005 2a1),
+            // even though the screen shows the generic "Workout".
+            exerciseName: preset.exerciseInfo?.name ?? "Unknown",
+            timerKind: preset.kind
+        )
     }
 }
 
