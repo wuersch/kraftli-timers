@@ -10,7 +10,7 @@
 import SwiftUI
 
 struct WatchCountdownView: View {
-    let countdown: WatchCountdownCoordinator
+    let countdown: CountdownCoordinator
 
     var body: some View {
         VStack(spacing: 8) {

@@ -33,7 +33,7 @@ enum WatchMetricsTap {
 /// rows as a `@ViewBuilder` closure and the screen places them above the heart rate.
 struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
     // MARK: - Properties
-    @State private var countdown = WatchCountdownCoordinator()
+    @State private var countdown = CountdownCoordinator()
     @State private var hasLoggedWorkout = false
     @State private var page: WorkoutPage = .metrics
     @State private var didStart = false

@@ -141,7 +141,8 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
     @Environment(PhoneWorkoutStarter.self) private var workoutStarter
 
     @State private var session = TimerSessionState()
-    @State private var countdown = CountdownCoordinator()
+    /// The 3-2-1-GO countdown, with a beep on each count.
+    @State private var countdown = CountdownCoordinator(onCount: { TimerSounds.shared.play(.beep) })
 
     /// Guards the one-shot auto-start so a repeated `onAppear` can't relaunch the countdown.
     @State private var didAutoStart = false
@@ -387,6 +388,8 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
         .onAppear {
             TimerHaptics.light.prepare()
             TimerHaptics.medium.prepare()
+            // Load the countdown beep before the first count needs it.
+            TimerSounds.shared.prepare([.beep])
             // Register cleanup action with parent
             link.onCleanupForDismiss?(cleanupForDismiss)
             // Auto-start the countdown + timer when launched from the preset play button.
