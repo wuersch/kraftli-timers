@@ -7,33 +7,19 @@
 
 import Foundation
 
-/// Renders an AMRAP workout from a `TimerState` (ADR-006).
-///
-/// All timing comes from the state: the model derives the displayed values from
-/// `state.elapsed(at: now())` on every tick and keeps no stopwatch of its own.
-/// `apply(_:)` adopts each state the `TimerSessionController` renders — the model
-/// never changes the state itself.
+/// Renders an AMRAP workout from a `TimerState` (ADR-006): the time remaining and the
+/// round count. Adopting states, ticking and completion come from `TimerStateRendering`.
 @Observable
-class AMRAPTimerModel: WorkoutTimer {
+final class AMRAPTimerModel: TimerStateRendering {
     // MARK: - Published Properties (MainActor isolated)
     @MainActor private(set) var totalTimeRemaining: TimeInterval
-    @MainActor private(set) var isRunning = false
     /// Rounds completed, as counted by the workout's owner (`TimerState.roundCount`).
     /// Taps go through `TimerSessionController.incrementRound()`, never to the model.
     @MainActor private(set) var roundsCompleted = 0
-    /// Explicit completion signal — set true only when the workout reaches zero (observed on a
-    /// tick, or adopted from a completed state), never by a pause or a stop.
-    @MainActor private(set) var didComplete = false
 
     // MARK: - Private Properties
     let totalDuration: TimeInterval
-    private let timerCoordinator: TimerCoordinator
-    private let feedbackProvider: FeedbackProvider
-    /// Wall-clock source. Injectable so tests can drive time deterministically.
-    private let now: () -> Date
-
-    /// The timing source of truth. nil until the workout starts (and after `reset()`).
-    @MainActor private var state: TimerState?
+    let core: TimerRenderCore
 
     // MARK: - Computed Properties
     @MainActor
@@ -74,79 +60,31 @@ class AMRAPTimerModel: WorkoutTimer {
         now: @escaping () -> Date = { Date() }
     ) {
         self.totalDuration = totalDuration
-        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
+        self.core = TimerRenderCore(timerProvider: timerProvider, feedbackProvider: feedbackProvider, now: now)
         self.totalTimeRemaining = totalDuration
-        self.feedbackProvider = feedbackProvider
-        self.now = now
     }
 
-    // MARK: - State-Driven API (ADR-006)
+    // MARK: - TimerStateRendering
 
-    /// Adopts a state published by the workout's owner and re-renders, including its
-    /// round count. No start feedback plays.
+    /// The round count comes from the state, counted by the workout's owner.
     @MainActor
-    func apply(_ newState: TimerState) {
-        if state?.workoutID != newState.workoutID {
-            didComplete = false
-        }
-        state = newState
+    func didAdopt(_ newState: TimerState, replacing previous: TimerState?, at date: Date) {
         roundsCompleted = newState.roundCount
-        refresh(at: now())
     }
 
-    // MARK: - Public Methods
     @MainActor
-    func reset() {
-        timerCoordinator.stop()
-        state = nil
-        isRunning = false
+    func render(elapsed: TimeInterval) {
+        totalTimeRemaining = max(0, totalDuration - elapsed)
+    }
+
+    @MainActor
+    func renderCompletion() {
+        totalTimeRemaining = 0
+    }
+
+    @MainActor
+    func resetDisplay() {
         totalTimeRemaining = totalDuration
         roundsCompleted = 0
-        didComplete = false
-    }
-
-    // MARK: - Private Methods
-
-    /// Re-renders from the state at `date`: remaining time, running flag, ticking and completion.
-    @MainActor
-    private func refresh(at date: Date) {
-        guard let state else { return }
-        let wasRunning = isRunning
-        totalTimeRemaining = max(0, totalDuration - state.elapsed(at: date))
-
-        let finished = state.isFinished(at: date)
-        isRunning = !state.isPaused && !finished
-
-        // Completion: time ran out (a stop is not a completion).
-        let completed: Bool = switch state.finish {
-        case .completed: true
-        case .stopped: false
-        case nil: finished
-        }
-        if completed {
-            totalTimeRemaining = 0
-            if !didComplete {
-                didComplete = true
-                if wasRunning {
-                    feedbackProvider.onWorkoutComplete()
-                }
-            }
-        }
-
-        if isRunning, !timerCoordinator.isActive {
-            timerCoordinator.start { [weak self] in
-                self?.update()
-            }
-        } else if !isRunning {
-            timerCoordinator.stop()
-        }
-    }
-
-    @MainActor
-    private func update() {
-        // Ignore a stray tick enqueued before a pause: the timer is no longer running, so
-        // re-rendering would fire completion on a paused timer.
-        guard isRunning else { return }
-        refresh(at: now())
     }
 }
