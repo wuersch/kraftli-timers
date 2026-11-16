@@ -27,6 +27,8 @@ struct WatchPresetEditorView: View {
 
     @State private var timerKind: TimerKind
     @State private var selectedExerciseId: UUID?
+    // The Digital Crown drives `Double` values, so duration and reps stay `Double`
+    // state here and enter the shared `PresetDraft` as whole numbers (what is displayed).
     @State private var durationMinutes: Double
     @State private var targetReps: Double
 
@@ -35,45 +37,29 @@ struct WatchPresetEditorView: View {
     init(presetToEdit: TimerPreset? = nil) {
         self.presetToEdit = presetToEdit
 
-        if let preset = presetToEdit {
-            _timerKind = State(initialValue: preset.kind)
-            _selectedExerciseId = State(initialValue: preset.exerciseId)
-            // For Time presets store no duration (0); offer the default if the kind changes.
-            _durationMinutes = State(initialValue: preset.durationInterval > 0 ? preset.durationInterval / 60 : 20)
-            _targetReps = State(initialValue: Double(preset.targetReps ?? TimerPreset.defaultForTimeReps))
-        } else {
-            _timerKind = State(initialValue: .emom)
-            _selectedExerciseId = State(initialValue: nil)
-            _durationMinutes = State(initialValue: 20)
-            _targetReps = State(initialValue: Double(TimerPreset.defaultForTimeReps))
-        }
+        let draft = presetToEdit.map(PresetDraft.init(preset:)) ?? PresetDraft()
+        _timerKind = State(initialValue: draft.kind)
+        _selectedExerciseId = State(initialValue: draft.exerciseId)
+        _durationMinutes = State(initialValue: Double(draft.durationMinutes))
+        _targetReps = State(initialValue: Double(draft.targetReps))
     }
 
     // MARK: - Computed Properties
 
-    private var selectedExercise: ExerciseInfo? {
-        guard let id = selectedExerciseId else {
-            return ExerciseRepository.all.first
-        }
-        return ExerciseRepository.exercise(byId: id)
-    }
-
-    /// Maximum reps based on duration (uses shared constant for minimum interval).
-    private var maxReps: Double {
-        Double(TimerPreset.maximumReps(forDuration: durationMinutes * 60))
+    /// The edited values with the shared rules for ranges, clamping and saving.
+    private var draft: PresetDraft {
+        PresetDraft(
+            kind: timerKind,
+            exerciseId: selectedExerciseId,
+            durationMinutes: Int(durationMinutes),
+            targetReps: Int(targetReps)
+        )
     }
 
     /// EMOM caps the reps by the duration; For Time allows 1–999.
     private var repsRange: ClosedRange<Double> {
-        timerKind == .forTime
-            ? Double(TimerPreset.forTimeRepsRange.lowerBound)...Double(TimerPreset.forTimeRepsRange.upperBound)
-            : 1...maxReps
-    }
-
-    /// Calculated interval duration for display.
-    private var intervalSeconds: TimeInterval {
-        guard targetReps > 0 else { return 0 }
-        return (durationMinutes * 60) / targetReps
+        let range = draft.repsRange
+        return Double(range.lowerBound)...Double(range.upperBound)
     }
 
     private var isEditing: Bool {
@@ -120,9 +106,9 @@ struct WatchPresetEditorView: View {
             }
             .onAppear {
                 // Select first exercise if none selected
-                if selectedExerciseId == nil, let first = ExerciseRepository.all.first {
-                    selectedExerciseId = first.id
-                }
+                var draft = draft
+                draft.selectDefaultExerciseIfNeeded()
+                selectedExerciseId = draft.exerciseId
             }
             .onChange(of: durationMinutes) { _, _ in
                 clampTargetReps()
@@ -175,9 +161,9 @@ struct WatchPresetEditorView: View {
                 WatchExerciseListView(selectedExerciseId: $selectedExerciseId)
             } label: {
                 HStack {
-                    Text(selectedExercise?.name ?? "Select Exercise")
+                    Text(draft.selectedExercise?.name ?? "Select Exercise")
                         .font(.body)
-                        .foregroundStyle(selectedExercise != nil ? .primary : .secondary)
+                        .foregroundStyle(draft.selectedExercise != nil ? .primary : .secondary)
                         .lineLimit(1)
 
                     Spacer()
@@ -216,7 +202,7 @@ struct WatchPresetEditorView: View {
             )
 
             if timerKind == .emom {
-                Text(intervalSeconds.intervalDescription(compact: true))
+                Text(draft.intervalDuration.intervalDescription(compact: true))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 4)
@@ -232,26 +218,7 @@ struct WatchPresetEditorView: View {
     }
 
     private func savePreset() {
-        // For Time has no duration; AMRAP has no reps.
-        let duration: TimeInterval = timerKind.hasFixedDuration ? durationMinutes * 60 : 0
-        let reps: Int? = timerKind == .amrap ? nil : Int(targetReps)
-        if let existingPreset = presetToEdit {
-            // Update existing preset
-            existingPreset.kindRawValue = timerKind.rawValue
-            existingPreset.durationInterval = duration
-            existingPreset.targetReps = reps
-            existingPreset.exerciseId = selectedExerciseId
-        } else {
-            // Create new preset
-            let preset = TimerPreset(
-                kind: timerKind,
-                durationInterval: duration,
-                targetReps: reps,
-                sortOrder: PresetMaintenance.nextSortOrder(after: presets),
-                exerciseId: selectedExerciseId
-            )
-            modelContext.insert(preset)
-        }
+        draft.save(editing: presetToEdit, in: modelContext, after: presets)
         dismiss()
     }
 }

@@ -93,6 +93,7 @@
 				"Extensions/Logger+App.swift",
 				"Extensions/TimeInterval+Format.swift",
 				"Extensions/TimerKind+UI.swift",
+				Features/Presets/PresetDraft.swift,
 				Features/Timer/AMRAP/AMRAPTimerModel.swift,
 				Features/Timer/EMOM/EMOMTimerModel.swift,
 				Features/Timer/ForTime/ForTimeTimerModel.swift,
