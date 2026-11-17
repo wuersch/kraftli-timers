@@ -21,6 +21,23 @@ struct AMRAPTimerModelTests {
         #expect(model.roundsCompleted == 0)
     }
 
+    /// The countdown's counts go through the model's feedback, so a silent provider
+    /// (Sound off) silences the countdown too (UC-0002 8a).
+    @Test @MainActor func countdownDidCount_signalsThroughTheFeedbackProvider() {
+        let spy = SpyFeedbackProvider()
+        let model = AMRAPTimerModel(
+            totalDuration: 300,
+            timerProvider: MockTimerProvider(),
+            feedbackProvider: spy
+        )
+
+        model.countdownDidCount()
+        model.countdownDidCount()
+
+        #expect(spy.countdownCountCount == 2)
+        #expect(spy.intervalCompleteCount == 0)
+    }
+
     @Test @MainActor func start_setsIsRunningTrue() {
         let model = AMRAPTimerModel(
             totalDuration: 300,

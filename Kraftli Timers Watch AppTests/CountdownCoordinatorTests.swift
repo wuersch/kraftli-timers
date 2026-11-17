@@ -63,9 +63,9 @@ struct CountdownCoordinatorTests {
     /// Each displayed count is announced, so the iPhone can beep on it.
     @Test @MainActor func startCountdown_announcesTheFirstCount() async {
         var counts = 0
-        let coordinator = CountdownCoordinator(onCount: { counts += 1 })
+        let coordinator = CountdownCoordinator()
 
-        coordinator.startCountdown(scheduledStartTime: Date().addingTimeInterval(3))
+        coordinator.startCountdown(scheduledStartTime: Date().addingTimeInterval(3), onCount: { counts += 1 })
         await Task.yield()
 
         #expect(counts == 1)

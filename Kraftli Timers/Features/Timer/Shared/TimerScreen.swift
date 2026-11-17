@@ -141,8 +141,8 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
     @Environment(PhoneWorkoutStarter.self) private var workoutStarter
 
     @State private var session = TimerSessionState()
-    /// The 3-2-1-GO countdown, with a beep on each count.
-    @State private var countdown = CountdownCoordinator(onCount: { TimerSounds.shared.play(.beep) })
+    /// The 3-2-1-GO countdown. Each count is signalled through the model's feedback.
+    @State private var countdown = CountdownCoordinator()
 
     /// Guards the one-shot auto-start so a repeated `onAppear` can't relaunch the countdown.
     @State private var didAutoStart = false
@@ -282,11 +282,15 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
     }
 
     /// Shows the 3-2-1-GO countdown toward the workout's shared start date. The timer
-    /// model already follows the state; the countdown only displays and beeps.
+    /// model already follows the state; the countdown only displays and signals each count
+    /// (a beep, unless Sound is off).
     private func beginCountdown(until startDate: Date) {
         guard countdownStartDate == nil else { return }
         countdownStartDate = startDate
-        countdown.startCountdown(scheduledStartTime: startDate) { [session, model] in
+        countdown.startCountdown(
+            scheduledStartTime: startDate,
+            onCount: { [model] in model.countdownDidCount() }
+        ) { [session, model] in
             session.onTimerStarted { model.isRunning }
         }
     }
@@ -388,8 +392,6 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
         .onAppear {
             TimerHaptics.light.prepare()
             TimerHaptics.medium.prepare()
-            // Load the countdown beep before the first count needs it.
-            TimerSounds.shared.prepare([.beep])
             // Register cleanup action with parent
             link.onCleanupForDismiss?(cleanupForDismiss)
             // Auto-start the countdown + timer when launched from the preset play button.

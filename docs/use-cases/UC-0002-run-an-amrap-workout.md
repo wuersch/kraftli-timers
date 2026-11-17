@@ -94,4 +94,4 @@ The athlete starts an AMRAP preset.
 - Interaction design: [ui-spec.md](ui-spec.md#amrap-timer)
 - [UC-0001](UC-0001-run-an-emom-workout.md), [UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md),
   [UC-0004](UC-0004-run-a-workout-on-apple-watch.md)
-- Known deviations (fix candidates): early stops are not recorded today (5b); the iPhone's countdown beeps ignore Sound off (extension 8a).
+- Known deviation (fix candidate): early stops are not recorded today (5b).

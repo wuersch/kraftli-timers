@@ -17,9 +17,9 @@ import Foundation
 ///
 /// ## Usage
 /// ```swift
-/// @State private var countdown = CountdownCoordinator(onCount: { playBeep() })
+/// @State private var countdown = CountdownCoordinator()
 ///
-/// countdown.startCountdown(scheduledStartTime: state.startDate) {
+/// countdown.startCountdown(scheduledStartTime: state.startDate, onCount: { playBeep() }) {
 ///     // The countdown is over: the timer model already follows the state.
 /// }
 /// ```
@@ -38,16 +38,6 @@ final class CountdownCoordinator {
 
     @ObservationIgnored private var countdownTask: Task<Void, Never>?
 
-    /// Called each time a count (3, 2, 1, GO) appears. The iPhone beeps here; the Watch
-    /// stays silent (audio is unreliable when the wrist is down).
-    @ObservationIgnored private let onCount: () -> Void
-
-    // MARK: - Initialization
-
-    init(onCount: @escaping () -> Void = {}) {
-        self.onCount = onCount
-    }
-
     // MARK: - Public Methods
 
     /// Counts down to `scheduledStartTime`, joining at whatever position matches the
@@ -55,11 +45,15 @@ final class CountdownCoordinator {
     ///
     /// - Parameters:
     ///   - scheduledStartTime: The absolute time the workout clock starts.
+    ///   - onCount: Called each time a count (3, 2, 1, GO) appears. The iPhone signals it
+    ///     through the workout's feedback; the Watch stays silent (audio is unreliable
+    ///     when the wrist is down).
     ///   - completion: Called once the countdown has run to its end. Called right away,
     ///     without showing a countdown, if the start time has already passed (a late
     ///     join). Not called for a countdown that is cancelled or skipped.
     func startCountdown(
         scheduledStartTime: Date,
+        onCount: @escaping () -> Void = {},
         completion: @escaping () -> Void = {}
     ) {
         // Cancel any existing countdown
@@ -82,7 +76,7 @@ final class CountdownCoordinator {
             // Display each count and wait
             while currentCount > 0 && !Task.isCancelled {
                 self.countdownValue = currentCount
-                self.onCount()
+                onCount()
 
                 // Wait until the next count
                 let targetTime = scheduledStartTime.addingTimeInterval(-Double(currentCount - 1))
@@ -99,7 +93,7 @@ final class CountdownCoordinator {
 
             // Show "GO" (represented as 0) briefly; the workout clock is already running.
             self.countdownValue = 0
-            self.onCount()
+            onCount()
             try? await Task.sleep(for: .milliseconds(400))
 
             guard !Task.isCancelled else { return }

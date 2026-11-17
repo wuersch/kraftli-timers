@@ -219,7 +219,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `EMOMTimerView` | EMOM face of `TimerScreen`: two rings, interval time |
 | `AMRAPTimerView` | AMRAP face of `TimerScreen`: one ring, round count |
 | `ForTimeTimerView` | For Time face of `TimerScreen`: circling arc, tap = done |
-| `CountdownCoordinator` | 3-2-1-GO display toward the shared start date (shared with the Watch; the iPhone beeps on each count) |
+| `CountdownCoordinator` | 3-2-1-GO display toward the shared start date (shared with the Watch; the iPhone signals each count through the `FeedbackProvider`) |
 | `StatsView` | Workout statistics dashboard |
 | `WorkoutListView` | Workout list with edit/delete: all workouts, or one exercise's within the chosen period. Runs its own query |
 | `WorkoutLogEditorView` | Edit reps/rounds for a workout |
@@ -241,7 +241,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `TimerProvider` | Protocol for timer implementations |
 | `DisplayLinkTimerProvider` | CADisplayLink ticks (Smooth Animations on) |
 | `FoundationTimerProvider` | 0.2 s Foundation Timer (Smooth Animations off; always on Watch) |
-| `FeedbackProvider` | Protocol for interval/completion feedback (`SilentFeedback` when Sound is off and on the Watch) |
+| `FeedbackProvider` | Protocol for countdown/interval/completion feedback (`SilentFeedback` when Sound is off and on the Watch) |
 | `DefaultFeedback` | Interval beep + completion cue (cheering or three beeps) |
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
