@@ -28,7 +28,7 @@
   - the exercise name as it was at that time
   - the kind (EMOM, AMRAP or For Time)
   - its duration, or for For Time its finish time, to the second
-  - reps completed (EMOM), rounds counted (AMRAP with round counting), or the reps done (For Time)
+  - reps completed (EMOM), rounds counted (AMRAP), or the reps done (For Time)
   - the session's name, when the workout was a step of a session
 - Apple Health holds exactly one workout for it, linked to the history entry. It covers the actual
   start, end and pauses, and includes heart rate and active calories when the Watch tracked it.
@@ -47,7 +47,7 @@ A workout ends.
 
 1. The workout's duration has elapsed, or a For Time workout was declared done.
 2. The device on which the workout was started records the history entry. It has the full duration
-   or the finish time, and the reps completed (EMOM), rounds counted (AMRAP with round counting) or
+   or the finish time, and the reps completed (EMOM), rounds counted (AMRAP) or
    reps done (For Time).
 3. The device that ran the workout saves it to Apple Health as a high-intensity interval training
    workout (indoor), with its actual start, end and pauses. When that device is the Watch, the save

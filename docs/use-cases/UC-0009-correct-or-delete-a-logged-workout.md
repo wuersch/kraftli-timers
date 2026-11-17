@@ -42,7 +42,7 @@ The athlete picks a workout to correct, or decides to remove one.
   - 1a2. The workout's Apple Health entry, if any, stays in Apple Health.
   - 1a3. Use case ends.
 - 3a. The recorded value lies outside the correctable range (e.g. 0 rounds for a workout stopped
-  early), or none was recorded (an AMRAP without round counting, a For Time stopped early):
+  early), or none was recorded (a For Time stopped early):
   - 3a1. System keeps the recorded value, or no value, unless the athlete chooses a value within
     the range.
   - 3a2. Use case continues at step 4.

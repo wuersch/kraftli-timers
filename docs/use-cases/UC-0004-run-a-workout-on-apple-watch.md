@@ -34,9 +34,9 @@ The athlete starts a preset on the Watch.
 3. System counts down 3 seconds to the start, silently.
 4. System starts the workout. It continuously shows the live heart rate and active calories, and
    the total time remaining, or for For Time the elapsed time and the target reps. For EMOM it also
-   shows the time remaining in the interval and the current rep. For AMRAP with round counting it
-   shows the rounds counted.
-5. For EMOM, System highlights the last 3 seconds of each interval. For AMRAP with round counting,
+   shows the time remaining in the interval and the current rep. For AMRAP it shows the
+   rounds counted.
+5. For EMOM, System highlights the last 3 seconds of each interval. For AMRAP,
    Athlete counts each completed round, and System adds it to the total. For For Time, Athlete
    declares the workout done after the last rep.
 6. When the duration has elapsed, or For Time was declared done, System marks the workout as done.

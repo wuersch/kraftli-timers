@@ -1,23 +1,22 @@
 # UC-0002: Run an AMRAP workout
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
-- **Goal:** As an athlete, I want to complete as many rounds as possible in a set time and, when
-  it's worth it, have them counted, so I can see and compare how much work I got done.
+- **Goal:** As an athlete, I want to complete as many rounds as possible in a set time and have
+  them counted, so I can see and compare how much work I got done.
 - **Scope:** Kraftli Timers (iPhone app)
 - **Level:** user-goal
 
 ## Preconditions
 
-- An AMRAP preset exists with a duration of 1–60 whole minutes and round counting switched on or
-  off ([UC-0006](UC-0006-manage-timer-presets.md)), or the AMRAP is a step of a session
+- An AMRAP preset exists with a duration of 1–60 whole minutes
+  ([UC-0006](UC-0006-manage-timer-presets.md)), or the AMRAP is a step of a session
   ([UC-0015](UC-0015-run-a-training-session.md)).
 
 ## Success Guarantee
 
 - The workout ran to the end of its duration, and every round the athlete counted before the end is in the total.
-- The completed workout is recorded with its round count, or without one when round counting is
-  off ([UC-0005](UC-0005-record-a-workout.md)).
+- The completed workout is recorded with its round count ([UC-0005](UC-0005-record-a-workout.md)).
 - The athlete has seen a summary of the workout.
 
 ## Minimal Guarantee
@@ -71,12 +70,6 @@ The athlete starts an AMRAP preset.
   - 5d1. The workout keeps running on the Watch. When the app returns, System shows the current
     time and rounds again.
   - 5d2. Use case continues at step 5.
-- 5e. Round counting is switched off, for exercises too fast to count:
-  - 5e1. System shows the total time remaining and its progress, but no round count. Asking to
-    count a round has no effect.
-  - 5e2. When the duration has elapsed, the workout ends as in step 8 and is recorded without a
-    round count; the summary shows kind and duration.
-  - 5e3. Use case continues at step 8.
 - 6a. Athlete counted a round by mistake:
   - 6a1. The count can't be reduced during the workout. Athlete corrects it afterwards in the
     workout history ([UC-0009](UC-0009-correct-or-delete-a-logged-workout.md)).

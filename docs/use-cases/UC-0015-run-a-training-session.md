@@ -85,10 +85,6 @@ The athlete starts a session on the iPhone.
   - 6a1. System records it as stopped early under the usual rule
     ([UC-0005](UC-0005-record-a-workout.md) extensions 1a–1b).
   - 6a2. Use case continues at step 7.
-- 6b. The step is an AMRAP with round counting switched off:
-  - 6b1. The step runs as a countdown only and is recorded without a round count
-    ([UC-0002](UC-0002-run-an-amrap-workout.md)).
-  - 6b2. Use case continues at step 7.
 - 7a. A round of a loop ends and another follows:
   - 7a1. If the loop has a rest, System counts it down on both devices without pausing the session,
     and then shows the loop's first step again. Athlete may cut the rest short.
@@ -118,8 +114,7 @@ The athlete starts a session on the iPhone.
 - Architecture: one device owns the timer state ([ADR-0006](../adr/ADR-0006-single-owner-timer-state.md)).
   Whether that ownership spans the whole session or each step is a structural decision likely to
   need its own ADR.
-- Requires revisions of: [UC-0002](UC-0002-run-an-amrap-workout.md) and
-  [UC-0006](UC-0006-manage-timer-presets.md) (AMRAP round counting on/off),
+- Requires revisions of:
   [UC-0005](UC-0005-record-a-workout.md) (entries per step marked with the session; one Health
   workout per session), [UC-0008](UC-0008-review-workout-stats.md) (show the session on an entry),
   [UC-0011](UC-0011-clear-stored-data.md) (clearing sessions and the week plan).
