@@ -114,6 +114,12 @@ extension TimerStateRendering {
         core.didComplete
     }
 
+    /// Signals a count of the pre-workout countdown through the model's feedback, so the
+    /// countdown is silent whenever the workout's other signals are (UC-0010 Sound off).
+    func countdownDidCount() {
+        core.feedbackProvider.onCountdownCount()
+    }
+
     /// Adopts a state published by the workout's owner and re-renders. No feedback plays
     /// for what already happened in it.
     func apply(_ newState: TimerState) {

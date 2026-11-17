@@ -6,6 +6,7 @@
 //
 
 final class SilentFeedback: FeedbackProvider {
+    func onCountdownCount() { }
     func onIntervalComplete() { }
     func onWarning() { }
     func onWorkoutComplete() { }

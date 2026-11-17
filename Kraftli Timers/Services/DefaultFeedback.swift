@@ -2,12 +2,12 @@
 //  DefaultFeedback.swift
 //  Kraftli Timers
 //
-//  Plays the timer's sounds: a beep per interval and a completion cue.
+//  Plays the timer's sounds: a beep per countdown count and interval, and a completion cue.
 //
 
 import Foundation
 
-/// The production `FeedbackProvider`: beeps on each interval and plays the chosen
+/// The production `FeedbackProvider`: beeps on each countdown count and interval, and plays the chosen
 /// completion cue when the workout ends.
 final class DefaultFeedback: FeedbackProvider {
     /// What plays when the workout completes.
@@ -34,6 +34,10 @@ final class DefaultFeedback: FeedbackProvider {
 
     isolated deinit {
         trailingBeeps?.cancel()
+    }
+
+    func onCountdownCount() {
+        TimerSounds.shared.play(.beep)
     }
 
     func onIntervalComplete() {

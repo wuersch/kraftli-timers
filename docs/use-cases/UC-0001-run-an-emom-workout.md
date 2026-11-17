@@ -104,4 +104,4 @@ The athlete starts an EMOM preset.
 - [UC-0002](UC-0002-run-an-amrap-workout.md) (AMRAP counterpart),
   [UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md) (running it with the Watch),
   [UC-0004](UC-0004-run-a-workout-on-apple-watch.md) (Watch alone)
-- Known deviations (fix candidates): early stops are not recorded today (5b); the iPhone's countdown beeps ignore Sound off (extension 7a).
+- Known deviation (fix candidate): early stops are not recorded today (5b).

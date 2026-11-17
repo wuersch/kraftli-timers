@@ -65,4 +65,3 @@ The athlete wants to change how the app behaves, or wants information about the 
 
 - Architecture: [ADR-0001](../adr/ADR-0001-settings-pattern.md)
 - Interaction design: [ui-spec.md](ui-spec.md#settings)
-- Known deviation (fix candidate): with Sound off, the iPhone's countdown still beeps.
