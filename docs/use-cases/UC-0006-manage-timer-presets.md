@@ -18,7 +18,6 @@
   - for EMOM and AMRAP, a duration of 1–60 whole minutes
   - an exercise
   - for EMOM, a rep count whose intervals last 3 seconds or longer
-  - for AMRAP, whether rounds are counted (on by default)
   - for For Time, a rep count of 1–999
 - The presets appear in the athlete's chosen order, identically on all their devices.
 
@@ -31,8 +30,7 @@ The athlete wants to create, change, reorder or remove a preset.
 1. Athlete asks to create a new preset.
 2. System proposes EMOM, 20 minutes, 100 reps, and the alphabetically first exercise.
 3. Athlete chooses the kind, the duration and the exercise ([UC-0007](UC-0007-choose-an-exercise.md)),
-   and for EMOM the rep count. For AMRAP, Athlete chooses whether rounds are counted; for For Time,
-   the rep count instead of a duration.
+   and for EMOM the rep count; for For Time, the rep count instead of a duration.
 4. For EMOM, System shows the resulting interval length (duration ÷ reps) and offers only rep
    counts that keep each interval at 3 seconds or longer: at most 20 reps per minute of duration.
 5. Athlete saves the preset.
@@ -59,8 +57,7 @@ The athlete wants to create, change, reorder or remove a preset.
   - 3a1. System lowers the rep count to the new maximum.
   - 3a2. Use case continues at step 4.
 - 3b. Athlete switches the kind to AMRAP:
-  - 3b1. System no longer asks for a rep count; AMRAP presets have none. Instead, Athlete chooses
-    whether rounds are counted.
+  - 3b1. System no longer asks for a rep count; AMRAP presets have none.
   - 3b2. Use case continues at step 5.
 - 3c. Athlete switches the kind to EMOM:
   - 3c1. System applies the rep limit of step 4 to the proposed rep count.
@@ -72,8 +69,7 @@ The athlete wants to create, change, reorder or remove a preset.
   - 3e1. System no longer asks for a duration; For Time presets have none. It proposes 100 reps,
     and Athlete chooses a rep count of 1–999.
   - 3e2. Use case continues at step 5.
-- 6a. The preset is identical to an existing one (same kind, duration, reps, round counting and
-  exercise):
+- 6a. The preset is identical to an existing one (same kind, duration, reps and exercise):
   - 6a1. System keeps only one of them, at the latest on the next launch of the iPhone app.
     Identical presets aren't kept as separate entries.
   - 6a2. Use case continues at step 7.
