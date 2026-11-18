@@ -52,3 +52,4 @@ Interaction design (screens, gestures, copy): [use-cases/ui-spec.md](use-cases/u
 | [ADR-0008](adr/ADR-0008-swiftdata-cloudkit-persistence.md) | SwiftData synced as peers via private CloudKit | implemented |
 | [ADR-0009](adr/ADR-0009-bundled-exercise-library.md) | Bundled, read-only exercise library | implemented |
 | [ADR-0010](adr/ADR-0010-open-ended-workouts-and-done-intent.md) | Open-ended workouts without a duration, ended by a `done` intent | implemented |
+| [ADR-0011](adr/ADR-0011-session-document-and-week-plan-record.md) | A session's elements as one versioned document; the week plan as one record | approved |
