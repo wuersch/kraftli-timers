@@ -1,6 +1,6 @@
 # UC-0013: Compose a training session
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to put together named training sessions from timers and repeated
   blocks, such as a warm-up followed by a main part, so I can run a whole training as one workout
@@ -20,6 +20,14 @@
     its settings ([UC-0006](UC-0006-manage-timer-presets.md)), or
   - a **loop**: a sequence of at least one step, repeated 2–20 times, with an optional rest of
     whole seconds after each round except the last.
+- The athlete can see roughly how long each session takes. This estimated length is always
+  presented as approximate and never changes how a step runs. It adds up, with a loop's steps
+  counted once per round:
+  - the duration of every EMOM and AMRAP step,
+  - the rests of every loop,
+  - for every For Time step, an estimate from its target reps and the typical pace of its
+    exercise. The estimate grows slightly faster than the number of reps, because the athlete
+    tires.
 - The sessions are available on all the athlete's devices.
 
 ## Trigger
@@ -32,7 +40,7 @@ The athlete wants to create, change or remove a session.
 2. System asks for a name that no other session of the athlete has.
 3. Athlete adds a step, choosing its kind, exercise ([UC-0007](UC-0007-choose-an-exercise.md)) and
    settings under the same rules as a preset ([UC-0006](UC-0006-manage-timer-presets.md) steps 2–4).
-4. System appends the step to the session.
+4. System appends the step to the session and shows the session's estimated length.
    Steps 3–4 repeat until the session holds what the athlete wants.
 5. Athlete saves the session.
 6. System stores it and makes it available on the athlete's other devices.
@@ -86,8 +94,9 @@ The athlete wants to create, change or remove a session.
 
 ## Related Information
 
-- Interaction design: [ui-spec.md](ui-spec.md) (session editor still to be written). Agreed
-  direction: a block editor in the style of Nassi-Shneiderman diagrams or Scratch.
+- Interaction design: [ui-spec.md](ui-spec.md#session-editor-sheet): a block editor in the style
+  of Nassi-Shneiderman diagrams or Scratch.
+- Known deviation: not implemented yet.
 - [UC-0014](UC-0014-plan-the-training-week.md) (planning sessions on weekdays),
   [UC-0015](UC-0015-run-a-training-session.md) (running a session)
 - Inspiration: named, reusable workouts as in Freeletics.

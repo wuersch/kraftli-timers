@@ -18,7 +18,8 @@
   - for EMOM and AMRAP, a duration of 1–60 whole minutes
   - an exercise
   - for EMOM, a rep count whose intervals last 3 seconds or longer
-  - for For Time, a rep count of 1–999
+  - for For Time, a rep count of 1–999 and an exercise that is counted in reps: never a hold
+    (an exercise held for time, such as a plank)
 - The presets appear in the athlete's chosen order, identically on all their devices.
 
 ## Trigger
@@ -69,6 +70,12 @@ The athlete wants to create, change, reorder or remove a preset.
   - 3e1. System no longer asks for a duration; For Time presets have none. It proposes 100 reps,
     and Athlete chooses a rep count of 1–999.
   - 3e2. Use case continues at step 5.
+- 3f. The chosen exercise is a hold:
+  - 3f1. System doesn't offer For Time as a kind, and says why.
+  - 3f2. Use case continues at step 3.
+- 3g. The chosen kind is For Time:
+  - 3g1. System doesn't offer holds as exercises ([UC-0007](UC-0007-choose-an-exercise.md)).
+  - 3g2. Use case continues at step 3.
 - 6a. The preset is identical to an existing one (same kind, duration, reps and exercise):
   - 6a1. System keeps only one of them, at the latest on the next launch of the iPhone app.
     Identical presets aren't kept as separate entries.
@@ -86,6 +93,8 @@ The athlete wants to create, change, reorder or remove a preset.
 ## Related Information
 
 - Interaction design: [ui-spec.md](ui-spec.md#timer-preset-list) and [ui-spec.md](ui-spec.md#watch-app)
+- Known deviation: For Time can still be combined with a hold (extensions 3f, 3g). Presets saved
+  that way keep working until the athlete changes them.
 - Known deviation (fix candidate): switching an existing AMRAP preset to EMOM keeps the proposed
   100 reps even where they exceed the limit (extension 3c). For short durations this can save
   intervals under 3 seconds.
