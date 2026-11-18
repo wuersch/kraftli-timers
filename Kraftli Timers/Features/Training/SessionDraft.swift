@@ -175,6 +175,17 @@ struct SessionDraft: Equatable {
         }
     }
 
+    /// Handles a block dropped on another. On the same level it takes the other's place.
+    /// A session block dropped on a timer inside a loop takes the place of that loop,
+    /// so the whole loop is a drop target for the blocks around it.
+    mutating func drop(_ id: UUID, onto targetID: UUID) {
+        if level(of: id) == .session, case .loop(let loopID) = level(of: targetID) {
+            move(id, onto: loopID)
+        } else {
+            move(id, onto: targetID)
+        }
+    }
+
     /// Moves the block `id` one place up (`offset` −1) or down (+1) within its level.
     mutating func move(_ id: UUID, by offset: Int) {
         guard let level = level(of: id) else { return }

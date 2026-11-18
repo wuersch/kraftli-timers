@@ -150,6 +150,18 @@ struct SessionDraftTests {
         #expect(draft.elements.map(\.id) == [loopID, top.id])
     }
 
+    @Test func sessionBlockDroppedOnATimerInALoop_takesTheLoopsPlace() {
+        let top = step(1), nested = step(2)
+        var draft = SessionDraft()
+        let loopID = draft.addLoop()
+        draft.add(nested, toLoop: loopID)
+        draft.add(top)
+
+        draft.drop(top.id, onto: nested.id)
+
+        #expect(draft.elements.map(\.id) == [top.id, loopID])
+    }
+
     @Test func moveByOne_stopsAtTheEnds() {
         let a = step(1), b = step(2)
         var draft = SessionDraft(elements: [.step(a), .step(b)])

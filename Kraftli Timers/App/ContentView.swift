@@ -17,6 +17,12 @@ struct ContentView: View {
             }
 
             NavigationStack {
+                TrainingView()
+            }.tabItem {
+                Label("Training", systemImage: "calendar")
+            }
+
+            NavigationStack {
                 StatsView()
             }.tabItem {
                 Label("Stats", systemImage: "chart.bar.fill")
