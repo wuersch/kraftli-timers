@@ -93,8 +93,8 @@ The athlete wants to create, change, reorder or remove a preset.
 ## Related Information
 
 - Interaction design: [ui-spec.md](ui-spec.md#timer-preset-list) and [ui-spec.md](ui-spec.md#watch-app)
-- Known deviation: For Time can still be combined with a hold (extensions 3f, 3g). Presets saved
-  that way keep working until the athlete changes them.
+- Presets saved with For Time and a hold before that combination was excluded (extensions 3f, 3g)
+  keep working until the athlete changes them.
 - Known deviation (fix candidate): switching an existing AMRAP preset to EMOM keeps the proposed
   100 reps even where they exceed the limit (extension 3c). For short durations this can save
   intervals under 3 seconds.

@@ -1,6 +1,6 @@
 # UC-0007: Choose an exercise for a preset
 
-- **Status:** approved
+- **Status:** implemented
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to find a suitable bodyweight exercise and learn what it involves,
   so the preset I'm building names the right one.
@@ -69,7 +69,5 @@ The athlete asks to choose the preset's exercise.
 ## Related Information
 
 - Interaction design: [ui-spec.md](ui-spec.md#exercise-selection)
-- Known deviation: the library doesn't mark holds or carry a pace yet, and holds are listed for
-  For Time presets (extension 1b).
 - Out of scope (backlog): showing each exercise's bundled form tips ("Form Tips During Workout",
   [backlog](../backlog.md)).

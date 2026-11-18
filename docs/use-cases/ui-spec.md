@@ -47,12 +47,12 @@ case wins.
   For Time: 1–999, default 100).
 - Interval text (EMOM): "N sec per interval" / "N min M sec per interval".
 - Toolbar: Cancel (xmark) / Save (checkmark).
-- Planned: while the exercise is a hold (Plank, Wall Sit), the For Time segment is disabled, with
-  the footnote "Exercise is a hold. For Time needs an exercise counted in reps."
+- While the exercise is a hold (Plank, Wall Sit), For Time can't be selected; the footnote
+  "Exercise is a hold. For Time needs an exercise counted in reps." says why.
 
 ### Exercise Selection
 
-- Planned: holds aren't listed while the kind is For Time.
+- Holds aren't listed while the kind is For Time.
 
 - Alphabetical list of exercise cards; tapping a collapsed card selects it and returns.
 - Info button expands one card at a time: description, muscle-group tag, difficulty pill, "Select".
@@ -203,7 +203,8 @@ Planned (UC-0013); not built yet.
   started". Tapping a preset starts it.
 - **Preset editor (sheet):** "Timer Type" buttons EMOM/AMRAP/For Time; Digital Crown steppers
   (with haptic detents) for duration 1–60 min (not for For Time) and reps (For Time: 1–999); interval text; "Exercise" row → flat list with
-  name, muscle group and a checkmark.
+  name, muscle group and a checkmark. For Time is dimmed while the exercise is a hold, and holds
+  aren't listed for For Time.
 - **Workout:** silent countdown with "Get ready" (tap hides it). Paged layout: controls page (End,
   Pause/Resume; resuming jumps back) to the left of the metrics page: TOTAL, INTERVAL (orange in
   the last 3 s) and REPS for EMOM / ROUNDS for AMRAP (tap to count), live heart rate and ACTIVE KCAL.

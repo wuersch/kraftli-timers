@@ -146,7 +146,15 @@ struct WatchPresetEditorView: View {
                             .foregroundStyle(timerKind == kind ? .black : .primary)
                     }
                     .buttonStyle(.plain)
+                    .disabled(!draft.offers(kind))
+                    .opacity(draft.offers(kind) ? 1 : 0.4)
                 }
+            }
+
+            if let reason = draft.forTimeUnavailableReason {
+                Text(reason)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -158,7 +166,7 @@ struct WatchPresetEditorView: View {
                 .foregroundStyle(.secondary)
 
             NavigationLink {
-                WatchExerciseListView(selectedExerciseId: $selectedExerciseId)
+                WatchExerciseListView(selectedExerciseId: $selectedExerciseId, kind: timerKind)
             } label: {
                 HStack {
                     Text(draft.selectedExercise?.name ?? "Select Exercise")
