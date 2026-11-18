@@ -118,12 +118,19 @@ struct PresetDraft: Equatable {
 
     // MARK: - Saving
 
+    /// The duration as it is stored: For Time has none.
+    var storedDuration: TimeInterval {
+        kind.hasFixedDuration ? duration : 0
+    }
+
+    /// The reps as they are stored: AMRAP has none.
+    var storedReps: Int? {
+        kind == .amrap ? nil : targetReps
+    }
+
     /// Writes the draft to `existingPreset`, or inserts a new preset at the end of
     /// `presets` when there is none.
     func save(editing existingPreset: TimerPreset?, in modelContext: ModelContext, after presets: [TimerPreset]) {
-        // For Time has no duration; AMRAP has no reps.
-        let storedDuration: TimeInterval = kind.hasFixedDuration ? duration : 0
-        let storedReps: Int? = kind == .amrap ? nil : targetReps
         if let existingPreset {
             existingPreset.kindRawValue = kind.rawValue
             existingPreset.durationInterval = storedDuration

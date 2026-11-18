@@ -102,4 +102,26 @@ struct PresetDraftTests {
         #expect(draft.offers(plank))
         #expect(draft.offers(.forTime))
     }
+
+    // MARK: - Session steps (UC-0013)
+
+    @Test func stepOfDraft_storesWhatAPresetWouldStore() {
+        let exerciseId = UUID()
+
+        let forTime = PresetDraft(kind: .forTime, exerciseId: exerciseId, durationMinutes: 20, targetReps: 30).step()
+        #expect(forTime.kind == .forTime)
+        #expect(forTime.durationInterval == 0)
+        #expect(forTime.targetReps == 30)
+        #expect(forTime.exerciseId == exerciseId)
+
+        let amrap = PresetDraft(kind: .amrap, durationMinutes: 4, targetReps: 100).step()
+        #expect(amrap.durationInterval == 240)
+        #expect(amrap.targetReps == nil)
+    }
+
+    @Test func draftOfStep_roundTrips_andKeepsTheStepsIdentity() {
+        let step = SessionStep(kind: .emom, exerciseId: UUID(), durationInterval: 300, targetReps: 50)
+
+        #expect(PresetDraft(step: step).step(id: step.id) == step)
+    }
 }
