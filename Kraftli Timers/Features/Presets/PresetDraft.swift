@@ -77,6 +77,30 @@ struct PresetDraft: Equatable {
         return duration / Double(targetReps)
     }
 
+    // MARK: - Holds
+
+    /// For Time counts reps, so it can't be combined with a hold such as a plank (UC-0006).
+    static func canCombine(_ kind: TimerKind, with exercise: ExerciseInfo?) -> Bool {
+        !(kind == .forTime && exercise?.isHold == true)
+    }
+
+    /// Whether the editor offers `kind` for the chosen exercise. The current kind always
+    /// stays offered, so a preset saved before the rule existed can still be shown.
+    func offers(_ kind: TimerKind) -> Bool {
+        kind == self.kind || Self.canCombine(kind, with: selectedExercise)
+    }
+
+    /// Whether the editor offers `exercise` for the chosen kind. The current exercise
+    /// always stays offered.
+    func offers(_ exercise: ExerciseInfo) -> Bool {
+        exercise.id == exerciseId || Self.canCombine(kind, with: exercise)
+    }
+
+    /// Why For Time isn't offered, for the editors to show; `nil` while it is.
+    var forTimeUnavailableReason: String? {
+        offers(.forTime) ? nil : "Exercise is a hold. For Time needs an exercise counted in reps."
+    }
+
     // MARK: - Editing
 
     /// Keeps the reps within the current kind's range. Call after the duration or the

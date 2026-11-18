@@ -69,4 +69,37 @@ struct PresetDraftTests {
 
         #expect(draft.intervalDuration == 30)
     }
+
+    // MARK: - Holds (UC-0006 extensions 3f, 3g)
+
+    private let plank = ExerciseInfo(name: "Plank", description: "", formTips: [], muscleGroup: .core, isHold: true)
+    private let squats = ExerciseInfo(
+        name: "Squats", description: "", formTips: [], muscleGroup: .lowerBody, secondsPerRep: 2
+    )
+
+    @Test func forTime_cannotBeCombinedWithAHold() {
+        #expect(!PresetDraft.canCombine(.forTime, with: plank))
+        #expect(PresetDraft.canCombine(.forTime, with: squats))
+        #expect(PresetDraft.canCombine(.forTime, with: nil))
+    }
+
+    @Test func timeBoxedKinds_canBeCombinedWithAHold() {
+        #expect(PresetDraft.canCombine(.emom, with: plank))
+        #expect(PresetDraft.canCombine(.amrap, with: plank))
+    }
+
+    @Test func forTimeDraft_doesNotOfferHolds() {
+        let draft = PresetDraft(kind: .forTime, exerciseId: squats.id)
+
+        #expect(!draft.offers(plank))
+        #expect(draft.offers(squats))
+    }
+
+    /// A preset saved before the rule existed keeps showing what it has.
+    @Test func draft_keepsOfferingItsCurrentExerciseAndKind() {
+        let draft = PresetDraft(kind: .forTime, exerciseId: plank.id)
+
+        #expect(draft.offers(plank))
+        #expect(draft.offers(.forTime))
+    }
 }

@@ -83,18 +83,34 @@ struct TimerPresetEditorView: View {
         .contentShape(Rectangle())
     }
 
+    /// The kind picker's selection. A segmented `Picker` can't disable a single segment,
+    /// so a kind the draft doesn't offer (For Time with a hold) is refused here instead:
+    /// a `Binding` built from closures lets the setter decide what reaches the state.
+    private var offeredKind: Binding<TimerKind> {
+        Binding(
+            get: { draft.kind },
+            set: { if draft.offers($0) { draft.kind = $0 } }
+        )
+    }
+
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Timer Kind", selection: $draft.kind) {
+                    Picker("Timer Kind", selection: offeredKind) {
                         ForEach(TimerKind.allCases, id: \.self) { kind in
                             Text(kind.rawValue).tag(kind)
                         }
                     }
                     .pickerStyle(.segmented)
+
+                    if let reason = draft.forTimeUnavailableReason {
+                        Text(reason)
+                            .foregroundStyle(.secondary)
+                            .font(.footnote)
+                    }
 
                     switch draft.kind {
                     case .amrap:
@@ -200,7 +216,7 @@ struct TimerPresetEditorView: View {
                 draft.selectDefaultExerciseIfNeeded()
             }
             .sheet(isPresented: $showingExerciseSelection) {
-                ExerciseSelectionView(selectedExerciseId: $draft.exerciseId)
+                ExerciseSelectionView(selectedExerciseId: $draft.exerciseId, kind: draft.kind)
             }
         }
     }

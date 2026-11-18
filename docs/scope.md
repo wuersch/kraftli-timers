@@ -20,7 +20,7 @@ be implemented; ideas live in the [backlog](backlog.md) until promoted to a use 
 | [UC-0004](use-cases/UC-0004-run-a-workout-on-apple-watch.md) | Run a workout on the Apple Watch alone | user-goal | approved |
 | [UC-0005](use-cases/UC-0005-record-a-workout.md) | Record a workout | subfunction | approved |
 | [UC-0006](use-cases/UC-0006-manage-timer-presets.md) | Manage timer presets | user-goal | approved |
-| [UC-0007](use-cases/UC-0007-choose-an-exercise.md) | Choose an exercise for a preset | subfunction | approved |
+| [UC-0007](use-cases/UC-0007-choose-an-exercise.md) | Choose an exercise for a preset | subfunction | implemented |
 | [UC-0008](use-cases/UC-0008-review-workout-stats.md) | Review workout history and stats | user-goal | approved |
 | [UC-0009](use-cases/UC-0009-correct-or-delete-a-logged-workout.md) | Correct or delete a logged workout | user-goal | approved |
 | [UC-0010](use-cases/UC-0010-configure-app-preferences.md) | Configure app preferences | user-goal | approved |

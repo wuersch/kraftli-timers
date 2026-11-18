@@ -26,6 +26,10 @@ struct ExerciseSelectionView: View {
     /// Binding to the selected exercise ID (updated on selection).
     @Binding var selectedExerciseId: UUID?
 
+    /// The kind of the timer the exercise is chosen for. Holds are left out for
+    /// For Time (UC-0007 extension 1b).
+    var kind: TimerKind = .emom
+
     // MARK: - Filter State
 
     @State private var muscleGroupFilter: MuscleGroup? = nil
@@ -46,7 +50,9 @@ struct ExerciseSelectionView: View {
                 || exercise.muscleGroup == muscleGroupFilter
             let matchesDifficulty = difficultyFilter == nil
                 || exercise.difficulty == difficultyFilter
-            return matchesMuscle && matchesDifficulty
+            let isOffered = exercise.id == selectedExerciseId
+                || PresetDraft.canCombine(kind, with: exercise)
+            return matchesMuscle && matchesDifficulty && isOffered
         }
     }
 

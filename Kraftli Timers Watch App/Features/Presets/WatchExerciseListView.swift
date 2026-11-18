@@ -16,8 +16,14 @@ struct WatchExerciseListView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedExerciseId: UUID?
 
+    /// The kind of the timer the exercise is chosen for. Holds are left out for
+    /// For Time (UC-0007 extension 1b).
+    var kind: TimerKind = .emom
+
     private var exercises: [ExerciseInfo] {
-        ExerciseRepository.all
+        ExerciseRepository.all.filter { exercise in
+            exercise.id == selectedExerciseId || PresetDraft.canCombine(kind, with: exercise)
+        }
     }
 
     var body: some View {
