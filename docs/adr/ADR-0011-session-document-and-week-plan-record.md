@@ -1,6 +1,6 @@
 # ADR-0011: Store a session's elements as one versioned document and the week plan as one record
 
-- **Status:** approved
+- **Status:** implemented
 - **Date:** 2026-11-18
 - **Deciders:** Michael Würsch
 

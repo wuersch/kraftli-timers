@@ -120,10 +120,13 @@ private struct TimerRow: View {
                 .frame(width: 10, height: 10)
             Text(name)
                 .foregroundStyle(isRest ? .secondary : .primary)
+                .lineLimit(1)
             Spacer(minLength: 8)
             Text(quantity)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
+                // The quantity keeps its width; a long exercise name is the one to shorten.
+                .layoutPriority(1)
         }
         .font(.callout)
         .frame(minHeight: 30)

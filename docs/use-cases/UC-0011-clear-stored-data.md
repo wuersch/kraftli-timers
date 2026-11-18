@@ -57,5 +57,6 @@ The athlete asks to clear stored data ([UC-0010](UC-0010-configure-app-preferenc
 ## Related Information
 
 - Interaction design: [ui-spec.md](ui-spec.md#settings)
-- Known deviation: sessions and the week plan can't be cleared yet; "all data" leaves them.
+- Known deviations: a choice with nothing to delete is shown disabled instead of being left out
+  (extension 1a), and "all data" shows no count.
 - Sync: [ADR-0008](../adr/ADR-0008-swiftdata-cloudkit-persistence.md)
