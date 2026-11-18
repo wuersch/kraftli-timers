@@ -21,6 +21,12 @@ struct ExerciseInfo: Identifiable, Hashable, Sendable, Decodable {
     let formTips: [String]
     let muscleGroup: MuscleGroup
     let difficulty: Difficulty?
+    /// A hold is held for time (a plank), not counted in reps. Holds can't be used
+    /// for a For Time timer (UC-0006).
+    let isHold: Bool
+    /// The typical time one rep takes at a steady pace, before fatigue. Used to
+    /// estimate how long a For Time timer takes (UC-0013); `nil` for holds.
+    let secondsPerRep: Double?
 
     init(
         id: UUID = UUID(),
@@ -28,7 +34,9 @@ struct ExerciseInfo: Identifiable, Hashable, Sendable, Decodable {
         description: String,
         formTips: [String],
         muscleGroup: MuscleGroup,
-        difficulty: Difficulty? = nil
+        difficulty: Difficulty? = nil,
+        isHold: Bool = false,
+        secondsPerRep: Double? = nil
     ) {
         self.id = id
         self.name = name
@@ -36,5 +44,7 @@ struct ExerciseInfo: Identifiable, Hashable, Sendable, Decodable {
         self.formTips = formTips
         self.muscleGroup = muscleGroup
         self.difficulty = difficulty
+        self.isHold = isHold
+        self.secondsPerRep = secondsPerRep
     }
 }

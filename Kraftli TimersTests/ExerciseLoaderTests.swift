@@ -32,4 +32,20 @@ struct ExerciseLoaderTests {
             #expect(MuscleGroup.allCases.contains(exercise.muscleGroup))
         }
     }
+
+    @Test func loadBundled_holdsAreExactlyPlankAndWallSit() {
+        let holds = ExerciseLoader.loadBundled().filter(\.isHold).map(\.name).sorted()
+
+        #expect(holds == ["Plank", "Wall Sit"])
+    }
+
+    @Test func loadBundled_everyExerciseCountedInRepsHasAPace() {
+        for exercise in ExerciseLoader.loadBundled() {
+            if exercise.isHold {
+                #expect(exercise.secondsPerRep == nil, "\(exercise.name)")
+            } else {
+                #expect((exercise.secondsPerRep ?? 0) > 0, "\(exercise.name)")
+            }
+        }
+    }
 }
