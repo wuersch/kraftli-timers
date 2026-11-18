@@ -1,6 +1,6 @@
 # UC-0007: Choose an exercise for a preset
 
-- **Status:** implemented
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to find a suitable bodyweight exercise and learn what it involves,
   so the preset I'm building names the right one.
@@ -9,7 +9,8 @@
 
 ## Preconditions
 
-- Athlete is creating or changing a preset ([UC-0006](UC-0006-manage-timer-presets.md)).
+- Athlete is creating or changing a preset ([UC-0006](UC-0006-manage-timer-presets.md)) or a step
+  of a session ([UC-0013](UC-0013-compose-a-training-session.md)); "preset" below stands for either.
 
 ## Success Guarantee
 
@@ -24,7 +25,8 @@ The athlete asks to choose the preset's exercise.
 1. System lists the exercise library alphabetically and marks the currently chosen exercise. The
    library is a curated set of bodyweight exercises (22 in this release), each with a name, a
    description, a muscle group (full body, upper body, lower body or core) and, optionally, a
-   difficulty (beginner, intermediate or advanced).
+   difficulty (beginner, intermediate or advanced). The library also knows whether an exercise is
+   a hold (held for time, not counted in reps) and, for the others, a typical pace per rep.
 2. Athlete narrows the list by muscle group and/or difficulty.
 3. System shows only the exercises that match all chosen criteria, and indicates that a filter is active.
 4. Athlete asks for an exercise's details.
@@ -37,6 +39,10 @@ The athlete asks to choose the preset's exercise.
 - 1a. The library couldn't be loaded:
   - 1a1. System says that no exercises are available.
   - 1a2. Use case ends.
+- 1b. The preset's kind is For Time:
+  - 1b1. System leaves the holds out of the list ([UC-0006](UC-0006-manage-timer-presets.md)
+    extension 3g).
+  - 1b2. Use case continues at step 2.
 - 2a. Athlete doesn't need to filter:
   - 2a1. Use case continues at step 4.
 - 2b. Athlete chooses on the Watch:
@@ -63,5 +69,7 @@ The athlete asks to choose the preset's exercise.
 ## Related Information
 
 - Interaction design: [ui-spec.md](ui-spec.md#exercise-selection)
+- Known deviation: the library doesn't mark holds or carry a pace yet, and holds are listed for
+  For Time presets (extension 1b).
 - Out of scope (backlog): showing each exercise's bundled form tips ("Form Tips During Workout",
   [backlog](../backlog.md)).

@@ -1,6 +1,6 @@
 # UC-0011: Clear stored data
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to wipe my workout history, my presets, my sessions, or all of
   them, to start fresh.
@@ -57,4 +57,5 @@ The athlete asks to clear stored data ([UC-0010](UC-0010-configure-app-preferenc
 ## Related Information
 
 - Interaction design: [ui-spec.md](ui-spec.md#settings)
+- Known deviation: sessions and the week plan can't be cleared yet; "all data" leaves them.
 - Sync: [ADR-0008](../adr/ADR-0008-swiftdata-cloudkit-persistence.md)

@@ -20,6 +20,7 @@ case wins.
 | Tab | Purpose | Use cases |
 |-----|---------|-----------|
 | Timers | Preset list and launching | UC-0001, UC-0002, UC-0006, UC-0012 |
+| Training | Week plan and sessions (planned) | UC-0013, UC-0014 |
 | Stats | Stats dashboard and history | UC-0008, UC-0009 |
 | Settings | Preferences, data, about | UC-0010, UC-0011 |
 
@@ -46,8 +47,12 @@ case wins.
   For Time: 1–999, default 100).
 - Interval text (EMOM): "N sec per interval" / "N min M sec per interval".
 - Toolbar: Cancel (xmark) / Save (checkmark).
+- Planned: while the exercise is a hold (Plank, Wall Sit), the For Time segment is disabled, with
+  the footnote "Exercise is a hold. For Time needs an exercise counted in reps."
 
 ### Exercise Selection
+
+- Planned: holds aren't listed while the kind is For Time.
 
 - Alphabetical list of exercise cards; tapping a collapsed card selects it and returns.
 - Info button expands one card at a time: description, muscle-group tag, difficulty pill, "Select".
@@ -99,6 +104,64 @@ case wins.
 - Without a Watch: footer "Connect Apple Watch for heart rate and calories".
 - "Open Health" button when Health data exists. Swipe down to close.
 
+### Training
+
+Planned (UC-0013, UC-0014); not built yet. Mockups: "Training Sessions Mockups" canvas.
+
+- NavigationStack titled "Training", second tab. Toolbar: Add "+" (trailing) opens the
+  [Session Editor](#session-editor-sheet) for a new session.
+- **Session shape:** wherever a session appears, it is drawn as a bar of segments, one per timer
+  in running order (loops unrolled), coloured by kind (EMOM blue, AMRAP indigo, For Time teal,
+  rest gray) and sized by duration; For Time uses its estimate.
+- **Week strip:** seven day tiles side by side, starting with the region's first weekday, labelled
+  "Mon" … "Sun". A training day's tile shows its session's shape as a vertical stack; a rest day
+  is an empty dashed outline. Today's label is a white pill. Tapping a tile selects the day
+  (white ring); today is selected when the tab opens.
+- **Selected day, with a session:** card with "TODAY · TUESDAY" (or just the weekday), the session
+  name, "≈ N min · N timers", the shape as a bar with a bracket under each loop, and the timers as
+  rows: kind colour, exercise, "5 min · 50 reps" / "4 min" / "30 reps · ≈ 4 min"; a loop's rows sit
+  next to "N×" and end with "Rest · 1 min". "Change" opens a sheet with the session cards,
+  the current one checked, and "Rest day".
+- **Selected day, rest:** "Rest day" — "Tap a session to train on Wednesdays." followed by the
+  session cards; tapping one plans it on that day.
+- **Sessions:** below the selected day, one card per session in alphabetical order: name, shape,
+  "≈ N min". Tap opens the [Session Editor](#session-editor-sheet). Swipe to delete, with a
+  confirmation alert: "Delete "Name"?" — "It is also removed from your week. This action cannot be
+  undone." Long-press menu: Duplicate (opens the editor on a copy named "Name 2", "Name 3" …), Delete.
+- Empty state (no sessions; the week strip is hidden): "No Sessions" — "Compose a session first,
+  then plan it on your training days." + "New Session".
+
+### Session Editor (Sheet)
+
+Planned (UC-0013); not built yet.
+
+- Toolbar: Cancel (xmark) / Save (checkmark); Save is always enabled.
+- Name as a large title field (placeholder "Session Name"), below it "≈ N min · N timers" and the
+  session shape, both updating with every change.
+- **Blocks:** stacked without gaps, like a structogram, in running order.
+  - Timer block, tinted by kind: kind in small caps, exercise name; trailing "5 min" + "50 reps"
+    (EMOM), "4 min" (AMRAP), "30 reps" + "≈ 4 min" (For Time). Tap opens the
+    [Step Editor](#step-editor-sheet).
+  - Loop block: a rail on the leading edge with a repeat icon and "3×" (tap: wheel 2–20) that
+    spans the loop's timer blocks, a row "Rest between rounds" with "None" or the time (tap:
+    wheels for 0–10 min and seconds in steps of 5, at most 10 min), and "+ Timer in loop".
+  - Hold and drag reorders a block within its level: session blocks among each other, a loop's
+    timers within that loop. Long-press menu: Delete (no confirmation).
+- Below the blocks: "+ Timer" (opens the Step Editor), "+ Preset" (list of the timer presets;
+  tapping one adds a copy), "+ Loop" (adds an empty 2× loop).
+- A failed save keeps the sheet open and marks each problem in place: under the name "Give the
+  session a name." or "Another session already has this name." (names compare trimmed and without
+  regard to case); below the blocks "Add at least one timer."; inside an empty loop "This loop
+  needs at least one timer."
+
+### Step Editor (Sheet)
+
+Planned (UC-0013); not built yet.
+
+- The [Preset Editor](#preset-editor-sheet) form (kind, exercise, wheels) applied to one timer of
+  a session. Titles "New Timer" / "Edit Timer"; Cancel (xmark) / Done (checkmark) returns to the
+  Session Editor, where Save stores everything.
+
 ### Stats
 
 - Period picker (segmented): 7 Days / Month / 6 Months / Year.
@@ -129,7 +192,8 @@ case wins.
 - **Visuals** (toggle cards): Launch Animation, Confetti, Smooth Animations, Show Reps in Center.
 - **Manage Your Data:** Clear Workout History / Clear Timer Presets / Clear All Data, each with a
   count, disabled when empty, confirmation alert ("… This action cannot be undone."); save failure
-  alert "Failed to save changes. Please try again."
+  alert "Failed to save changes. Please try again." Planned: "Clear Sessions" (sessions and the
+  week plan) between presets and all data.
 - **About:** version (build), GitHub link, Privacy Policy link, Acknowledgments sheet.
 
 ## Watch App

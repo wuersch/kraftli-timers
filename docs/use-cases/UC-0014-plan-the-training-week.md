@@ -1,6 +1,6 @@
 # UC-0014: Plan the training week
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete with fixed training days, I want to assign a session to each training
   day of my week, so the app knows what I'm training today without me picking it every time.
@@ -58,7 +58,7 @@ The athlete wants to set up or change their training week.
 
 ## Related Information
 
-- Interaction design: [ui-spec.md](ui-spec.md) (week view still to be written; a calendar week,
-  no month view).
+- Interaction design: [ui-spec.md](ui-spec.md#training) (a calendar week, no month view).
+- Known deviation: not implemented yet.
 - [UC-0015](UC-0015-run-a-training-session.md) uses the plan to offer today's session.
 - Out of scope (backlog): dated plans, progression over weeks, missed-day tracking.

@@ -20,14 +20,14 @@ be implemented; ideas live in the [backlog](backlog.md) until promoted to a use 
 | [UC-0004](use-cases/UC-0004-run-a-workout-on-apple-watch.md) | Run a workout on the Apple Watch alone | user-goal | approved |
 | [UC-0005](use-cases/UC-0005-record-a-workout.md) | Record a workout | subfunction | approved |
 | [UC-0006](use-cases/UC-0006-manage-timer-presets.md) | Manage timer presets | user-goal | approved |
-| [UC-0007](use-cases/UC-0007-choose-an-exercise.md) | Choose an exercise for a preset | subfunction | implemented |
+| [UC-0007](use-cases/UC-0007-choose-an-exercise.md) | Choose an exercise for a preset | subfunction | approved |
 | [UC-0008](use-cases/UC-0008-review-workout-stats.md) | Review workout history and stats | user-goal | approved |
 | [UC-0009](use-cases/UC-0009-correct-or-delete-a-logged-workout.md) | Correct or delete a logged workout | user-goal | approved |
 | [UC-0010](use-cases/UC-0010-configure-app-preferences.md) | Configure app preferences | user-goal | approved |
-| [UC-0011](use-cases/UC-0011-clear-stored-data.md) | Clear stored data | user-goal | clarified |
+| [UC-0011](use-cases/UC-0011-clear-stored-data.md) | Clear stored data | user-goal | approved |
 | [UC-0012](use-cases/UC-0012-run-a-for-time-workout.md) | Run a For Time workout | user-goal | approved |
-| [UC-0013](use-cases/UC-0013-compose-a-training-session.md) | Compose a training session | user-goal | clarified |
-| [UC-0014](use-cases/UC-0014-plan-the-training-week.md) | Plan the training week | user-goal | clarified |
+| [UC-0013](use-cases/UC-0013-compose-a-training-session.md) | Compose a training session | user-goal | approved |
+| [UC-0014](use-cases/UC-0014-plan-the-training-week.md) | Plan the training week | user-goal | approved |
 | [UC-0015](use-cases/UC-0015-run-a-training-session.md) | Run a training session | user-goal | clarified |
 
 `approved` means the specified behavior isn't fully realized yet; each such use case lists its
