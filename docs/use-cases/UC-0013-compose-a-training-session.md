@@ -1,6 +1,6 @@
 # UC-0013: Compose a training session
 
-- **Status:** approved
+- **Status:** implemented
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to put together named training sessions from timers and repeated
   blocks, such as a warm-up followed by a main part, so I can run a whole training as one workout
@@ -96,7 +96,6 @@ The athlete wants to create, change or remove a session.
 
 - Interaction design: [ui-spec.md](ui-spec.md#session-editor-sheet): a block editor in the style
   of Nassi-Shneiderman diagrams or Scratch.
-- Known deviation: not implemented yet.
 - [UC-0014](UC-0014-plan-the-training-week.md) (planning sessions on weekdays),
   [UC-0015](UC-0015-run-a-training-session.md) (running a session)
 - Inspiration: named, reusable workouts as in Freeletics.

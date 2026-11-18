@@ -26,8 +26,8 @@ be implemented; ideas live in the [backlog](backlog.md) until promoted to a use 
 | [UC-0010](use-cases/UC-0010-configure-app-preferences.md) | Configure app preferences | user-goal | approved |
 | [UC-0011](use-cases/UC-0011-clear-stored-data.md) | Clear stored data | user-goal | approved |
 | [UC-0012](use-cases/UC-0012-run-a-for-time-workout.md) | Run a For Time workout | user-goal | approved |
-| [UC-0013](use-cases/UC-0013-compose-a-training-session.md) | Compose a training session | user-goal | approved |
-| [UC-0014](use-cases/UC-0014-plan-the-training-week.md) | Plan the training week | user-goal | approved |
+| [UC-0013](use-cases/UC-0013-compose-a-training-session.md) | Compose a training session | user-goal | implemented |
+| [UC-0014](use-cases/UC-0014-plan-the-training-week.md) | Plan the training week | user-goal | implemented |
 | [UC-0015](use-cases/UC-0015-run-a-training-session.md) | Run a training session | user-goal | clarified |
 
 `approved` means the specified behavior isn't fully realized yet; each such use case lists its
@@ -52,4 +52,4 @@ Interaction design (screens, gestures, copy): [use-cases/ui-spec.md](use-cases/u
 | [ADR-0008](adr/ADR-0008-swiftdata-cloudkit-persistence.md) | SwiftData synced as peers via private CloudKit | implemented |
 | [ADR-0009](adr/ADR-0009-bundled-exercise-library.md) | Bundled, read-only exercise library | implemented |
 | [ADR-0010](adr/ADR-0010-open-ended-workouts-and-done-intent.md) | Open-ended workouts without a duration, ended by a `done` intent | implemented |
-| [ADR-0011](adr/ADR-0011-session-document-and-week-plan-record.md) | A session's elements as one versioned document; the week plan as one record | approved |
+| [ADR-0011](adr/ADR-0011-session-document-and-week-plan-record.md) | A session's elements as one versioned document; the week plan as one record | implemented |

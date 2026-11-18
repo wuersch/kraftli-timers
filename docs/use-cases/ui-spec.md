@@ -20,7 +20,7 @@ case wins.
 | Tab | Purpose | Use cases |
 |-----|---------|-----------|
 | Timers | Preset list and launching | UC-0001, UC-0002, UC-0006, UC-0012 |
-| Training | Week plan and sessions (planned) | UC-0013, UC-0014 |
+| Training | Week plan and sessions | UC-0013, UC-0014 |
 | Stats | Stats dashboard and history | UC-0008, UC-0009 |
 | Settings | Preferences, data, about | UC-0010, UC-0011 |
 
@@ -106,8 +106,6 @@ case wins.
 
 ### Training
 
-Planned (UC-0013, UC-0014); not built yet. Mockups: "Training Sessions Mockups" canvas.
-
 - NavigationStack titled "Training", second tab. Toolbar: Add "+" (trailing) opens the
   [Session Editor](#session-editor-sheet) for a new session.
 - **Session shape:** wherever a session appears, it is drawn as a bar of segments, one per timer
@@ -122,8 +120,8 @@ Planned (UC-0013, UC-0014); not built yet. Mockups: "Training Sessions Mockups" 
   rows: kind colour, exercise, "5 min · 50 reps" / "4 min" / "30 reps · ≈ 4 min"; a loop's rows sit
   next to "N×" and end with "Rest · 1 min". "Change" opens a sheet with the session cards,
   the current one checked, and "Rest day".
-- **Selected day, rest:** "Rest day" — "Tap a session to train on Wednesdays." followed by the
-  session cards; tapping one plans it on that day.
+- **Selected day, rest:** "Rest day" — "Tap + on a session to train on Wednesdays." While a rest
+  day is selected, each session card below carries a "+" that plans it on that day.
 - **Sessions:** below the selected day, one card per session in alphabetical order: name, shape,
   "≈ N min". Tap opens the [Session Editor](#session-editor-sheet). Swipe to delete, with a
   confirmation alert: "Delete "Name"?" — "It is also removed from your week. This action cannot be
@@ -133,8 +131,6 @@ Planned (UC-0013, UC-0014); not built yet. Mockups: "Training Sessions Mockups" 
 
 ### Session Editor (Sheet)
 
-Planned (UC-0013); not built yet.
-
 - Toolbar: Cancel (xmark) / Save (checkmark); Save is always enabled.
 - Name as a large title field (placeholder "Session Name"), below it "≈ N min · N timers" and the
   session shape, both updating with every change.
@@ -142,11 +138,13 @@ Planned (UC-0013); not built yet.
   - Timer block, tinted by kind: kind in small caps, exercise name; trailing "5 min" + "50 reps"
     (EMOM), "4 min" (AMRAP), "30 reps" + "≈ 4 min" (For Time). Tap opens the
     [Step Editor](#step-editor-sheet).
-  - Loop block: a rail on the leading edge with a repeat icon and "3×" (tap: wheel 2–20) that
-    spans the loop's timer blocks, a row "Rest between rounds" with "None" or the time (tap:
-    wheels for 0–10 min and seconds in steps of 5, at most 10 min), and "+ Timer in loop".
+  - Loop block: a rail on the leading edge with a repeat icon and "3×" that spans the loop's
+    timer blocks, "+ Timer in loop", and a row "Rest between rounds" with "None" or the time.
+    Tapping the rail or the rest row opens a "Loop" sheet: wheel for the rounds (2–20), wheels
+    for the rest (0–10 min, seconds in steps of 5, at most 10 min).
   - Hold and drag reorders a block within its level: session blocks among each other, a loop's
-    timers within that loop. Long-press menu: Delete (no confirmation).
+    timers within that loop. A session block dropped on a loop's timer takes the loop's place.
+    Long-press menu: Move Up, Move Down, Delete (no confirmation).
 - Below the blocks: "+ Timer" (opens the Step Editor), "+ Preset" (list of the timer presets;
   tapping one adds a copy), "+ Loop" (adds an empty 2× loop).
 - A failed save keeps the sheet open and marks each problem in place: under the name "Give the
@@ -155,8 +153,6 @@ Planned (UC-0013); not built yet.
   needs at least one timer."
 
 ### Step Editor (Sheet)
-
-Planned (UC-0013); not built yet.
 
 - The [Preset Editor](#preset-editor-sheet) form (kind, exercise, wheels) applied to one timer of
   a session. Titles "New Timer" / "Edit Timer"; Cancel (xmark) / Done (checkmark) returns to the
@@ -190,10 +186,9 @@ Planned (UC-0013); not built yet.
 
 - **Audio:** "Sound" toggle; "Cheer on Completion" toggle (only while Sound is on).
 - **Visuals** (toggle cards): Launch Animation, Confetti, Smooth Animations, Show Reps in Center.
-- **Manage Your Data:** Clear Workout History / Clear Timer Presets / Clear All Data, each with a
+- **Manage Your Data:** Clear Workout History / Clear Timer Presets / Clear Sessions / Clear All Data, each with a
   count, disabled when empty, confirmation alert ("… This action cannot be undone."); save failure
-  alert "Failed to save changes. Please try again." Planned: "Clear Sessions" (sessions and the
-  week plan) between presets and all data.
+  alert "Failed to save changes. Please try again." "Clear Sessions" also clears the week plan.
 - **About:** version (build), GitHub link, Privacy Policy link, Acknowledgments sheet.
 
 ## Watch App

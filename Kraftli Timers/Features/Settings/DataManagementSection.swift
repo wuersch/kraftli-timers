@@ -10,12 +10,15 @@ import SwiftUI
 struct DataManagementSection: View {
     let workoutCount: Int
     let presetCount: Int
+    let sessionCount: Int
     let onClearWorkouts: () -> Void
     let onClearPresets: () -> Void
+    let onClearSessions: () -> Void
     let onClearAll: () -> Void
 
     @State private var showingClearWorkoutsAlert = false
     @State private var showingClearPresetsAlert = false
+    @State private var showingClearSessionsAlert = false
     @State private var showingClearAllAlert = false
 
     var body: some View {
@@ -62,6 +65,25 @@ struct DataManagementSection: View {
 
                 Divider().padding(.leading, 16)
 
+                // Clear Sessions (with the week plan)
+                Button {
+                    showingClearSessionsAlert = true
+                } label: {
+                    HStack {
+                        Text("Clear Sessions")
+                            .foregroundStyle(sessionCount > 0 ? .red : .secondary)
+                        Spacer()
+                        Text("\(sessionCount)")
+                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
+                    }
+                    .padding()
+                    .contentShape(Rectangle())
+                }
+                .disabled(sessionCount == 0)
+
+                Divider().padding(.leading, 16)
+
                 // Clear All
                 Button {
                     showingClearAllAlert = true
@@ -90,16 +112,22 @@ struct DataManagementSection: View {
         } message: {
             Text("This will permanently delete all \(presetCount) timer presets. This action cannot be undone.")
         }
+        .alert("Clear Sessions", isPresented: $showingClearSessionsAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Clear", role: .destructive, action: onClearSessions)
+        } message: {
+            Text("This will permanently delete all \(sessionCount) sessions and your week plan. This action cannot be undone.")
+        }
         .alert("Clear All Data", isPresented: $showingClearAllAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Clear All", role: .destructive, action: onClearAll)
         } message: {
-            Text("This will permanently delete all workouts and presets. This action cannot be undone.")
+            Text("This will permanently delete all workouts, presets and sessions. This action cannot be undone.")
         }
     }
 
     private var totalCount: Int {
-        workoutCount + presetCount
+        workoutCount + presetCount + sessionCount
     }
 }
 
@@ -110,8 +138,10 @@ struct DataManagementSection: View {
         DataManagementSection(
             workoutCount: 42,
             presetCount: 5,
+            sessionCount: 3,
             onClearWorkouts: {},
             onClearPresets: {},
+            onClearSessions: {},
             onClearAll: {}
         )
         .padding()
@@ -123,8 +153,10 @@ struct DataManagementSection: View {
         DataManagementSection(
             workoutCount: 0,
             presetCount: 0,
+            sessionCount: 0,
             onClearWorkouts: {},
             onClearPresets: {},
+            onClearSessions: {},
             onClearAll: {}
         )
         .padding()

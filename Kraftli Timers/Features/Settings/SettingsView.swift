@@ -13,6 +13,8 @@ struct SettingsView: View {
 
     @Query private var workouts: [WorkoutLog]
     @Query private var presets: [TimerPreset]
+    @Query private var sessions: [TrainingSession]
+    @Query private var weekPlans: [WeekPlan]
 
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
@@ -25,8 +27,10 @@ struct SettingsView: View {
                 DataManagementSection(
                     workoutCount: workouts.count,
                     presetCount: presets.count,
+                    sessionCount: sessions.count,
                     onClearWorkouts: clearWorkouts,
                     onClearPresets: clearPresets,
+                    onClearSessions: clearSessions,
                     onClearAll: clearAll
                 )
                 AboutSection()
@@ -53,9 +57,21 @@ struct SettingsView: View {
         saveContext()
     }
 
+    /// Sessions go together with the week plan that refers to them (UC-0011).
+    private func clearSessions() {
+        deleteSessionsAndWeekPlans()
+        saveContext()
+    }
+
+    private func deleteSessionsAndWeekPlans() {
+        sessions.forEach(modelContext.delete)
+        weekPlans.forEach(modelContext.delete)
+    }
+
     private func clearAll() {
         workouts.forEach(modelContext.delete)
         presets.forEach(modelContext.delete)
+        deleteSessionsAndWeekPlans()
         saveContext()
     }
 
