@@ -26,6 +26,10 @@ struct TimerScreenLink {
     /// done). Used for logging.
     var onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil
 
+    /// Called when the workout was ended early, on either device, after enough active
+    /// time to be recorded as stopped early (UC-0005 extension 1a). Used for logging.
+    var onWorkoutStopped: ((WorkoutCompletionData) -> Void)? = nil
+
     /// Exercise name, part of the workout's `TimerConfig`.
     var exerciseName = "Workout"
 
@@ -267,6 +271,7 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
 
     /// Cleanup action called by parent before dismissing. Safe to call more than once.
     private func cleanupForDismiss() {
+        reportEarlyStop()
         isEnding = true
         countdown.cancelCountdown()
         syncNoticeTask?.cancel()
@@ -279,6 +284,25 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
             timerSession.end()
         }
         model.reset()
+    }
+
+    /// Reports a workout that ends here without having completed, if it ran long enough
+    /// to be recorded (`EarlyStop`). Runs before the session is torn down, while its
+    /// state still tells how far the workout got, and only on the first cleanup.
+    private func reportEarlyStop() {
+        guard !isEnding, timerSession.workoutID == workoutID,
+              let state = timerSession.renderedState,
+              case .record(let activeTime, let reps, let rounds) = EarlyStop(of: state, at: Date())
+        else { return }
+        link.onWorkoutStopped?(WorkoutCompletionData(
+            durationSeconds: activeTime,
+            repsCompleted: reps,
+            roundsCompleted: rounds,
+            // Whoever owns the timer saves the Health workout (ADR-006 §1).
+            ownedByWatch: state.owner == .watch,
+            correlationID: workoutID,
+            stoppedEarly: true
+        ))
     }
 
     /// Shows the 3-2-1-GO countdown toward the workout's shared start date. The timer

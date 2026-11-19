@@ -17,7 +17,7 @@ Quick reference for the core domain types:
 | `TrainingSession` | Named training session: id, name, and its elements as one versioned JSON document ([ADR-0011](adr/ADR-0011-session-document-and-week-plan-record.md)) |
 | `SessionElement` | A session's building block, a plain Codable value: a `SessionStep` (one timer, stored like a preset) or a `SessionLoop` (steps, 2–20 rounds, rest). Not a SwiftData model, but kept in `Models/` next to `TrainingSession`, whose stored format it is |
 | `WeekPlan` | The training week: one optional session id per weekday; an id without a session counts as a rest day |
-| `WorkoutLog` | Completed workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID |
+| `WorkoutLog` | Recorded workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID, stoppedEarly |
 | `MuscleGroup` | Enum: fullBody \| upperBody \| lowerBody \| core |
 | `Difficulty` | Enum: beginner \| intermediate \| advanced |
 
@@ -102,6 +102,7 @@ final class WorkoutLog {
     var repsCompleted: Int?            // EMOM and For Time
     var roundsCompleted: Int?          // AMRAP only
     var healthKitWorkoutUUID: UUID?    // Correlation with Apple Health entry
+    var stoppedEarly: Bool             // Ended early: duration = active time, counts so far
 
     // Computed
     var timerKind: TimerKind
@@ -184,6 +185,11 @@ The Watch is preferred because it runs the primary `HKWorkoutSession` (heart rat
 background runtime). **Whoever owns the timer also saves the Health workout**, so each workout is
 saved exactly once. The device that *started* the workout writes the SwiftData `WorkoutLog`.
 
+A workout ended early is judged by `EarlyStop`, a pure rule over the `TimerState` that both
+devices apply alike (UC-0005 extensions 1a–1b): under one minute of active time nothing is
+recorded and the Watch discards its Health workout; from one minute on, the starting device
+writes the log marked `stoppedEarly`, and the owner saves the Health workout as usual.
+
 **Start handshake** (iPhone-started, `PhoneWorkoutStarter` ↔ `WatchWorkoutStarter`):
 1. iPhone sends a `StartRequest` (workout ID + config) and calls
    `HKHealthStore.startWatchApp(toHandle:)`; the UI shows "Starting on Watch…"
@@ -265,11 +271,12 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 | `DefaultFeedback` | Interval beep + completion cue (cheering or three beeps) |
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
-| `WorkoutRecorder` | iPhone: records a completed workout — the log always, the Health workout when the iPhone owned the timer (ADR-0006 §1). Injected through the environment; silent by default |
+| `WorkoutRecorder` | iPhone: records a completed or early-stopped workout — the log always, the Health workout when the iPhone owned the timer (ADR-0006 §1). Injected through the environment; silent by default |
 | `ExerciseRepository` / `ExerciseLoader` | Load the bundled exercise library into memory |
 | `PresetMaintenance` | Startup migration + CloudKit duplicate cleanup (deletes on iPhone only) |
 | `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |
 | `TimerState` / `TimerStateReducer` | Shared: replicated timer state and the only code that changes it |
+| `EarlyStop` | Shared: whether a workout ended early is recorded or discarded, and with what |
 | `TimerSessionController` | Shared: one device's role (owner/viewer), confirmed state, pending intents (@Observable) |
 | `TimerSyncTransport` | Shared: payloads, inbox filtering, composite + WatchConnectivity channels |
 | `HealthKitTimerSyncTransport` | Shared: payloads over the mirrored `HKWorkoutSession` data channel |

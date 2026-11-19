@@ -225,7 +225,9 @@ case wins.
 ### Workout Lists
 
 - WorkoutRow (card style): exercise name, kind pill, "date · N min · N reps/rounds"; For Time
-  shows the finish time as M:SS instead of "N min".
+  shows the finish time as M:SS instead of "N min". A workout stopped early shows its active
+  time as M:SS and ends with "· stopped early" ("2:43 · 5 rounds · stopped early"; For Time
+  without a rep count).
 - Tap row → [Workout Log Editor](#workout-log-editor). Edit button → swipe-to-delete (no confirmation).
 - All Workouts empty: "No Workouts" — "Complete a workout to see it here".
 

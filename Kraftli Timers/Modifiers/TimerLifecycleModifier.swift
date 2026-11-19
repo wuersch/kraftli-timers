@@ -20,6 +20,10 @@ struct WorkoutCompletionData {
     /// The workout ID, used as the WorkoutLog's ID. The Watch echoes it back in
     /// `WorkoutSessionEndedMessage` to link its HealthKit workout to this log.
     var correlationID: UUID?
+
+    /// True for a workout ended early (UC-0005 extension 1a): the duration is the active
+    /// time up to the stop, and the count is what was done so far.
+    var stoppedEarly = false
 }
 
 /// A view modifier that handles common timer lifecycle events:

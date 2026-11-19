@@ -26,6 +26,7 @@ protocol WorkoutLoggingService {
     ///   - healthKitWorkoutUUID: Optional HealthKit workout UUID for correlation.
     ///   - id: The log's ID. Pass the workout's ID so the Watch's HealthKit summary can be
     ///     matched to this log; nil generates a new one.
+    ///   - stoppedEarly: True for a workout ended early (UC-0005 extension 1a).
     /// - Returns: The created WorkoutLog instance.
     @discardableResult
     func logWorkout(
@@ -35,7 +36,8 @@ protocol WorkoutLoggingService {
         repsCompleted: Int?,
         roundsCompleted: Int?,
         healthKitWorkoutUUID: UUID?,
-        id: UUID?
+        id: UUID?,
+        stoppedEarly: Bool
     ) -> WorkoutLog
 }
 
@@ -55,7 +57,8 @@ final class DefaultWorkoutLoggingService: WorkoutLoggingService {
         repsCompleted: Int?,
         roundsCompleted: Int?,
         healthKitWorkoutUUID: UUID? = nil,
-        id: UUID? = nil
+        id: UUID? = nil,
+        stoppedEarly: Bool = false
     ) -> WorkoutLog {
         let workoutLog = WorkoutLog(
             id: id ?? UUID(),
@@ -64,7 +67,8 @@ final class DefaultWorkoutLoggingService: WorkoutLoggingService {
             durationSeconds: durationSeconds,
             repsCompleted: repsCompleted,
             roundsCompleted: roundsCompleted,
-            healthKitWorkoutUUID: healthKitWorkoutUUID
+            healthKitWorkoutUUID: healthKitWorkoutUUID,
+            stoppedEarly: stoppedEarly
         )
 
         modelContext.insert(workoutLog)
@@ -90,7 +94,8 @@ final class SilentWorkoutLoggingService: WorkoutLoggingService {
         repsCompleted: Int?,
         roundsCompleted: Int?,
         healthKitWorkoutUUID: UUID? = nil,
-        id: UUID? = nil
+        id: UUID? = nil,
+        stoppedEarly: Bool = false
     ) -> WorkoutLog {
         // Return a placeholder — never persisted
         WorkoutLog(
@@ -100,7 +105,8 @@ final class SilentWorkoutLoggingService: WorkoutLoggingService {
             durationSeconds: durationSeconds,
             repsCompleted: repsCompleted,
             roundsCompleted: roundsCompleted,
-            healthKitWorkoutUUID: healthKitWorkoutUUID
+            healthKitWorkoutUUID: healthKitWorkoutUUID,
+            stoppedEarly: stoppedEarly
         )
     }
 }

@@ -37,9 +37,15 @@ struct WatchWorkoutCoordinator {
 
     /// Ends the timer and the HealthKit session (saving what was recorded), reports
     /// to the iPhone for iPhone-started workouts, and dismisses.
+    ///
+    /// - Parameter stoppedLog: The entry of a Watch-started workout that was stopped
+    ///   early and ran long enough to be recorded (UC-0005 extension 1a). The iPhone
+    ///   writes the entry of a workout it started.
     func stopAndCleanup(
         timer: some WorkoutTimer,
         countdown: CountdownCoordinator,
+        stoppedLog: WorkoutLog? = nil,
+        modelContext: ModelContext,
         dismiss: DismissAction
     ) {
         countdown.cancelCountdown()
@@ -54,8 +60,13 @@ struct WatchWorkoutCoordinator {
 
                 if startedOnPhone {
                     report(summary)
+                } else if let stoppedLog {
+                    save(stoppedLog, healthKitUUID: summary.healthKitUUID, in: modelContext)
                 }
             }
+        } else if let stoppedLog {
+            // No Health workout to wait for (access denied, or tracking never began).
+            save(stoppedLog, healthKitUUID: nil, in: modelContext)
         }
 
         dismiss()
@@ -76,16 +87,7 @@ struct WatchWorkoutCoordinator {
         }
 
         if let log {
-            log.healthKitWorkoutUUID = summary.healthKitUUID
-            modelContext.insert(log)
-            // Surface a save failure: this is the only SwiftData record of a
-            // standalone workout, saved just as watchOS is most likely to suspend
-            // the app. Swallowing the error lost the workout with no diagnostics.
-            do {
-                try modelContext.save()
-            } catch {
-                Logger.workoutLogging.error("Failed to save standalone Watch workout log: \(error.localizedDescription)")
-            }
+            save(log, healthKitUUID: summary.healthKitUUID, in: modelContext)
         } else {
             report(summary)
         }
@@ -98,6 +100,20 @@ struct WatchWorkoutCoordinator {
     }
 
     // MARK: - Private
+
+    /// Writes the history entry of a Watch-started workout, linked to its Health workout.
+    private func save(_ log: WorkoutLog, healthKitUUID: UUID?, in modelContext: ModelContext) {
+        log.healthKitWorkoutUUID = healthKitUUID
+        modelContext.insert(log)
+        // Surface a save failure: this is the only SwiftData record of a
+        // standalone workout, saved just as watchOS is most likely to suspend
+        // the app. Swallowing the error lost the workout with no diagnostics.
+        do {
+            try modelContext.save()
+        } catch {
+            Logger.workoutLogging.error("Failed to save standalone Watch workout log: \(error.localizedDescription)")
+        }
+    }
 
     /// Sends the session's HealthKit results to the iPhone, which wrote the workout log.
     private func report(_ summary: WorkoutSessionManager.Summary) {

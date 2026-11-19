@@ -204,6 +204,7 @@ struct TimerRunnerView: View {
     private var timerScreenLink: TimerScreenLink {
         TimerScreenLink(
             onWorkoutCompleted: workoutCompleted,
+            onWorkoutStopped: record,
             exerciseName: exerciseName,
             workoutID: correlationID,
             autoStart: true,
@@ -285,6 +286,12 @@ struct TimerRunnerView: View {
             transitionToSummary()
         }
 
+        record(completionData)
+    }
+
+    /// Writes the workout to the history, and to Apple Health if the iPhone ran it.
+    /// Also called for a workout stopped early, which has no summary: the screen closes.
+    private func record(_ completionData: WorkoutCompletionData) {
         workoutRecorder.record(
             completionData,
             // A preset whose exercise left the library is recorded as "Unknown" (UC-0005 2a1),

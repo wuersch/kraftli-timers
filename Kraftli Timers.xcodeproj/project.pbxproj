@@ -113,6 +113,7 @@
 				Models/TrainingSession.swift,
 				Models/WeekPlan.swift,
 				Models/WorkoutLog.swift,
+				Services/EarlyStop.swift,
 				Services/ExerciseLoader.swift,
 				Services/ExerciseRepository.swift,
 				Services/FeedbackProvider.swift,
