@@ -14,6 +14,7 @@ import Foundation
 /// pace of an exercise comes in as a closure, so tests don't need the bundled library.
 struct SessionEstimate: Equatable {
     /// Looks up the seconds one rep of an exercise takes; `nil` if there is none.
+    /// Tests pass one; without one, the bundled exercise library is asked.
     typealias Pace = (UUID?) -> Double?
 
     /// A For Time timer takes `pace × reps^1.1`: slightly more than linear, because the
@@ -31,8 +32,9 @@ struct SessionEstimate: Equatable {
     }
 
     /// The pace from the bundled exercise library.
-    static let libraryPace: Pace = { id in
-        id.flatMap(ExerciseRepository.exercise(byId:))?.secondsPerRep
+    static func libraryPace(of exerciseId: UUID?) -> Double? {
+        guard let exerciseId else { return nil }
+        return ExerciseRepository.exercise(byId: exerciseId)?.secondsPerRep
     }
 
     static func forTimeSeconds(reps: Int, secondsPerRep: Double) -> TimeInterval {
@@ -40,19 +42,17 @@ struct SessionEstimate: Equatable {
     }
 
     /// EMOM and AMRAP take their duration; For Time is estimated from its reps.
-    static func seconds(of step: SessionStep, pace: Pace = libraryPace) -> TimeInterval {
+    static func seconds(of step: SessionStep, pace: Pace? = nil) -> TimeInterval {
         guard step.kind == .forTime else { return step.durationInterval }
-        return forTimeSeconds(
-            reps: step.targetReps ?? 0,
-            secondsPerRep: pace(step.exerciseId) ?? fallbackSecondsPerRep
-        )
+        let secondsPerRep = if let pace { pace(step.exerciseId) } else { libraryPace(of: step.exerciseId) }
+        return forTimeSeconds(reps: step.targetReps ?? 0, secondsPerRep: secondsPerRep ?? fallbackSecondsPerRep)
     }
 
     /// The session in running order with every loop unrolled: its steps once per round,
     /// and its rest after each round except the last.
     let segments: [Segment]
 
-    init(of elements: [SessionElement], pace: Pace = SessionEstimate.libraryPace) {
+    init(of elements: [SessionElement], pace: Pace? = nil) {
         segments = elements.flatMap { element -> [Segment] in
             switch element {
             case .step(let step):

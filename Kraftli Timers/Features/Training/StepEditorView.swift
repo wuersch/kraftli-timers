@@ -23,7 +23,7 @@ struct StepEditorView: View {
     init(step: SessionStep? = nil, onDone: @escaping (SessionStep) -> Void) {
         self.stepID = step?.id
         self.onDone = onDone
-        _draft = State(initialValue: step.map(PresetDraft.init(step:)) ?? PresetDraft())
+        _draft = State(initialValue: step.map { PresetDraft(step: $0) } ?? PresetDraft())
     }
 
     var body: some View {
