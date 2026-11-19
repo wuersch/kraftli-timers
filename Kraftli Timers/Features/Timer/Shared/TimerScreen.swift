@@ -40,6 +40,10 @@ struct TimerScreenLink {
     /// (e.g. launched from the preset play button), mirroring the Watch behavior.
     var autoStart = false
 
+    /// False keeps the workout on the iPhone without asking the Watch (see
+    /// `PhoneWorkoutStarter.start`).
+    var startsOnWatch = true
+
     /// Parent controls whether swipe is disabled (true during countdown).
     var isSwipeDisabled: Binding<Bool> = .constant(false)
 
@@ -266,7 +270,7 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
         timerSession.onRenderedStateChange = { [model] state in
             model.apply(state)
         }
-        workoutStarter.start(workoutID: workoutID, config: config)
+        workoutStarter.start(workoutID: workoutID, config: config, onWatch: link.startsOnWatch)
     }
 
     /// Cleanup action called by parent before dismissing. Safe to call more than once.

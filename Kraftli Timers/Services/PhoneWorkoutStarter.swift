@@ -64,12 +64,16 @@ final class PhoneWorkoutStarter {
     }
 
     /// Starts a workout, on the Watch if possible.
-    func start(workoutID: UUID, config: TimerConfig) {
+    ///
+    /// - Parameter onWatch: False keeps the workout on the iPhone without asking the
+    ///   Watch. A session's steps run that way until the Watch can follow a whole
+    ///   session: started one by one, each would become a Health workout of its own.
+    func start(workoutID: UUID, config: TimerConfig, onWatch: Bool = true) {
         cancel()
         self.config = config
 
-        guard isWatchAppAvailable() else {
-            Logger.timerSync.info("No Watch app available; running workout on iPhone")
+        guard onWatch, isWatchAppAvailable() else {
+            Logger.timerSync.info("Running workout on iPhone (no Watch app available, or not asked for)")
             controller.startAsOwner(phoneOwnedState(workoutID: workoutID, config: config))
             return
         }

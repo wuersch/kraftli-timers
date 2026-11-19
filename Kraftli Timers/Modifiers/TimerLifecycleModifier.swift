@@ -24,6 +24,11 @@ struct WorkoutCompletionData {
     /// True for a workout ended early (UC-0005 extension 1a): the duration is the active
     /// time up to the stop, and the count is what was done so far.
     var stoppedEarly = false
+
+    /// Set for a step of a session (UC-0015): the session's name and the run's ID. Such a
+    /// step gets no Health workout of its own; the session gets one for all its steps.
+    var sessionName: String?
+    var sessionRunID: UUID?
 }
 
 /// A view modifier that handles common timer lifecycle events:

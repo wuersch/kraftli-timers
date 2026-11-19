@@ -40,12 +40,15 @@ protocol HealthKitService: Sendable {
     ///   - activityType: The HealthKit activity type (e.g., `.highIntensityIntervalTraining`)
     ///   - start: Workout start time
     ///   - end: Workout end time
+    ///   - pauses: Stretches between `start` and `end` in which the workout was paused,
+    ///     in order. Health counts them out of the workout's duration.
     ///   - metadata: Optional metadata including our workout ID for correlation
     /// - Returns: UUID of the saved HealthKit workout
     func saveWorkout(
         activityType: HKWorkoutActivityType,
         start: Date,
         end: Date,
+        pauses: [DateInterval],
         metadata: [String: Any]?
     ) async throws -> UUID
 
@@ -100,6 +103,7 @@ final class DefaultHealthKitService: HealthKitService {
         activityType: HKWorkoutActivityType,
         start: Date,
         end: Date,
+        pauses: [DateInterval],
         metadata: [String: Any]?
     ) async throws -> UUID {
         guard isAvailable else {
@@ -126,6 +130,17 @@ final class DefaultHealthKitService: HealthKitService {
 
         let builder = HKWorkoutBuilder(healthStore: healthStore, configuration: config, device: .local())
         try await builder.beginCollection(at: start)
+        // A pause is a pair of events: Health takes the time between them out of the
+        // workout's duration, which is how a session's waits between timers are kept out.
+        let pauseEvents = pauses.flatMap { pause in
+            [
+                HKWorkoutEvent(type: .pause, dateInterval: DateInterval(start: pause.start, duration: 0), metadata: nil),
+                HKWorkoutEvent(type: .resume, dateInterval: DateInterval(start: pause.end, duration: 0), metadata: nil)
+            ]
+        }
+        if !pauseEvents.isEmpty {
+            try await builder.addWorkoutEvents(pauseEvents)
+        }
         try await builder.endCollection(at: end)
         if let metadata {
             try await builder.addMetadata(metadata)
@@ -172,6 +187,7 @@ final class SilentHealthKitService: HealthKitService {
         activityType: HKWorkoutActivityType,
         start: Date,
         end: Date,
+        pauses: [DateInterval],
         metadata: [String: Any]?
     ) async throws -> UUID {
         UUID()

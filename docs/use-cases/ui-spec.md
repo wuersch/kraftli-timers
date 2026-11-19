@@ -182,8 +182,8 @@ case wins.
   ("Timer 2 of 8", in a loop followed by "· Round 1 of 3") and the session's shape as a bar.
   Finished and skipped segments are dimmed, the current one has a white ring.
 - **Between steps** (also before the first timer): a card "DONE" with the timer just finished
-  ("Jumping Jacks · EMOM" — "5:00 · 50 reps"; "Skipped" for a skipped one; no card before the
-  first timer). Centre: "UP NEXT", the kind as a pill, the exercise in large type, its settings
+  ("Jumping Jacks · EMOM" — "5:00 · 50 reps"; titled "SKIPPED", without a result, for a
+  skipped one; no card before the first timer). Centre: "UP NEXT", the kind as a pill, the exercise in large type, its settings
   ("4 min", "5 min · 50 reps", "30 reps") and, in a loop, "Round 1 of 3". Buttons: "Start"
   (prominent), below it "Skip" and "End Session" (red text) side by side. Footer "Session paused
   · take your time". Swipe down does nothing here.
@@ -227,7 +227,8 @@ case wins.
 - WorkoutRow (card style): exercise name, kind pill, "date · N min · N reps/rounds"; For Time
   shows the finish time as M:SS instead of "N min". A workout stopped early shows its active
   time as M:SS and ends with "· stopped early" ("2:43 · 5 rounds · stopped early"; For Time
-  without a rep count).
+  without a rep count). A step of a session carries a third line with a calendar glyph and the
+  session's name.
 - Tap row → [Workout Log Editor](#workout-log-editor). Edit button → swipe-to-delete (no confirmation).
 - All Workouts empty: "No Workouts" — "Complete a workout to see it here".
 

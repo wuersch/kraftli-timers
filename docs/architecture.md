@@ -17,7 +17,7 @@ Quick reference for the core domain types:
 | `TrainingSession` | Named training session: id, name, and its elements as one versioned JSON document ([ADR-0011](adr/ADR-0011-session-document-and-week-plan-record.md)) |
 | `SessionElement` | A session's building block, a plain Codable value: a `SessionStep` (one timer, stored like a preset) or a `SessionLoop` (steps, 2–20 rounds, rest). Not a SwiftData model, but kept in `Models/` next to `TrainingSession`, whose stored format it is |
 | `WeekPlan` | The training week: one optional session id per weekday; an id without a session counts as a rest day |
-| `WorkoutLog` | Recorded workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID, stoppedEarly |
+| `WorkoutLog` | Recorded workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID, stoppedEarly, sessionName, sessionRunID |
 | `MuscleGroup` | Enum: fullBody \| upperBody \| lowerBody \| core |
 | `Difficulty` | Enum: beginner \| intermediate \| advanced |
 
@@ -103,6 +103,8 @@ final class WorkoutLog {
     var roundsCompleted: Int?          // AMRAP only
     var healthKitWorkoutUUID: UUID?    // Correlation with Apple Health entry
     var stoppedEarly: Bool             // Ended early: duration = active time, counts so far
+    var sessionName: String?           // Step of a session: its name then (text, not a reference)
+    var sessionRunID: UUID?            // The run its steps share; links them to its one Health workout
 
     // Computed
     var timerKind: TimerKind
@@ -227,6 +229,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `TimerPresetEditorView` | Create/edit preset sheet |
 | `TimerSettingsForm` | The form for one timer's settings (kind, exercise, wheels), shared by the preset editor and the step editor |
 | `TrainingView` | Training tab: week strip, the selected day's session, session list |
+| `SessionRunnerView` | Full-screen runner of a session: one screen per phase of the run (up next, running step on the kind's timer screen, loop rest, summary) |
 | `SessionEditorView` | Block editor for a session; works on a `SessionDraft`, reorders by drag and drop, also into and out of loops |
 | `StepEditorView` | Editor for one timer of a session, on a `PresetDraft` |
 | `SessionShapeBar`, `SessionShapeColumn` | A session drawn as a bar of segments, coloured by kind and sized by duration: lying (cards, editor) and upright (week strip) |
@@ -256,6 +259,9 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 | Type | Purpose |
 |------|---------|
 | `SessionDraft` | The session editor's values and rules: validation, adding, reordering, moving timers between the session and its loops, saving |
+| `SessionOrder` | The one rule for a session's running order: loops unrolled, a rest after each round but the last |
+| `SessionRun` | One run through a session as a value: position, phase, every timer's result, active stretches and total time; all rules of running, tested with plain dates |
+| `SessionRunner` | Drives a `SessionRun` on the iPhone: a new workout ID per step, records each step, times the rests, records the session (@Observable) |
 | `SessionEstimate` | A session's segments in running order, its estimated length and summary text; For Time = pace × reps^1.1 |
 | `ShapeLayout` | The measurements of a session's shape: segment lengths, gaps, loop runs |
 | `SessionNaming`, `WeekLayout`, `WeekPlanning` | Unique and copy names; weekday order by region; planning a day and deleting a session with its days |
@@ -271,7 +277,7 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 | `DefaultFeedback` | Interval beep + completion cue (cheering or three beeps) |
 | `StatsService` | Compute workout statistics |
 | `WorkoutLoggingService` | Log completed workouts to SwiftData |
-| `WorkoutRecorder` | iPhone: records a completed or early-stopped workout — the log always, the Health workout when the iPhone owned the timer (ADR-0006 §1). Injected through the environment; silent by default |
+| `WorkoutRecorder` | iPhone: records a completed or early-stopped workout — the log always, the Health workout when the iPhone owned the timer (ADR-0006 §1). A session's step gets the log only; `recordSession` then saves one Health workout for the run, with the waits as pauses, and links every step's log to it. Injected through the environment; silent by default |
 | `ExerciseRepository` / `ExerciseLoader` | Load the bundled exercise library into memory |
 | `PresetMaintenance` | Startup migration + CloudKit duplicate cleanup (deletes on iPhone only) |
 | `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |

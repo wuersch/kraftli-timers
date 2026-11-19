@@ -16,6 +16,8 @@ struct TrainingView: View {
     @State private var selectedWeekday = WeekLayout.weekday()
     @State private var sheet: Sheet?
     @State private var sessionToDelete: TrainingSession?
+    /// The session being run, as it was when Start was pressed (UC-0015).
+    @State private var runRequest: SessionRunRequest?
 
     private enum Sheet: Identifiable {
         case new
@@ -74,7 +76,8 @@ struct TrainingView: View {
                         SelectedDayCard(
                             title: dayTitle(selectedWeekday, today: today),
                             session: selectedSession,
-                            onChange: { sheet = .plan(weekday: selectedWeekday) }
+                            onChange: { sheet = .plan(weekday: selectedWeekday) },
+                            onStart: { runRequest = SessionRunRequest(selectedSession) }
                         )
                         // Takes the session off this day; the session itself stays. Not
                         // destructive, so no red and no confirmation: one tap plans it again.
@@ -125,6 +128,10 @@ struct TrainingView: View {
                 }
                 .accessibilityLabel("New session")
             }
+        }
+        // Full screen like a single timer: a run isn't something to swipe away.
+        .fullScreenCover(item: $runRequest) { request in
+            SessionRunnerView(request: request)
         }
         .sheet(item: $sheet) { sheet in
             switch sheet {
@@ -201,6 +208,18 @@ struct TrainingView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Plan \(session.name) on \(WeekLayout.name(of: weekday))")
             }
+
+            // The same play button as on a timer preset. A button of its own, because
+            // the card's tap already opens the editor.
+            Button {
+                runRequest = SessionRunRequest(session)
+            } label: {
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.tint)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Start \(session.name)")
         }
         .padding(14)
         .cardStyle(padded: false)
