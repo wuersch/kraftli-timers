@@ -46,7 +46,7 @@ struct SessionEditorView: View {
     ///   - draft: What a new session starts with, for a duplicate.
     init(session: TrainingSession? = nil, startingWith draft: SessionDraft = SessionDraft()) {
         self.sessionToEdit = session
-        _draft = State(initialValue: session.map(SessionDraft.init(session:)) ?? draft)
+        _draft = State(initialValue: session.map { SessionDraft(session: $0) } ?? draft)
     }
 
     private var otherNames: [String] {
