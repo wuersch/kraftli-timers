@@ -237,7 +237,10 @@ struct SessionDraft: Equatable {
     @MainActor
     func save(editing existingSession: TrainingSession?, in modelContext: ModelContext) {
         let storedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let existingSession {
+        // The edited session can be gone by now: deleted on another device while the
+        // editor was open. Writing to a deleted model is an error, so the draft is then
+        // stored as a new session and the athlete's work isn't lost.
+        if let existingSession, existingSession.modelContext != nil, !existingSession.isDeleted {
             existingSession.name = storedName
             existingSession.elements = elements
         } else {

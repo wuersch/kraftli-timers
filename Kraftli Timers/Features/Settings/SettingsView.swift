@@ -92,5 +92,7 @@ struct SettingsView: View {
         SettingsView()
     }
     .environment(AppSettings())
-    .modelContainer(for: [WorkoutLog.self, TimerPreset.self], inMemory: true)
+    .modelContainer(
+        for: [WorkoutLog.self, TimerPreset.self, TrainingSession.self, WeekPlan.self], inMemory: true
+    )
 }

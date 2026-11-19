@@ -47,7 +47,7 @@ struct WeekStripView: View {
 
             Group {
                 if let planned {
-                    SessionShapeBar(segments: SessionEstimate.segments(of: planned.elements), axis: .vertical)
+                    SessionShapeColumn(segments: SessionEstimate(of: planned.elements).segments)
                         .padding(.horizontal, 13)
                         .padding(.vertical, 9)
                         .background(Color(UIColor.secondarySystemBackground), in: shape)

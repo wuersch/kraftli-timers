@@ -45,7 +45,7 @@ struct SessionDraftTests {
 
     // MARK: - Adding and changing
 
-    @Test func steps_areAppendedToTheSession_orToALoop() {
+    @Test func steps_areAppendedToTheSession_orToALoop() throws {
         var draft = SessionDraft()
         let first = step(1), inLoop = step(2)
 
@@ -55,16 +55,13 @@ struct SessionDraftTests {
 
         #expect(draft.elements.count == 2)
         #expect(draft.elements[0] == .step(first))
-        guard case .loop(let loop) = draft.elements[1] else {
-            Issue.record("expected a loop")
-            return
-        }
+        let loop = try #require(draft.elements[1].loop)
         #expect(loop.steps == [inLoop])
         #expect(loop.rounds == 2)
         #expect(loop.restSeconds == 0)
     }
 
-    @Test func update_replacesTheStep_onEitherLevel() {
+    @Test func update_replacesTheStep_onEitherLevel() throws {
         var draft = SessionDraft()
         let top = step(1), nested = step(2)
         draft.add(top)
@@ -79,29 +76,26 @@ struct SessionDraftTests {
         draft.update(changedNested)
 
         #expect(draft.elements[0] == .step(changedTop))
-        guard case .loop(let loop) = draft.elements[1] else {
-            Issue.record("expected a loop")
-            return
-        }
+        let loop = try #require(draft.elements[1].loop)
         #expect(loop.steps == [changedNested])
     }
 
-    @Test func loopSettings_areKeptWithinTheirLimits() {
+    @Test func loopSettings_areKeptWithinTheirLimits() throws {
         var draft = SessionDraft()
         let loopID = draft.addLoop()
 
         draft.setLoop(loopID, rounds: 99, restSeconds: 9_999)
-        guard case .loop(let high) = draft.elements[0] else { return }
+        let high = try #require(draft.elements[0].loop)
         #expect(high.rounds == 20)
         #expect(high.restSeconds == 600)
 
         draft.setLoop(loopID, rounds: 0, restSeconds: -5)
-        guard case .loop(let low) = draft.elements[0] else { return }
+        let low = try #require(draft.elements[0].loop)
         #expect(low.rounds == 2)
         #expect(low.restSeconds == 0)
     }
 
-    @Test func remove_takesAStepOrAWholeLoop() {
+    @Test func remove_takesAStepOrAWholeLoop() throws {
         var draft = SessionDraft()
         let top = step(1), nested = step(2)
         draft.add(top)
@@ -109,7 +103,7 @@ struct SessionDraftTests {
         draft.add(nested, toLoop: loopID)
 
         draft.remove(nested.id)
-        guard case .loop(let loop) = draft.elements[1] else { return }
+        let loop = try #require(draft.elements[1].loop)
         #expect(loop.steps.isEmpty)
 
         draft.remove(loopID)
@@ -129,7 +123,7 @@ struct SessionDraftTests {
         #expect(draft.elements.map(\.id) == [a.id, b.id, c.id])
     }
 
-    @Test func blocks_onlyMoveWithinTheirLevel() {
+    @Test func blocks_onlyMoveWithinTheirLevel() throws {
         let top = step(1), nestedA = step(2), nestedB = step(3)
         var draft = SessionDraft(elements: [.step(top)])
         let loopID = draft.addLoop()
@@ -142,7 +136,7 @@ struct SessionDraftTests {
         #expect(draft == before)
 
         draft.move(nestedB.id, onto: nestedA.id)
-        guard case .loop(let loop) = draft.elements[1] else { return }
+        let loop = try #require(draft.elements[1].loop)
         #expect(loop.steps.map(\.id) == [nestedB.id, nestedA.id])
 
         // A loop moves as a whole, with its steps.
@@ -162,6 +156,21 @@ struct SessionDraftTests {
         #expect(draft.elements.map(\.id) == [top.id, loopID])
     }
 
+    @Test func dropOnABlockOfTheSameLevel_isAMove() throws {
+        let a = step(1), b = step(2), nestedA = step(3), nestedB = step(4)
+        var draft = SessionDraft(elements: [.step(a), .step(b)])
+        let loopID = draft.addLoop()
+        draft.add(nestedA, toLoop: loopID)
+        draft.add(nestedB, toLoop: loopID)
+
+        draft.drop(b.id, onto: a.id)
+        #expect(draft.elements.map(\.id) == [b.id, a.id, loopID])
+
+        draft.drop(nestedB.id, onto: nestedA.id)
+        let loop = try #require(draft.elements[2].loop)
+        #expect(loop.steps.map(\.id) == [nestedB.id, nestedA.id])
+    }
+
     @Test func moveByOne_stopsAtTheEnds() {
         let a = step(1), b = step(2)
         var draft = SessionDraft(elements: [.step(a), .step(b)])
@@ -176,7 +185,7 @@ struct SessionDraftTests {
 
     // MARK: - Copies and saving
 
-    @Test func copy_getsANewName_andElementsOfItsOwn() {
+    @Test func copy_getsANewName_andElementsOfItsOwn() throws {
         let nested = step(2)
         let loop = SessionLoop(rounds: 3, restSeconds: 60, steps: [nested])
         let session = TrainingSession(name: "Legs", elements: [.step(step(1)), .loop(loop)])
@@ -186,7 +195,7 @@ struct SessionDraftTests {
         #expect(copy.name == "Legs 2")
         #expect(copy.elements.count == 2)
         #expect(Set(copy.elements.map(\.id)).isDisjoint(with: session.elements.map(\.id)))
-        guard case .loop(let copiedLoop) = copy.elements[1] else { return }
+        let copiedLoop = try #require(copy.elements[1].loop)
         #expect(copiedLoop.rounds == 3)
         #expect(copiedLoop.restSeconds == 60)
         #expect(copiedLoop.steps.first?.id != nested.id)
@@ -214,5 +223,33 @@ struct SessionDraftTests {
         #expect(saved.count == 1)
         #expect(saved[0].name == "Legs & Core")
         #expect(saved[0].elements.count == 2)
+    }
+
+    /// The edited session can be deleted on another device while the editor is open.
+    @Test func save_ofASessionDeletedMeanwhile_storesTheDraftAsANewSession() throws {
+        let container = try makeInMemoryContainer(for: TrainingSession.self, WeekPlan.self)
+        let context = container.mainContext
+        let session = TrainingSession(name: "Legs", elements: [.step(step(1))])
+        context.insert(session)
+        try context.save()
+        var draft = SessionDraft(session: session)
+        draft.name = "Legs & Core"
+
+        context.delete(session)
+        try context.save()
+        draft.save(editing: session, in: context)
+        try context.save()
+
+        let saved = try context.fetch(FetchDescriptor<TrainingSession>())
+        #expect(saved.map(\.name) == ["Legs & Core"])
+        #expect(saved.first?.id != session.id)
+    }
+}
+
+private extension SessionElement {
+    /// The loop, if the element is one. With `try #require` a test stops with a failure
+    /// when it isn't, instead of passing without having checked anything.
+    var loop: SessionLoop? {
+        if case .loop(let loop) = self { loop } else { nil }
     }
 }

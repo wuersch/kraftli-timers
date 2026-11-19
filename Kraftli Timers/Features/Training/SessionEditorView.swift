@@ -130,10 +130,11 @@ struct SessionEditorView: View {
             }
 
             if !draft.elements.isEmpty {
-                Text(SessionEstimate.summary(of: draft.elements))
+                let estimate = SessionEstimate(of: draft.elements)
+                Text(estimate.summary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                SessionShapeBar(segments: SessionEstimate.segments(of: draft.elements), thickness: 10)
+                SessionShapeBar(segments: estimate.segments, thickness: 10)
                     .padding(.top, 6)
             }
         }
