@@ -15,7 +15,7 @@ Quick reference for the core domain types:
 | `ExerciseInfo` | Bundled, in-memory exercise reference data: id, name, description, formTips, muscleGroup, difficulty, isHold, secondsPerRep ([ADR-0009](adr/ADR-0009-bundled-exercise-library.md)) |
 | `Exercise` | Legacy SwiftData model, unused; kept in the schema because CloudKit schema changes are additive only |
 | `TrainingSession` | Named training session: id, name, and its elements as one versioned JSON document ([ADR-0011](adr/ADR-0011-session-document-and-week-plan-record.md)) |
-| `SessionElement` | A session's building block, a plain Codable value: a `SessionStep` (one timer, stored like a preset) or a `SessionLoop` (steps, 2–20 rounds, rest) |
+| `SessionElement` | A session's building block, a plain Codable value: a `SessionStep` (one timer, stored like a preset) or a `SessionLoop` (steps, 2–20 rounds, rest). Not a SwiftData model, but kept in `Models/` next to `TrainingSession`, whose stored format it is |
 | `WeekPlan` | The training week: one optional session id per weekday; an id without a session counts as a rest day |
 | `WorkoutLog` | Completed workout: id, date, exerciseName, timerKind, durationSeconds, repsCompleted, roundsCompleted, healthKitWorkoutUUID |
 | `MuscleGroup` | Enum: fullBody \| upperBody \| lowerBody \| core |
@@ -223,7 +223,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `TrainingView` | Training tab: week strip, the selected day's session, session list |
 | `SessionEditorView` | Block editor for a session; works on a `SessionDraft`, reorders by drag and drop within a level |
 | `StepEditorView` | Editor for one timer of a session, on a `PresetDraft` |
-| `SessionShapeBar` | A session drawn as a bar of segments, coloured by kind and sized by duration |
+| `SessionShapeBar`, `SessionShapeColumn` | A session drawn as a bar of segments, coloured by kind and sized by duration: lying (cards, editor) and upright (week strip) |
 | `ExerciseSelectionView` | Exercise browser with filtering |
 | `TimerScreen` | The screen all three timer kinds run on: starts the workout, follows the timer session, countdown, gestures. A container view; the kinds fill its ring and center slots |
 | `EMOMTimerView` | EMOM face of `TimerScreen`: two rings, interval time |
@@ -244,6 +244,16 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `ForTimeTimerModel` | Renders an open-ended `TimerState`: elapsed time, finish time and pace (@Observable, shared with the Watch) |
 | `TimerSessionState` | Shared hint/confetti state management (@Observable) |
 
+### Training Logic
+Plain values and pure functions in `Features/Training/`, next to the views that use them.
+
+| Type | Purpose |
+|------|---------|
+| `SessionDraft` | The session editor's values and rules: validation, adding, reordering within a level, saving |
+| `SessionEstimate` | A session's segments in running order, its estimated length and summary text; For Time = pace × reps^1.1 |
+| `ShapeLayout` | The measurements of a session's shape: segment lengths, gaps, loop runs |
+| `SessionNaming`, `WeekLayout`, `WeekPlanning` | Unique and copy names; weekday order by region; planning a day and deleting a session with its days |
+
 ### Services
 | Service | Purpose |
 |---------|---------|
@@ -258,9 +268,6 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `WorkoutRecorder` | iPhone: records a completed workout — the log always, the Health workout when the iPhone owned the timer (ADR-0006 §1). Injected through the environment; silent by default |
 | `ExerciseRepository` / `ExerciseLoader` | Load the bundled exercise library into memory |
 | `PresetMaintenance` | Startup migration + CloudKit duplicate cleanup (deletes on iPhone only) |
-| `SessionDraft` | The session editor's values and rules: validation, adding, reordering within a level, saving |
-| `SessionEstimate` | Estimated session length and its segments; For Time = pace × reps^1.1 |
-| `SessionNaming`, `WeekLayout`, `WeekPlanning` | Unique and copy names; weekday order by region; planning a day and deleting a session with its days |
 | `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |
 | `TimerState` / `TimerStateReducer` | Shared: replicated timer state and the only code that changes it |
 | `TimerSessionController` | Shared: one device's role (owner/viewer), confirmed state, pending intents (@Observable) |

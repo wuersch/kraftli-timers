@@ -110,7 +110,8 @@ case wins.
   [Session Editor](#session-editor-sheet) for a new session.
 - **Session shape:** wherever a session appears, it is drawn as a bar of segments, one per timer
   in running order (loops unrolled), coloured by kind (EMOM blue, AMRAP indigo, For Time teal,
-  rest gray) and sized by duration; For Time uses its estimate.
+  rest gray) and sized by duration; For Time uses its estimate. Segments are separated by a small
+  gap, which is dropped when a session has more segments than fit with it.
 - **Week strip:** seven day tiles side by side, starting with the region's first weekday, labelled
   "Mon" … "Sun". A training day's tile shows its session's shape as a vertical stack; a rest day
   is an empty dashed outline. Today's label is a white pill. Tapping a tile selects the day
@@ -123,7 +124,7 @@ case wins.
 - **Selected day, rest:** "Rest day" — "Tap + on a session to train on Wednesdays." While a rest
   day is selected, each session card below carries a "+" that plans it on that day.
 - **Sessions:** below the selected day, one card per session in alphabetical order: name, shape,
-  "≈ N min". Tap opens the [Session Editor](#session-editor-sheet). Swipe to delete, with a
+  "≈ N min", followed by the days it is planned on ("≈ 37 min · Mon, Thu"). Tap opens the [Session Editor](#session-editor-sheet). Swipe to delete, with a
   confirmation alert: "Delete "Name"?" — "It is also removed from your week. This action cannot be
   undone." Long-press menu: Duplicate (opens the editor on a copy named "Name 2", "Name 3" …), Delete.
 - Empty state (no sessions; the week strip is hidden): "No Sessions" — "Compose a session first,
@@ -145,8 +146,9 @@ case wins.
   - Hold and drag reorders a block within its level: session blocks among each other, a loop's
     timers within that loop. A session block dropped on a loop's timer takes the loop's place.
     Long-press menu: Move Up, Move Down, Delete (no confirmation).
-- Below the blocks: "+ Timer" (opens the Step Editor), "+ Preset" (list of the timer presets;
-  tapping one adds a copy), "+ Loop" (adds an empty 2× loop).
+- Below the blocks: "+ Timer" (opens the Step Editor), "+ Preset" (sheet "Add from Preset" listing
+  the timer presets; tapping one adds a copy; without presets: "No Timers" — "Create timer presets
+  on the Timers tab"), "+ Loop" (adds an empty 2× loop).
 - A failed save keeps the sheet open and marks each problem in place: under the name "Give the
   session a name." or "Another session already has this name." (names compare trimmed and without
   regard to case); below the blocks "Add at least one timer."; inside an empty loop "This loop
