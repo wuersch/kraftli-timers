@@ -24,6 +24,8 @@ final class WatchTimerRuntime {
     let sessionManager = WorkoutSessionManager()
     let timerSession: TimerSessionController
     let starter: WatchWorkoutStarter
+    /// Holds the Health session of a training session's run across its steps (ADR-0012).
+    let sessionFollower: WatchSessionFollower
 
     /// Keeps the app on screen while following an iPhone-owned workout without a
     /// HealthKit session (after yielding).
@@ -42,12 +44,35 @@ final class WatchTimerRuntime {
         let timerSession = TimerSessionController(transport: transport)
         self.timerSession = timerSession
 
+        let sessionFollower = WatchSessionFollower(
+            pauseHealthSession: { sessionManager.pause() },
+            resumeHealthSession: { sessionManager.resume() },
+            saveHealthSession: { context in
+                Task {
+                    let summary = await sessionManager.endSession()
+                    sessionManager.resetToIdle()
+                    // The run's ID stands where a single workout's ID would: the iPhone
+                    // links the Health workout to every step's entry through it.
+                    DefaultWatchTimerSyncService(connectivity: .shared).sendWorkoutSessionEnded(
+                        healthKitUUID: summary.healthKitUUID,
+                        correlationID: context.runID,
+                        averageHeartRate: summary.averageHeartRate,
+                        maxHeartRate: summary.maxHeartRate,
+                        activeCalories: summary.activeCalories
+                    )
+                }
+            },
+            discardHealthSession: { sessionManager.discardSession() }
+        )
+        self.sessionFollower = sessionFollower
+
         // Filled in below, once `self` is fully initialized.
         var startKeepAlive: () -> Void = {}
         var endKeepAlive: () -> Void = {}
         starter = WatchWorkoutStarter(
             controller: timerSession,
             transport: transport,
+            sessionFollower: sessionFollower,
             startHealthSession: { kind in
                 try await Self.startSession(on: sessionManager, configuration: Self.configuration(for: kind))
             },

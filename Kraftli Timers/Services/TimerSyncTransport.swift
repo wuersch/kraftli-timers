@@ -30,6 +30,8 @@ nonisolated enum TimerSyncPayload: Codable, Equatable, Sendable {
     case intents([TimerIntent])
     /// The iPhone asking the Watch to start and own a workout.
     case startRequest(StartRequest)
+    /// The iPhone telling the Watch how far a session's run has come (ADR-0012).
+    case sessionStatus(SessionStatus)
 
     /// WatchConnectivity dictionary key for an encoded payload. Distinct from the
     /// legacy `WatchMessageCoder` keys, so old and new messages never collide.
@@ -73,6 +75,9 @@ protocol TimerSyncTransport: AnyObject {
     /// Asks the other device to start and own a workout.
     func requestStart(_ request: StartRequest)
 
+    /// Tells the other device how far a session's run has come.
+    func send(_ status: SessionStatus)
+
     /// Called for every payload this channel receives.
     var onPayload: ((TimerSyncPayload) -> Void)? { get set }
 
@@ -95,6 +100,9 @@ nonisolated struct TimerSyncInbox: Sendable {
     /// arrives on several channels and the receiver starts expecting its workout after
     /// the first copy.
     private var lastStartRequestID: UUID?
+    /// The last session status delivered. Kept across `expect(_:)` like the start
+    /// request: a session outlives the workouts of its steps.
+    private var lastSessionStatus: (runID: UUID, sequence: Int)?
 
     /// How many intent IDs are remembered for dedup (oldest dropped first).
     static let seenIntentIDLimit = 256
@@ -106,8 +114,10 @@ nonisolated struct TimerSyncInbox: Sendable {
     /// Starts listening for a (new) workout, forgetting everything about the previous one.
     mutating func expect(_ workoutID: UUID?) {
         let lastStartRequestID = lastStartRequestID
+        let lastSessionStatus = lastSessionStatus
         self = Self(workoutID: workoutID)
         self.lastStartRequestID = lastStartRequestID
+        self.lastSessionStatus = lastSessionStatus
     }
 
     /// Returns true if `state` is newer than anything seen for the expected workout.
@@ -143,6 +153,16 @@ nonisolated struct TimerSyncInbox: Sendable {
         lastStartRequestID = request.workoutID
         return true
     }
+
+    /// Returns true for a status newer than the last one of its run, or the first of
+    /// another run. Copies and stragglers from the other channels are dropped.
+    mutating func accept(_ status: SessionStatus) -> Bool {
+        if let last = lastSessionStatus, last.runID == status.runID, status.sequence <= last.sequence {
+            return false
+        }
+        lastSessionStatus = (status.runID, status.sequence)
+        return true
+    }
 }
 
 // MARK: - Composite
@@ -158,6 +178,8 @@ final class CompositeTimerSyncTransport: TimerSyncTransport {
     var onReconnect: (() -> Void)?
     /// Receives start requests, which are separate from the running workout's traffic.
     var onStartRequest: ((StartRequest) -> Void)?
+    /// Receives the progress of a session's run, which outlives its steps' workouts.
+    var onSessionStatus: ((SessionStatus) -> Void)?
 
     init(transports: [any TimerSyncTransport]) {
         self.transports = transports
@@ -186,6 +208,10 @@ final class CompositeTimerSyncTransport: TimerSyncTransport {
         transports.forEach { $0.requestStart(request) }
     }
 
+    func send(_ status: SessionStatus) {
+        transports.forEach { $0.send(status) }
+    }
+
     private func receive(_ payload: TimerSyncPayload) {
         switch payload {
         case .state(let state):
@@ -198,6 +224,9 @@ final class CompositeTimerSyncTransport: TimerSyncTransport {
         case .startRequest(let request):
             guard inbox.accept(request) else { return }
             onStartRequest?(request)
+        case .sessionStatus(let status):
+            guard inbox.accept(status) else { return }
+            onSessionStatus?(status)
         }
     }
 }
@@ -248,6 +277,14 @@ final class WatchConnectivityTimerSyncTransport: TimerSyncTransport {
         guard let dictionary = encode(.startRequest(request)) else { return }
         connectivity.updateApplicationContext(dictionary: dictionary)
         connectivity.sendMessage(dictionary: dictionary)
+    }
+
+    func send(_ status: SessionStatus) {
+        guard let dictionary = encode(.sessionStatus(status)) else { return }
+        // Not the application context: that one slot holds the running step's snapshot.
+        // The queue delivers every status, in order, also after a gap in the connection.
+        connectivity.sendMessage(dictionary: dictionary)
+        connectivity.transferUserInfo(dictionary: dictionary)
     }
 
     private func encode(_ payload: TimerSyncPayload) -> [String: Any]? {

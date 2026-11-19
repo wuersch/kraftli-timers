@@ -192,6 +192,15 @@ devices apply alike (UC-0005 extensions 1a–1b): under one minute of active tim
 recorded and the Watch discards its Health workout; from one minute on, the starting device
 writes the log marked `stoppedEarly`, and the owner saves the Health workout as usual.
 
+**Sessions** (ADR-0012): every step of a training session is such a workout of its own, started
+one after the other by `SessionRunner` on the iPhone. The owner of the first step holds the
+session's Health workout to the end. A step's `StartRequest` names the run (`SessionContext`);
+a Watch that already holds the run owns the step at once and keeps its `HKWorkoutSession`. The
+iPhone sends a numbered `SessionStatus` on every change of phase, from which
+`WatchSessionFollower` pauses the Health session between steps, keeps it running through steps
+and loop rests, and saves it when the session is finished. The Watch reports the saved workout
+under the run's ID, and the iPhone links it to every step's `WorkoutLog`.
+
 **Start handshake** (iPhone-started, `PhoneWorkoutStarter` ↔ `WatchWorkoutStarter`):
 1. iPhone sends a `StartRequest` (workout ID + config) and calls
    `HKHealthStore.startWatchApp(toHandle:)`; the UI shows "Starting on Watch…"
@@ -261,7 +270,7 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 | `SessionDraft` | The session editor's values and rules: validation, adding, reordering, moving timers between the session and its loops, saving |
 | `SessionOrder` | The one rule for a session's running order: loops unrolled, a rest after each round but the last |
 | `SessionRun` | One run through a session as a value: position, phase, every timer's result, active stretches and total time; all rules of running, tested with plain dates |
-| `SessionRunner` | Drives a `SessionRun` on the iPhone: a new workout ID per step, records each step, times the rests, records the session (@Observable) |
+| `SessionRunner` | Drives a `SessionRun` on the iPhone: a new workout ID per step, records each step, times the rests, reports every change of phase to the Watch as a `SessionStatus`, and saves the session's Health workout unless the Watch holds it (@Observable) |
 | `SessionEstimate` | A session's segments in running order, its estimated length and summary text; For Time = pace × reps^1.1 |
 | `ShapeLayout` | The measurements of a session's shape: segment lengths, gaps, loop runs |
 | `SessionNaming`, `WeekLayout`, `WeekPlanning` | Unique and copy names; weekday order by region; planning a day and deleting a session with its days |
@@ -283,6 +292,8 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 | `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |
 | `TimerState` / `TimerStateReducer` | Shared: replicated timer state and the only code that changes it |
 | `EarlyStop` | Shared: whether a workout ended early is recorded or discarded, and with what |
+| `SessionContext` / `SessionStatus` | Shared: the run a step's start request belongs to, and the session's progress the iPhone sends the Watch one way (ADR-0012) |
+| `WatchSessionFollower` | Watch: holds one Health session for a session's run across its steps; pauses, resumes, saves or discards it from the `SessionStatus` (@Observable) |
 | `TimerSessionController` | Shared: one device's role (owner/viewer), confirmed state, pending intents (@Observable) |
 | `TimerSyncTransport` | Shared: payloads, inbox filtering, composite + WatchConnectivity channels |
 | `HealthKitTimerSyncTransport` | Shared: payloads over the mirrored `HKWorkoutSession` data channel |

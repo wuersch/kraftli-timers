@@ -53,3 +53,4 @@ Interaction design (screens, gestures, copy): [use-cases/ui-spec.md](use-cases/u
 | [ADR-0009](adr/ADR-0009-bundled-exercise-library.md) | Bundled, read-only exercise library | implemented |
 | [ADR-0010](adr/ADR-0010-open-ended-workouts-and-done-intent.md) | Open-ended workouts without a duration, ended by a `done` intent | implemented |
 | [ADR-0011](adr/ADR-0011-session-document-and-week-plan-record.md) | A session's elements as one versioned document; the week plan as one record | implemented |
+| [ADR-0012](adr/ADR-0012-session-as-iphone-driven-sequence-of-steps.md) | A session as an iPhone-driven sequence of separately owned steps; one Health session held by the first step's owner | implemented |

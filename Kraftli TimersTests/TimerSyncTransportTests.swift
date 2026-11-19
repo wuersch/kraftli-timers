@@ -279,6 +279,8 @@ private final class FakeTransport: TimerSyncTransport {
     func publish(_ state: TimerState) { published.append(state) }
     func send(_ intents: [TimerIntent]) { sent.append(intents) }
     func requestStart(_ request: StartRequest) { requestedStarts.append(request) }
+    private(set) var statuses: [SessionStatus] = []
+    func send(_ status: SessionStatus) { statuses.append(status) }
 
     /// Simulates a payload arriving from the other device on this channel.
     func deliver(_ payload: TimerSyncPayload) { onPayload?(payload) }

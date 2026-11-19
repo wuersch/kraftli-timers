@@ -15,13 +15,16 @@ import SwiftUI
 struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     let timer: Timer
     let sessionManager: WorkoutSessionManager
+    /// True once the screen is closing its workout. The timer stopping then is not a
+    /// pause: whoever closes the workout decides what becomes of the Health session.
+    let isEnding: Bool
 
     func body(content: Content) -> some View {
         content
             .onChange(of: timer.isRunning) { _, isRunning in
                 if isRunning {
                     sessionManager.resume()
-                } else if !timer.isCompleted {
+                } else if !timer.isCompleted, !isEnding {
                     // Only pause if not completed - completion ends the session directly
                     sessionManager.pause()
                 }
@@ -37,8 +40,9 @@ extension View {
     ///   - sessionManager: The workout session manager owning the HealthKit session
     func watchTimerLifecycle<T: WorkoutTimer>(
         timer: T,
-        sessionManager: WorkoutSessionManager
+        sessionManager: WorkoutSessionManager,
+        isEnding: Bool = false
     ) -> some View {
-        modifier(WatchTimerLifecycleModifier(timer: timer, sessionManager: sessionManager))
+        modifier(WatchTimerLifecycleModifier(timer: timer, sessionManager: sessionManager, isEnding: isEnding))
     }
 }

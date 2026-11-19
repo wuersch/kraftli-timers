@@ -46,6 +46,10 @@ final class HealthKitTimerSyncTransport: TimerSyncTransport {
         send(.startRequest(request))
     }
 
+    func send(_ status: SessionStatus) {
+        send(.sessionStatus(status))
+    }
+
     /// Delivers data received from the remote session. Called by the session's delegate owner.
     func receive(_ data: [Data]) {
         for item in data {

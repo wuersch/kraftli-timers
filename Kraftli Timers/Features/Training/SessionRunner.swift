@@ -17,7 +17,7 @@ import SwiftUI
 ///
 /// Each step is an ordinary workout of its own, with its own ID and timer state
 /// (ADR-0006); the runner only decides which comes next and what a finished one means
-/// for the session.
+/// for the session. The Watch is told the session's progress, one way (ADR-0012).
 @Observable
 @MainActor
 final class SessionRunner {
@@ -34,7 +34,24 @@ final class SessionRunner {
     /// confetti. Not called when a timer was skipped or stopped early, or the session ended early.
     @ObservationIgnored var onCompleted: (() -> Void)?
 
+    /// The device that holds the session's Health workout: the owner of the first step
+    /// whose timer started, fixed from then on (ADR-0012 rule 2). `nil` until then.
+    private(set) var healthOwner: DeviceRole?
+
+    /// Whether the next step asks the Watch to run it. Not once the iPhone holds the
+    /// Health workout: a Watch joining later would start a second one.
+    var startsStepsOnWatch: Bool {
+        healthOwner != .phone
+    }
+
+    /// Names this run on its steps' start requests.
+    var context: SessionContext {
+        SessionContext(runID: runID, name: run.name)
+    }
+
     @ObservationIgnored private let recorder: any WorkoutRecorder
+    @ObservationIgnored private let sendStatus: (SessionStatus) -> Void
+    @ObservationIgnored private var statusSequence = 0
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let schedulesRest: Bool
     @ObservationIgnored private var restTask: Task<Void, Never>?
@@ -44,6 +61,7 @@ final class SessionRunner {
     ///   - name: The session's name, as it is now.
     ///   - elements: The session's elements, as they are now. The run keeps this copy.
     ///   - recorder: Writes the steps' history entries and the session's Health workout.
+    ///   - sendStatus: Sends the session's progress to the Watch.
     ///   - now: Wall-clock source. Injectable so tests can drive time.
     ///   - schedulesRest: Whether to end a rest by itself when its time is up. Tests turn
     ///     it off and call `checkRest()` directly.
@@ -51,11 +69,13 @@ final class SessionRunner {
         name: String,
         elements: [SessionElement],
         recorder: any WorkoutRecorder,
+        sendStatus: @escaping (SessionStatus) -> Void = { _ in },
         now: @escaping () -> Date = { Date() },
         schedulesRest: Bool = true
     ) {
         self.run = SessionRun(name: name, elements: elements)
         self.recorder = recorder
+        self.sendStatus = sendStatus
         self.now = now
         self.schedulesRest = schedulesRest
     }
@@ -67,6 +87,14 @@ final class SessionRunner {
         guard run.phase == .upNext else { return }
         stepWorkoutID = UUID()
         run.startStep(at: now())
+        phaseChanged()
+    }
+
+    /// The running step's timer has an owner. The first one settles who holds the
+    /// session's Health workout.
+    func stepOwned(by owner: DeviceRole) {
+        guard healthOwner == nil, run.phase == .running else { return }
+        healthOwner = owner
     }
 
     func skip() {
@@ -142,10 +170,12 @@ final class SessionRunner {
 
     // MARK: - Private
 
-    /// Follows up on a change of phase: a rest gets its timer, a finished run is recorded.
+    /// Follows up on a change of phase: the Watch is told, a rest gets its timer, a
+    /// finished run is recorded.
     private func phaseChanged() {
         restTask?.cancel()
         restTask = nil
+        publishStatus()
 
         switch run.phase {
         case .resting(let until):
@@ -158,13 +188,52 @@ final class SessionRunner {
         case .finished:
             guard !hasFinished else { return }
             hasFinished = true
-            recorder.recordSession(runID: runID, name: run.name, activeIntervals: run.activeIntervals)
+            // The Watch saves the workout of a run it holds (told so by the status).
+            if healthOwner != .watch {
+                recorder.recordSession(runID: runID, name: run.name, activeIntervals: run.activeIntervals)
+            }
             if run.wasCompletedInFull {
                 onCompleted?()
             }
         case .upNext, .running:
             break
         }
+    }
+}
+
+extension SessionRunner {
+    /// Tells the Watch where the run is. Numbered, because it travels over several
+    /// channels and the Watch keeps only what is newer than the last one.
+    private func publishStatus() {
+        statusSequence += 1
+        let phase: SessionStatus.Phase = switch run.phase {
+        case .upNext: .upNext
+        case .running: .running
+        case .resting(let until): .resting(until: until)
+        case .finished: .finished(save: run.recordedCount > 0)
+        }
+        var status = SessionStatus(runID: runID, name: run.name, sequence: statusSequence, phase: phase)
+        if let step = run.currentStep {
+            status.step = step.timerConfig
+            status.timerNumber = run.timerNumber
+            status.timerCount = run.timerCount
+            status.loopRound = run.currentLoopRound?.round
+            status.loopRounds = run.currentLoopRound?.of
+        }
+        sendStatus(status)
+    }
+}
+
+extension SessionStep {
+    /// The step as the timer it runs: what a preset of the same settings would start.
+    var timerConfig: TimerConfig {
+        TimerConfig(
+            kind: kind,
+            totalDuration: kind.hasFixedDuration ? durationInterval : nil,
+            intervalCount: kind == .emom ? targetReps ?? 1 : nil,
+            exerciseName: exerciseName,
+            targetReps: kind == .forTime ? targetReps ?? TimerPreset.defaultForTimeReps : nil
+        )
     }
 }
 

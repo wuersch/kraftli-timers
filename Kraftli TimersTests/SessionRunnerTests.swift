@@ -214,4 +214,93 @@ struct SessionRunnerTests {
         #expect(runner.run.phase == .running)
         #expect(runner.run.restTime == 15)
     }
+
+    // MARK: - The Watch (ADR-0012)
+
+    /// A runner whose statuses for the Watch are collected.
+    private func makeReportingRunner(
+        _ elements: [SessionElement]
+    ) -> (runner: SessionRunner, recorder: SpyRecorder, statuses: () -> [SessionStatus]) {
+        final class Outbox { var statuses: [SessionStatus] = [] }
+        let outbox = Outbox()
+        let recorder = SpyRecorder()
+        let runner = SessionRunner(
+            name: "Full Body", elements: elements, recorder: recorder,
+            sendStatus: { outbox.statuses.append($0) }, schedulesRest: false
+        )
+        return (runner, recorder, { outbox.statuses })
+    }
+
+    @Test func everyChangeOfPhase_isReportedToTheWatch_inOrder() {
+        let loop = SessionLoop(rounds: 2, restSeconds: 60, steps: [pushUps])
+        let (runner, _, statuses) = makeReportingRunner([.loop(loop)])
+
+        runner.startStep()
+        runner.stepCompleted(completion(240, rounds: 9))
+        runner.skipRest()
+        runner.stepCompleted(completion(240, rounds: 8))
+
+        let sent = statuses()
+        #expect(sent.map(\.sequence) == [1, 2, 3, 4])
+        #expect(sent[0].phase == .running)
+        if case .resting = sent[1].phase {} else { Issue.record("expected the rest to be reported") }
+        #expect(sent[2].phase == .running)
+        #expect(sent[3].phase == .finished(save: true))
+        #expect(Set(sent.map(\.runID)) == [runner.runID])
+
+        // What is running, and where in the session.
+        #expect(sent[0].step?.kind == .amrap)
+        #expect(sent[0].step?.totalDuration == 240)
+        #expect(sent[0].timerNumber == 1)
+        #expect(sent[0].timerCount == 2)
+        #expect(sent[2].loopRound == 2)
+        #expect(sent[3].step == nil)
+    }
+
+    @Test func sessionThatRecordedNothing_tellsTheWatchNotToSave() {
+        let (runner, _, statuses) = makeReportingRunner([.step(pushUps)])
+
+        runner.skip()
+
+        #expect(statuses().last?.phase == .finished(save: false))
+    }
+
+    @Test func firstStepsOwner_holdsTheHealthWorkout_forTheWholeSession() {
+        let (runner, _, _) = makeReportingRunner([.step(pushUps), .step(squats)])
+        #expect(runner.startsStepsOnWatch)
+
+        runner.startStep()
+        runner.stepOwned(by: .watch)
+        runner.stepCompleted(completion(240, rounds: 9))
+        // A later step that fell back to the iPhone doesn't change who holds it.
+        runner.startStep()
+        runner.stepOwned(by: .phone)
+
+        #expect(runner.healthOwner == .watch)
+        #expect(runner.startsStepsOnWatch)
+    }
+
+    @Test func sessionTheWatchHolds_isNotSavedToHealthByTheiPhone() {
+        let (runner, recorder, _) = makeReportingRunner([.step(pushUps)])
+
+        runner.startStep()
+        runner.stepOwned(by: .watch)
+        runner.stepCompleted(completion(240, rounds: 9))
+
+        #expect(runner.run.phase == .finished)
+        #expect(recorder.steps.count == 1)
+        #expect(recorder.sessions.isEmpty)
+    }
+
+    @Test func sessionTheiPhoneHolds_keepsItsStepsOffTheWatch_andIsSavedByTheiPhone() {
+        let (runner, recorder, _) = makeReportingRunner([.step(pushUps), .step(squats)])
+
+        runner.startStep()
+        runner.stepOwned(by: .phone)
+        #expect(!runner.startsStepsOnWatch)
+        runner.stepCompleted(completion(240, rounds: 9))
+        runner.endSession()
+
+        #expect(recorder.sessions.count == 1)
+    }
 }

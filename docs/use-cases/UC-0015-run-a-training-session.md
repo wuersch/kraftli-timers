@@ -112,9 +112,9 @@ The athlete starts a session on the iPhone.
 ## Related Information
 
 - Interaction design: [ui-spec.md](ui-spec.md#session-runner).
-- Architecture: one device owns the timer state ([ADR-0006](../adr/ADR-0006-single-owner-timer-state.md)).
-  Whether that ownership spans the whole session or each step is a structural decision likely to
-  need its own ADR.
+- Architecture: one device owns each step's timer state ([ADR-0006](../adr/ADR-0006-single-owner-timer-state.md));
+  the session is a sequence the iPhone drives, and the first step's owner holds its Health
+  workout ([ADR-0012](../adr/ADR-0012-session-as-iphone-driven-sequence-of-steps.md)).
 - Requires revisions of:
   [UC-0005](UC-0005-record-a-workout.md) (entries per step marked with the session; one Health
   workout per session), [UC-0008](UC-0008-review-workout-stats.md) (show the session on an entry).

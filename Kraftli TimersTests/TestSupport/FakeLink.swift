@@ -41,6 +41,12 @@ final class FakeLink {
             transmit(.startRequest(request))
         }
 
+        func send(_ status: SessionStatus) {
+            transmit(.sessionStatus(status))
+        }
+
+        fileprivate var queuedStatuses: [SessionStatus] = []
+
         private func transmit(_ payload: TimerSyncPayload) {
             guard let peer, let link else { return }
             if link.isConnected {
@@ -50,6 +56,7 @@ final class FakeLink {
             switch payload {
             case .state, .startRequest: latestContextWhileOffline = payload
             case .intents(let intents): queuedIntents.append(intents)
+            case .sessionStatus(let status): queuedStatuses.append(status)
             }
         }
 
@@ -60,8 +67,12 @@ final class FakeLink {
             for intents in queuedIntents {
                 peer?.onPayload?(.intents(intents))
             }
+            for status in queuedStatuses {
+                peer?.onPayload?(.sessionStatus(status))
+            }
             latestContextWhileOffline = nil
             queuedIntents = []
+            queuedStatuses = []
         }
     }
 

@@ -58,6 +58,19 @@ final class PhoneMessageCoordinator {
         }
     }
 
+    /// A session's run has one Health workout for all its steps (UC-0005 extension 3d):
+    /// the Watch reports it under the run's ID, which every step's entry carries.
+    @MainActor
+    private func linkSessionRun(_ runID: UUID, to watchUUID: UUID, in modelContext: ModelContext) {
+        let descriptor = FetchDescriptor<WorkoutLog>(predicate: #Predicate { $0.sessionRunID == runID })
+        guard let logs = try? modelContext.fetch(descriptor), !logs.isEmpty else { return }
+        for log in logs where log.healthKitWorkoutUUID == nil {
+            log.healthKitWorkoutUUID = watchUUID
+        }
+        save(modelContext)
+        Logger.healthKit.info("Linked \(logs.count) entries of session run \(runID) to Watch HealthKit UUID: \(watchUUID)")
+    }
+
     /// Updates a WorkoutLog with the Watch's HealthKit UUID.
     ///
     /// Uses the correlation ID for exact matching when available; falls back to
@@ -76,10 +89,11 @@ final class PhoneMessageCoordinator {
             let descriptor = FetchDescriptor<WorkoutLog>(
                 predicate: #Predicate { $0.id == correlationID }
             )
-            guard let log = try? modelContext.fetch(descriptor).first,
-                  log.healthKitWorkoutUUID == nil else {
+            guard let log = try? modelContext.fetch(descriptor).first else {
+                linkSessionRun(correlationID, to: watchUUID, in: modelContext)
                 return
             }
+            guard log.healthKitWorkoutUUID == nil else { return }
             log.healthKitWorkoutUUID = watchUUID
             save(modelContext)
             Logger.healthKit.info("Updated workout log \(correlationID) with Watch HealthKit UUID: \(watchUUID)")
