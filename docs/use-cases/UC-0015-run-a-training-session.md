@@ -1,6 +1,6 @@
 # UC-0015: Run a training session
 
-- **Status:** clarified
+- **Status:** approved
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to work through a whole session, from warm-up to the last set,
   as one workout with my Watch measuring it, so I don't have to start each timer separately and my
@@ -110,7 +110,7 @@ The athlete starts a session on the iPhone.
 
 ## Related Information
 
-- Interaction design: [ui-spec.md](ui-spec.md) (session runner still to be written).
+- Interaction design: [ui-spec.md](ui-spec.md#session-runner).
 - Architecture: one device owns the timer state ([ADR-0006](../adr/ADR-0006-single-owner-timer-state.md)).
   Whether that ownership spans the whole session or each step is a structural decision likely to
   need its own ADR.
