@@ -11,6 +11,8 @@ import SwiftUI
 /// defines the timer on the trailing edge.
 struct StepBlockView: View {
     let step: SessionStep
+    /// The space kept free on the trailing edge, for a button laid over the block.
+    var trailingInset: CGFloat = 14
 
     var body: some View {
         HStack(spacing: 12) {
@@ -38,7 +40,8 @@ struct StepBlockView: View {
                 }
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, 14)
+        .padding(.trailing, trailingInset)
         .frame(maxWidth: .infinity, minHeight: 62)
         .background(step.kind.color.opacity(0.25))
         .contentShape(Rectangle())

@@ -221,7 +221,7 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `TimerPresetEditorView` | Create/edit preset sheet |
 | `TimerSettingsForm` | The form for one timer's settings (kind, exercise, wheels), shared by the preset editor and the step editor |
 | `TrainingView` | Training tab: week strip, the selected day's session, session list |
-| `SessionEditorView` | Block editor for a session; works on a `SessionDraft`, reorders by drag and drop within a level |
+| `SessionEditorView` | Block editor for a session; works on a `SessionDraft`, reorders by drag and drop, also into and out of loops |
 | `StepEditorView` | Editor for one timer of a session, on a `PresetDraft` |
 | `SessionShapeBar`, `SessionShapeColumn` | A session drawn as a bar of segments, coloured by kind and sized by duration: lying (cards, editor) and upright (week strip) |
 | `ExerciseSelectionView` | Exercise browser with filtering |
@@ -249,7 +249,7 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 
 | Type | Purpose |
 |------|---------|
-| `SessionDraft` | The session editor's values and rules: validation, adding, reordering within a level, saving |
+| `SessionDraft` | The session editor's values and rules: validation, adding, reordering, moving timers between the session and its loops, saving |
 | `SessionEstimate` | A session's segments in running order, its estimated length and summary text; For Time = pace × reps^1.1 |
 | `ShapeLayout` | The measurements of a session's shape: segment lengths, gaps, loop runs |
 | `SessionNaming`, `WeekLayout`, `WeekPlanning` | Unique and copy names; weekday order by region; planning a day and deleting a session with its days |

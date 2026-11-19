@@ -143,9 +143,19 @@ case wins.
     timer blocks, "+ Timer in loop", and a row "Rest between rounds" with "None" or the time.
     Tapping the rail or the rest row opens a "Loop" sheet: wheel for the rounds (2–20), wheels
     for the rest (0–10 min, seconds in steps of 5, at most 10 min).
-  - Hold and drag reorders a block within its level: session blocks among each other, a loop's
-    timers within that loop. A session block dropped on a loop's timer takes the loop's place.
-    Long-press menu: Move Up, Move Down, Delete (no confirmation).
+  - Hold and drag moves a block. While it is dragged, a line in the accent colour marks the gap
+    it would land in: before a block when held over its upper half, after it over the lower
+    half. No line means the drop would change nothing. A timer can land in any gap: between
+    session blocks (also between two loops, or above or below a loop via its rail or rest row),
+    or between a loop's timers, which moves it into that loop. Over "+ Timer in loop" it becomes
+    that loop's last timer, which is also the way into an empty loop. A loop never goes into a
+    loop: held inside one, it lands before or after that loop.
+  - "…" button on the trailing edge of each timer block and at the foot of each loop's rail,
+    opening a menu: Move Up, Move Down (both within the block's level); for a session timer
+    directly below or above a loop "Move into Loop Above" (as its last timer) / "Move into Loop
+    Below" (as its first); for a loop's timer "Move out of Loop" (the first timer lands above
+    the loop, any other below it); Delete (no confirmation). There is no long-press menu,
+    because it would take the long press from the drag.
 - Below the blocks: "+ Timer" (opens the Step Editor), "+ Preset" (sheet "Add from Preset" listing
   the timer presets; tapping one adds a copy; without presets: "No Timers" — "Create timer presets
   on the Timers tab"), "+ Loop" (adds an empty 2× loop).
