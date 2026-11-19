@@ -151,6 +151,20 @@ struct SessionRunnerTests {
         #expect(recorder.sessions[0].activeIntervals.count == 2)
     }
 
+    @Test func sessionWithASkippedTimer_isRecorded_butNotCelebrated() {
+        let (runner, recorder, _) = makeRunner([.step(pushUps), .step(squats)])
+        var celebrations = 0
+        runner.onCompleted = { celebrations += 1 }
+
+        runner.skip()
+        runner.startStep()
+        runner.stepCompleted(completion(130, reps: 30))
+
+        #expect(runner.run.phase == .finished)
+        #expect(celebrations == 0)
+        #expect(recorder.sessions.count == 1)
+    }
+
     @Test func sessionEndedEarly_isRecorded_butNotCelebrated() {
         let (runner, recorder, _) = makeRunner([.step(pushUps), .step(squats)])
         var celebrations = 0
@@ -175,14 +189,17 @@ struct SessionRunnerTests {
         runner.stepCompleted(completion(240, rounds: 9))
         #expect(runner.run.phase == .resting(until: clock.now.addingTimeInterval(60)))
 
+        let firstStep = runner.stepWorkoutID
         clock.advance(59)
         runner.checkRest()
-        #expect(runner.run.phase != .upNext)
+        #expect(runner.run.phase != .running)
 
+        // When the rest is up, the next timer starts by itself, as a workout of its own.
         clock.advance(1)
         runner.checkRest()
-        #expect(runner.run.phase == .upNext)
+        #expect(runner.run.phase == .running)
         #expect(runner.run.restTime == 60)
+        #expect(runner.stepWorkoutID != firstStep)
     }
 
     @Test func rest_canBeCutShort() {
@@ -194,7 +211,7 @@ struct SessionRunnerTests {
         clock.advance(15)
         runner.skipRest()
 
-        #expect(runner.run.phase == .upNext)
+        #expect(runner.run.phase == .running)
         #expect(runner.run.restTime == 15)
     }
 }

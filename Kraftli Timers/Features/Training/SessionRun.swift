@@ -181,11 +181,17 @@ nonisolated struct SessionRun: Equatable, Sendable {
         }
     }
 
-    /// True when the run went through to its last timer: the completion sound and
-    /// confetti are for that, not for a session the athlete ended early.
-    var endedAtItsLastTimer: Bool {
-        phase == .finished && !endedEarly
+    /// True when the session was done in full: every timer completed, none skipped or
+    /// stopped early. The completion sound and confetti are for that.
+    var wasCompletedInFull: Bool {
+        phase == .finished && !endedEarly && results.count == timerCount
+            && results.allSatisfy { $0.outcome == .completed }
     }
+
+    /// How late a rest's end may be noticed and the next timer still starts by itself.
+    /// Later than that, the athlete wasn't there (the app was suspended): the session
+    /// waits for them instead of running a timer nobody is ready for.
+    static let restEndTolerance: TimeInterval = 5
 
     // MARK: - Changes
 
@@ -231,8 +237,11 @@ nonisolated struct SessionRun: Equatable, Sendable {
         settle(at: now)
     }
 
-    /// The rest is over: its time ran out, or the athlete cut it short. A rest that ran
-    /// out while nobody looked (the app was suspended) still ended when it was due.
+    /// The rest is over: its time ran out, or the athlete cut it short. The timer after
+    /// it starts by itself, so the loop keeps its rhythm and the session stays active.
+    ///
+    /// A rest that ran out while nobody looked (the app was suspended) still ended when
+    /// it was due, and the session then waits for the athlete.
     mutating func restEnded(at now: Date) {
         guard case .resting(let until) = phase else { return }
         let end = min(now, until)
@@ -241,7 +250,12 @@ nonisolated struct SessionRun: Equatable, Sendable {
         }
         restingSince = nil
         position += 1
-        settle(at: end)
+
+        if currentItem?.step != nil, now.timeIntervalSince(until) <= Self.restEndTolerance {
+            phase = .running
+        } else {
+            settle(at: end)
+        }
     }
 
     /// The athlete ends the session between steps.

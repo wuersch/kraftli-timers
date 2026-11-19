@@ -71,6 +71,12 @@ struct SessionRunnerView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: runner?.run.phase)
         .onAppear(perform: setUp)
+        .onChange(of: runner?.stepWorkoutID) {
+            // Each step gets a fresh timer screen, which reports only changes of these
+            // two: start every step from their initial values.
+            isSwipeDisabled = false
+            showHint = true
+        }
         .onChange(of: scenePhase) { _, phase in
             // A rest's timer doesn't fire while the app is suspended.
             if phase == .active { runner?.checkRest() }
@@ -101,13 +107,7 @@ struct SessionRunnerView: View {
                 SessionRunHeader(run: run)
                 SessionUpNextView(
                     run: run,
-                    onStart: {
-                        // Each step gets a fresh timer screen, which reports only
-                        // changes of these two: start from their initial values.
-                        isSwipeDisabled = false
-                        showHint = true
-                        runner.startStep()
-                    },
+                    onStart: { runner.startStep() },
                     onSkip: { runner.skip() },
                     onEnd: { isConfirmingEnd = true }
                 )

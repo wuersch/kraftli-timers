@@ -199,9 +199,12 @@ case wins.
 - **Loop rest:** after a round's last timer when another round follows and the loop has a rest.
   The "DONE" card, a gray ring counting down with "REST" and M:SS, below it "THEN · ROUND 2 OF 3"
   with the loop's first timer, and "Skip Rest". Footer "Counts as training time". When the rest
-  is over or skipped, the between-steps screen shows that timer.
+  is over or skipped, that timer starts by itself, with its countdown. (A rest that ran out
+  while the app was in the background leads to the between-steps screen instead.) A skipped
+  timer is not followed by a rest.
 - **End of the session:** completion sound and, if enabled, confetti for 3 s, once, after the
-  last timer. Not when the session was ended with "End Session".
+  last timer, when every timer was completed. Not when a timer was skipped or stopped early,
+  and not when the session was ended with "End Session".
 - **Session summary:** header "Summary" with "Name · 7 of 8 timers" (timers completed or stopped
   early, of all). Cards: Total Time (the active time: timers and loop rests, without the waits
   between timers), Active Calories, Avg Heart Rate, Max Heart Rate ("--" while Watch data is

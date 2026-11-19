@@ -123,8 +123,9 @@ struct SessionRunTests {
         #expect(run.currentStep == pushUps)
         #expect(run.currentLoopRound?.round == 2)
 
+        // The timer after the rest starts by itself.
         run.restEnded(at: at(893))
-        #expect(run.phase == .upNext)
+        #expect(run.phase == .running)
         #expect(run.currentStep == pushUps)
         #expect(run.timerNumber == 4)
         #expect(run.restTime == 60)
@@ -137,16 +138,17 @@ struct SessionRunTests {
         run.restEnded(at: at(260))
 
         #expect(run.restTime == 20)
-        #expect(run.phase == .upNext)
+        #expect(run.phase == .running)
     }
 
     @Test func restThatRanOutUnnoticed_endedWhenItWasDue() {
         var run = SessionRun(name: "Loop", elements: [.loop(SessionLoop(rounds: 2, restSeconds: 60, steps: [pushUps]))])
         complete(&run, from: 0, duration: 240)
 
-        // The app comes back ten minutes later.
+        // The app comes back ten minutes later: no timer starts behind the athlete's back.
         run.restEnded(at: at(900))
 
+        #expect(run.phase == .upNext)
         #expect(run.restTime == 60)
         #expect(run.activeIntervals == [DateInterval(start: at(0), end: at(300))])
     }
@@ -195,7 +197,27 @@ struct SessionRunTests {
         run.skip(at: at(400))
 
         #expect(run.phase == .finished)
-        #expect(run.endedAtItsLastTimer)
+        #expect(!run.endedEarly)
+    }
+
+    @Test func onlyASessionDoneInFull_countsAsCompleted() {
+        var full = SessionRun(name: "Two", elements: [.step(warmUp), .step(finisher)])
+        complete(&full, from: 0, duration: 300)
+        #expect(!full.wasCompletedInFull)
+        complete(&full, from: 400, duration: 600)
+        #expect(full.wasCompletedInFull)
+
+        var skipped = SessionRun(name: "Two", elements: [.step(warmUp), .step(finisher)])
+        skipped.skip(at: at(0))
+        complete(&skipped, from: 10, duration: 600)
+        #expect(!skipped.wasCompletedInFull)
+
+        var stopped = SessionRun(name: "Two", elements: [.step(warmUp), .step(finisher)])
+        complete(&stopped, from: 0, duration: 300)
+        stopped.startStep(at: at(400))
+        stopped.stepEnded(.stoppedEarly, duration: 100, at: at(503))
+        #expect(stopped.phase == .finished)
+        #expect(!stopped.wasCompletedInFull)
     }
 
     @Test func endingTheSession_keepsWhatWasDone_andIsNoCompletion() {
@@ -206,7 +228,7 @@ struct SessionRunTests {
 
         #expect(run.phase == .finished)
         #expect(run.endedEarly)
-        #expect(!run.endedAtItsLastTimer)
+        #expect(!run.wasCompletedInFull)
         #expect(run.recordedCount == 1)
     }
 
@@ -250,8 +272,7 @@ struct SessionRunTests {
         var run = SessionRun(name: "Loop", elements: [.loop(SessionLoop(rounds: 2, restSeconds: 60, steps: [pushUps]))])
         complete(&run, from: 0, duration: 240)
         run.restEnded(at: at(300))
-        // A ten-minute wait before the second round.
-        complete(&run, from: 900, duration: 240)
+        run.stepEnded(.completed, duration: 240, at: at(543))
 
         #expect(run.totalTime == 540)
     }
@@ -260,21 +281,17 @@ struct SessionRunTests {
         var run = SessionRun(name: "Loop", elements: [
             .step(warmUp), .loop(SessionLoop(rounds: 2, restSeconds: 60, steps: [pushUps]))
         ])
-        complete(&run, from: 0, duration: 300)          // 0…300
+        complete(&run, from: 0, duration: 300)          // 0…300, then a wait
         complete(&run, from: 400, duration: 240)        // 400…640, then the rest
-        run.restEnded(at: at(700))                      // …700
-        complete(&run, from: 1000, duration: 240)       // 1000…1240
+        run.restEnded(at: at(700))                      // …700, and the next timer starts
+        run.stepEnded(.completed, duration: 240, at: at(943))
 
         #expect(run.activeIntervals == [
             DateInterval(start: at(0), end: at(300)),
-            DateInterval(start: at(400), end: at(700)),
-            DateInterval(start: at(1000), end: at(1240))
+            DateInterval(start: at(400), end: at(943))
         ])
-        #expect(run.pauses == [
-            DateInterval(start: at(300), end: at(400)),
-            DateInterval(start: at(700), end: at(1000))
-        ])
+        #expect(run.pauses == [DateInterval(start: at(300), end: at(400))])
         #expect(run.phase == .finished)
-        #expect(run.endedAtItsLastTimer)
+        #expect(run.wasCompletedInFull)
     }
 }
