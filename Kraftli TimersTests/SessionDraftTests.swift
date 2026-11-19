@@ -112,63 +112,173 @@ struct SessionDraftTests {
 
     // MARK: - Reordering (extension 3c)
 
-    @Test func droppingABlockOnAnother_takesItsPlace() {
+    @Test func blockDroppedBeforeOrAfterAnother_landsThere() {
         let a = step(1), b = step(2), c = step(3)
         var draft = SessionDraft(elements: [.step(a), .step(b), .step(c)])
 
-        draft.move(a.id, onto: c.id)
+        draft.drop(a.id, at: .after(c.id))
         #expect(draft.elements.map(\.id) == [b.id, c.id, a.id])
 
-        draft.move(a.id, onto: b.id)
-        #expect(draft.elements.map(\.id) == [a.id, b.id, c.id])
+        draft.drop(a.id, at: .before(c.id))
+        #expect(draft.elements.map(\.id) == [b.id, a.id, c.id])
     }
 
-    @Test func blocks_onlyMoveWithinTheirLevel() throws {
+    @Test func timersOfALoop_reorderWithinIt_andALoopMovesAsAWhole() throws {
         let top = step(1), nestedA = step(2), nestedB = step(3)
         var draft = SessionDraft(elements: [.step(top)])
         let loopID = draft.addLoop()
         draft.add(nestedA, toLoop: loopID)
         draft.add(nestedB, toLoop: loopID)
-        let before = draft
 
-        draft.move(top.id, onto: nestedA.id)
-        draft.move(nestedA.id, onto: top.id)
-        #expect(draft == before)
+        draft.drop(nestedB.id, at: .before(nestedA.id))
+        #expect(try #require(draft.elements[1].loop).steps.map(\.id) == [nestedB.id, nestedA.id])
 
-        draft.move(nestedB.id, onto: nestedA.id)
-        let loop = try #require(draft.elements[1].loop)
-        #expect(loop.steps.map(\.id) == [nestedB.id, nestedA.id])
-
-        // A loop moves as a whole, with its steps.
-        draft.move(loopID, onto: top.id)
+        draft.drop(loopID, at: .before(top.id))
         #expect(draft.elements.map(\.id) == [loopID, top.id])
+        #expect(try #require(draft.elements[0].loop).steps.count == 2)
     }
 
-    @Test func sessionBlockDroppedOnATimerInALoop_takesTheLoopsPlace() {
-        let top = step(1), nested = step(2)
-        var draft = SessionDraft()
-        let loopID = draft.addLoop()
-        draft.add(nested, toLoop: loopID)
-        draft.add(top)
+    @Test func dropThatChangesNothing_isRecognised() {
+        let a = step(1), b = step(2)
+        let draft = SessionDraft(elements: [.step(a), .step(b)])
 
-        draft.drop(top.id, onto: nested.id)
-
-        #expect(draft.elements.map(\.id) == [top.id, loopID])
+        #expect(!draft.canDrop(a.id, at: .before(a.id)))
+        #expect(!draft.canDrop(a.id, at: .before(b.id)))
+        #expect(!draft.canDrop(b.id, at: .after(a.id)))
+        #expect(!draft.canDrop(a.id, at: .after(UUID())))
+        #expect(draft.canDrop(a.id, at: .after(b.id)))
     }
 
-    @Test func dropOnABlockOfTheSameLevel_isAMove() throws {
-        let a = step(1), b = step(2), nestedA = step(3), nestedB = step(4)
-        var draft = SessionDraft(elements: [.step(a), .step(b)])
+    // MARK: - Moving between levels (extension 3d)
+
+    @Test func timerDroppedNextToATimerInALoop_goesIntoTheLoop() throws {
+        let top = step(1), nestedA = step(2), nestedB = step(3)
+        var draft = SessionDraft(elements: [.step(top)])
         let loopID = draft.addLoop()
         draft.add(nestedA, toLoop: loopID)
         draft.add(nestedB, toLoop: loopID)
 
-        draft.drop(b.id, onto: a.id)
-        #expect(draft.elements.map(\.id) == [b.id, a.id, loopID])
+        draft.drop(top.id, at: .after(nestedA.id))
 
-        draft.drop(nestedB.id, onto: nestedA.id)
-        let loop = try #require(draft.elements[2].loop)
-        #expect(loop.steps.map(\.id) == [nestedB.id, nestedA.id])
+        #expect(draft.elements.map(\.id) == [loopID])
+        #expect(try #require(draft.elements[0].loop).steps.map(\.id) == [nestedA.id, top.id, nestedB.id])
+    }
+
+    @Test func timerDroppedNextToASessionBlock_leavesItsLoop() throws {
+        let top = step(1), nestedA = step(2), nestedB = step(3)
+        var draft = SessionDraft()
+        let loopID = draft.addLoop()
+        draft.add(nestedA, toLoop: loopID)
+        draft.add(nestedB, toLoop: loopID)
+        draft.add(top)
+
+        draft.drop(nestedA.id, at: .after(top.id))
+        #expect(draft.elements.map(\.id) == [loopID, top.id, nestedA.id])
+
+        // Next to its own loop, the last timer leaves it too. The loop stays, empty.
+        draft.drop(nestedB.id, at: .before(loopID))
+        #expect(draft.elements.map(\.id) == [nestedB.id, loopID, top.id, nestedA.id])
+        #expect(try #require(draft.elements[1].loop).steps.isEmpty)
+        #expect(draft.issues(otherNames: []).contains(.emptyLoop(loopID)))
+    }
+
+    @Test func timerDroppedBetweenTwoLoops_landsBetweenThem() {
+        let nested = step(1)
+        var draft = SessionDraft()
+        let first = draft.addLoop(), second = draft.addLoop()
+        draft.add(nested, toLoop: first)
+
+        draft.drop(nested.id, at: .after(first))
+
+        #expect(draft.elements.map(\.id) == [first, nested.id, second])
+    }
+
+    @Test func timerDroppedNextToATimerOfAnotherLoop_changesLoops() throws {
+        let a = step(1), b = step(2)
+        var draft = SessionDraft()
+        let first = draft.addLoop(), second = draft.addLoop()
+        draft.add(a, toLoop: first)
+        draft.add(b, toLoop: second)
+
+        draft.drop(a.id, at: .before(b.id))
+
+        #expect(try #require(draft.elements[0].loop).steps.isEmpty)
+        #expect(try #require(draft.elements[1].loop).steps.map(\.id) == [a.id, b.id])
+    }
+
+    @Test func timerDroppedAtTheEndOfALoop_becomesItsLastTimer() throws {
+        let top = step(1), nested = step(2)
+        var draft = SessionDraft(elements: [.step(top)])
+        let filled = draft.addLoop(), empty = draft.addLoop()
+        draft.add(nested, toLoop: filled)
+
+        draft.drop(top.id, at: .endOfLoop(empty))
+        #expect(draft.elements.map(\.id) == [filled, empty])
+        #expect(try #require(draft.elements[1].loop).steps.map(\.id) == [top.id])
+
+        draft.drop(top.id, at: .endOfLoop(filled))
+        #expect(try #require(draft.elements[0].loop).steps.map(\.id) == [nested.id, top.id])
+        #expect(try #require(draft.elements[1].loop).steps.isEmpty)
+    }
+
+    @Test func loop_neverGoesIntoALoop_itGoesNextToIt() throws {
+        let nested = step(1)
+        var draft = SessionDraft()
+        let first = draft.addLoop(), second = draft.addLoop()
+        draft.add(nested, toLoop: first)
+
+        #expect(draft.resolved(.before(nested.id), for: second) == .before(first))
+        draft.drop(second, at: .before(nested.id))
+        #expect(draft.elements.map(\.id) == [second, first])
+
+        #expect(draft.resolved(.endOfLoop(second), for: first) == .after(second))
+        draft.drop(first, at: .endOfLoop(second))
+        #expect(draft.elements.map(\.id) == [second, first])
+        #expect(try #require(draft.elements[1].loop).steps.map(\.id) == [nested.id])
+
+        // Aimed at its own timer or its own end, a loop stays where it is.
+        #expect(!draft.canDrop(first, at: .after(nested.id)))
+        #expect(!draft.canDrop(first, at: .endOfLoop(first)))
+    }
+
+    @Test func loopMoves_areOfferedToTimersInOrNextToALoop() {
+        let before = step(1), nested = step(2), after = step(3), far = step(4)
+        var draft = SessionDraft(elements: [.step(before)])
+        let loopID = draft.addLoop()
+        draft.add(nested, toLoop: loopID)
+        draft.add(after)
+        draft.add(far)
+
+        #expect(draft.loopMoves(for: before.id) == [.intoLoopBelow])
+        #expect(draft.loopMoves(for: nested.id) == [.outOfLoop])
+        #expect(draft.loopMoves(for: after.id) == [.intoLoopAbove])
+        #expect(draft.loopMoves(for: far.id).isEmpty)
+        #expect(draft.loopMoves(for: loopID).isEmpty)
+    }
+
+    @Test func loopMoves_keepTheRunningOrder() throws {
+        let before = step(1), nestedA = step(2), nestedB = step(3), after = step(4)
+        var draft = SessionDraft(elements: [.step(before)])
+        let loopID = draft.addLoop()
+        draft.add(nestedA, toLoop: loopID)
+        draft.add(nestedB, toLoop: loopID)
+        draft.add(after)
+
+        draft.move(before.id, .intoLoopBelow)
+        draft.move(after.id, .intoLoopAbove)
+        #expect(draft.elements.map(\.id) == [loopID])
+        #expect(try #require(draft.elements[0].loop).steps.map(\.id) == [before.id, nestedA.id, nestedB.id, after.id])
+
+        // Out again: the first timer lands above the loop, any other below it.
+        draft.move(before.id, .outOfLoop)
+        draft.move(after.id, .outOfLoop)
+        #expect(draft.elements.map(\.id) == [before.id, loopID, after.id])
+
+        // Into an empty loop.
+        var empty = SessionDraft(elements: [.step(before)])
+        let emptyLoop = empty.addLoop()
+        empty.move(before.id, .intoLoopBelow)
+        #expect(try #require(empty.elements.first { $0.id == emptyLoop }?.loop).steps.map(\.id) == [before.id])
     }
 
     @Test func moveByOne_stopsAtTheEnds() {

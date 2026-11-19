@@ -7,6 +7,7 @@
 
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Creates or changes a session: its name and its blocks, stacked in running order.
 ///
@@ -24,6 +25,10 @@ struct SessionEditorView: View {
     /// The issues found by the last save attempt. Empty until Save is tapped, so a new
     /// session doesn't open full of complaints.
     @State private var issues: [SessionDraft.Issue] = []
+    /// The block being dragged, noted when the drag starts.
+    @State private var draggedID: UUID?
+    /// Where the dragged block would land if it were dropped now; a line marks the place.
+    @State private var dropPlace: SessionDraft.Place?
 
     private enum Sheet: Identifiable {
         case newStep(loopID: UUID?)
@@ -162,11 +167,14 @@ struct SessionEditorView: View {
         Button {
             sheet = .editStep(step)
         } label: {
-            StepBlockView(step: step)
+            StepBlockView(step: step, trailingInset: BlockMenu.width)
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens the timer's settings")
-        .reorderable(step.id, in: $draft)
+        .overlay(alignment: .trailing) {
+            BlockMenu(id: step.id, name: step.exerciseName, draft: $draft)
+        }
+        .modifier(reorderable(step.id))
     }
 
     private func loopBlock(_ loop: SessionLoop) -> some View {
@@ -177,6 +185,9 @@ struct SessionEditorView: View {
                 LoopRailView(rounds: loop.rounds)
             }
             .buttonStyle(.plain)
+            .overlay(alignment: .bottom) {
+                BlockMenu(id: loop.id, name: "loop", draft: $draft)
+            }
 
             VStack(spacing: 2) {
                 ForEach(loop.steps) { step in
@@ -194,6 +205,11 @@ struct SessionEditorView: View {
                 }
                 .padding(6)
                 .background(Color(UIColor.systemGray5))
+                // A timer dropped here joins the loop as its last timer.
+                .onDrop(of: [.text], delegate: dropDelegate { _ in .endOfLoop(loop.id) })
+                .overlay(alignment: .top) {
+                    if dropPlace == .endOfLoop(loop.id) { DropLine() }
+                }
 
                 Button {
                     sheet = .loop(loop)
@@ -205,7 +221,7 @@ struct SessionEditorView: View {
         }
         // Lets the rail take the height of the loop's content instead of all it can get.
         .fixedSize(horizontal: false, vertical: true)
-        .reorderable(loop.id, in: $draft)
+        .modifier(reorderable(loop.id))
     }
 
     // MARK: - Adding
@@ -240,42 +256,172 @@ struct SessionEditorView: View {
 
 // MARK: - Reordering
 
-private extension View {
-    /// Makes a block draggable onto the other blocks of its level, and gives it a menu
-    /// with the same moves and Delete.
-    ///
-    /// `draggable` and `dropDestination` are the system's drag and drop: hold a block to
-    /// lift it, drop it on another to take its place. What travels is the block's id as
-    /// text; `SessionDraft.drop` decides whether the move is allowed.
-    func reorderable(_ id: UUID, in draft: Binding<SessionDraft>) -> some View {
-        self
-            .draggable(id.uuidString)
-            .dropDestination(for: String.self) { items, _ in
-                guard let dragged = items.first.flatMap(UUID.init(uuidString:)) else { return false }
-                let before = draft.wrappedValue
-                withAnimation { draft.wrappedValue.drop(dragged, onto: id) }
-                return draft.wrappedValue != before
+private extension SessionEditorView {
+    func reorderable(_ id: UUID) -> Reorderable {
+        Reorderable(id: id, draggedID: $draggedID, dropPlace: $dropPlace) { place in
+            dropDelegate(place)
+        }
+    }
+
+    /// - Parameter place: The place a drop at that point of the view stands for.
+    func dropDelegate(_ place: @escaping (CGPoint) -> SessionDraft.Place) -> BlockDropDelegate {
+        BlockDropDelegate(place: place, draft: $draft, draggedID: $draggedID, dropPlace: $dropPlace)
+    }
+}
+
+/// Makes a block draggable, and the gaps above and below it places to drop a block.
+///
+/// A block dropped on the upper half of another lands before it, on the lower half after
+/// it; a line shows which while the block is still being dragged.
+///
+/// This uses `onDrag` and `onDrop(of:delegate:)` instead of the simpler `draggable` and
+/// `dropDestination`: only a `DropDelegate` is told where the finger is during the drag,
+/// and `onDrag` says when a drag starts, so the editor can remember the dragged block
+/// instead of unpacking it from the drop.
+///
+/// The block has no `contextMenu`: that also starts with a long press, and where both
+/// are attached the menu opens first and the drag is cancelled. The menu is a button of
+/// its own instead (`BlockMenu`).
+private struct Reorderable: ViewModifier {
+    let id: UUID
+    @Binding var draggedID: UUID?
+    @Binding var dropPlace: SessionDraft.Place?
+    let dropDelegate: (@escaping (CGPoint) -> SessionDraft.Place) -> BlockDropDelegate
+
+    /// The block's height, to tell its upper half from its lower.
+    @State private var height: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+            .onDrag {
+                draggedID = id
+                return NSItemProvider(object: id.uuidString as NSString)
             }
-            .contextMenu {
-                Button("Move Up", systemImage: "arrow.up") {
-                    withAnimation { draft.wrappedValue.move(id, by: -1) }
-                }
-                .disabled(!draft.wrappedValue.canMove(id, by: -1))
-
-                Button("Move Down", systemImage: "arrow.down") {
-                    withAnimation { draft.wrappedValue.move(id, by: 1) }
-                }
-                .disabled(!draft.wrappedValue.canMove(id, by: 1))
-
-                Button("Delete", systemImage: "trash", role: .destructive) {
-                    withAnimation { draft.wrappedValue.remove(id) }
-                }
+            .onDrop(of: [.text], delegate: dropDelegate { location in
+                location.y < height / 2 ? .before(id) : .after(id)
+            })
+            .overlay(alignment: .top) {
+                if dropPlace == .before(id) { DropLine() }
+            }
+            .overlay(alignment: .bottom) {
+                if dropPlace == .after(id) { DropLine() }
             }
     }
 }
 
-#Preview("New") {
-    SessionEditorView()
-        .modelContainer(for: [TrainingSession.self, TimerPreset.self], inMemory: true)
-        .onAppear { ExerciseRepository.load() }
+/// Follows a drag over one drop target. Where targets are nested, the innermost one
+/// under the finger is asked.
+private struct BlockDropDelegate: DropDelegate {
+    let place: (CGPoint) -> SessionDraft.Place
+    @Binding var draft: SessionDraft
+    @Binding var draggedID: UUID?
+    @Binding var dropPlace: SessionDraft.Place?
+
+    /// The place a drop would go to now, or `nil` when it would change nothing.
+    private func target(_ info: DropInfo) -> SessionDraft.Place? {
+        guard let draggedID else { return nil }
+        let place = draft.resolved(place(info.location), for: draggedID)
+        return draft.canDrop(draggedID, at: place) ? place : nil
+    }
+
+    func validateDrop(info: DropInfo) -> Bool {
+        draggedID != nil
+    }
+
+    func dropEntered(info: DropInfo) {
+        dropPlace = target(info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        dropPlace = target(info)
+        // `.move` keeps the system from showing the green "+" of a copy.
+        return DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) {
+        dropPlace = nil
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer {
+            dropPlace = nil
+            draggedID = nil
+        }
+        guard let draggedID, let place = target(info) else { return false }
+        withAnimation { draft.drop(draggedID, at: place) }
+        return true
+    }
+}
+
+/// The line that marks where a dragged block would land.
+private struct DropLine: View {
+    var body: some View {
+        Capsule()
+            .fill(.tint)
+            .frame(height: 4)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The "…" button on a block: moving it without dragging, and Delete.
+private struct BlockMenu: View {
+    /// The width the button takes up on a block's trailing edge.
+    static let width: CGFloat = 44
+
+    let id: UUID
+    /// What the block is called in the accessibility label: the exercise, or "loop".
+    let name: String
+    @Binding var draft: SessionDraft
+
+    var body: some View {
+        Menu {
+            Button("Move Up", systemImage: "arrow.up") {
+                withAnimation { draft.move(id, by: -1) }
+            }
+            .disabled(!draft.canMove(id, by: -1))
+
+            Button("Move Down", systemImage: "arrow.down") {
+                withAnimation { draft.move(id, by: 1) }
+            }
+            .disabled(!draft.canMove(id, by: 1))
+
+            // Only there for a timer in a loop or right next to one.
+            ForEach(draft.loopMoves(for: id), id: \.self) { loopMove in
+                Button(loopMove.title, systemImage: loopMove.systemImage) {
+                    withAnimation { draft.move(id, loopMove) }
+                }
+            }
+
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                withAnimation { draft.remove(id) }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: Self.width, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Actions for \(name)")
+    }
+}
+
+private extension SessionDraft.LoopMove {
+    var title: String {
+        switch self {
+        case .intoLoopAbove: "Move into Loop Above"
+        case .intoLoopBelow: "Move into Loop Below"
+        case .outOfLoop: "Move out of Loop"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .intoLoopAbove: "arrow.turn.right.up"
+        case .intoLoopBelow: "arrow.turn.right.down"
+        case .outOfLoop: "arrow.turn.up.left"
+        }
+    }
 }

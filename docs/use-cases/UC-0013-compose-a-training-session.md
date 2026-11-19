@@ -70,6 +70,10 @@ The athlete wants to create, change or remove a session.
 - 3c. Athlete reorders, changes or removes an element, or a step within a loop:
   - 3c1. System applies the change to the session being edited.
   - 3c2. Use case continues at step 4.
+- 3d. Athlete moves a step into a loop, out of a loop, or from one loop to another:
+  - 3d1. System places the step where the athlete put it. A loop itself can't be moved into
+    another loop. A loop left without steps stays in the session being edited (see 5a).
+  - 3d2. Use case continues at step 4.
 - 5a. The session has no elements, or a loop has no steps:
   - 5a1. System doesn't save and says what's missing.
   - 5a2. Use case continues at step 3.

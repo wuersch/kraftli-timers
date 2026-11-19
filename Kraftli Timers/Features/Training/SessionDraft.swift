@@ -147,7 +147,6 @@ struct SessionDraft: Equatable {
     // MARK: - Reordering
 
     /// Where a block lives: among the session's elements, or among a loop's steps.
-    /// Blocks are only reordered within their level.
     enum Level: Equatable {
         case session
         case loop(UUID)
@@ -163,27 +162,127 @@ struct SessionDraft: Equatable {
         return nil
     }
 
-    /// Moves the block `id` to the place of the block `targetID`, as dropping one on the
-    /// other does. Does nothing when the two aren't on the same level.
-    mutating func move(_ id: UUID, onto targetID: UUID) {
-        guard id != targetID, let level = level(of: id), level == self.level(of: targetID) else { return }
-        switch level {
-        case .session:
-            Self.move(id, onto: targetID, in: &elements)
-        case .loop(let loopID):
-            updateLoop(loopID) { Self.move(id, onto: targetID, in: &$0.steps) }
+    /// A place a dragged block can be dropped at: the gap before or after another block,
+    /// or the end of a loop (which is also the way into an empty one).
+    enum Place: Equatable {
+        case before(UUID)
+        case after(UUID)
+        case endOfLoop(UUID)
+    }
+
+    /// The place the block `id` really goes to when dropped at `place`. A timer goes
+    /// anywhere (extension 3d). A loop can't go into a loop: aimed at a place inside one,
+    /// it goes before or after that loop instead.
+    func resolved(_ place: Place, for id: UUID) -> Place {
+        guard step(id) == nil else { return place }
+        switch place {
+        case .before(let targetID):
+            if case .loop(let loopID) = level(of: targetID) { return .before(loopID) }
+        case .after(let targetID):
+            if case .loop(let loopID) = level(of: targetID) { return .after(loopID) }
+        case .endOfLoop(let loopID):
+            return .after(loopID)
+        }
+        return place
+    }
+
+    /// Moves the block `id` to `place`, taking it out of wherever it was.
+    mutating func drop(_ id: UUID, at place: Place) {
+        let place = resolved(place, for: id)
+        // Everything is checked before the block is taken out, so a drop that can't be
+        // done never loses the block.
+        guard let element = elements.first(where: { $0.id == id }) ?? step(id).map(SessionElement.step) else { return }
+
+        switch place {
+        case .before(let targetID), .after(let targetID):
+            guard id != targetID, let targetLevel = level(of: targetID) else { return }
+            let offset = place == .after(targetID) ? 1 : 0
+            switch targetLevel {
+            case .session:
+                remove(id)
+                if let index = elements.firstIndex(where: { $0.id == targetID }) {
+                    elements.insert(element, at: index + offset)
+                }
+            case .loop(let loopID):
+                guard case .step(let step) = element else { return }
+                remove(id)
+                updateLoop(loopID) { loop in
+                    if let index = loop.steps.firstIndex(where: { $0.id == targetID }) {
+                        loop.steps.insert(step, at: index + offset)
+                    }
+                }
+            }
+        case .endOfLoop(let loopID):
+            guard case .step(let step) = element, level(of: loopID) == .session else { return }
+            remove(id)
+            updateLoop(loopID) { $0.steps.append(step) }
         }
     }
 
-    /// Handles a block dropped on another. On the same level it takes the other's place.
-    /// A session block dropped on a timer inside a loop takes the place of that loop,
-    /// so the whole loop is a drop target for the blocks around it.
-    mutating func drop(_ id: UUID, onto targetID: UUID) {
-        if level(of: id) == .session, case .loop(let loopID) = level(of: targetID) {
-            move(id, onto: loopID)
-        } else {
-            move(id, onto: targetID)
+    /// Whether dropping the block there changes anything, for showing where it would land.
+    func canDrop(_ id: UUID, at place: Place) -> Bool {
+        var copy = self
+        copy.drop(id, at: place)
+        return copy != self
+    }
+
+    /// A move between a loop and the session, for timers that are in a loop or next to one.
+    enum LoopMove: Equatable {
+        case intoLoopAbove
+        case intoLoopBelow
+        case outOfLoop
+    }
+
+    /// The loop moves open to the block `id`: out of its loop for a loop's timer; into
+    /// the loop directly above or below for a session's timer. None for a loop.
+    func loopMoves(for id: UUID) -> [LoopMove] {
+        guard step(id) != nil else { return [] }
+        guard let index = elements.firstIndex(where: { $0.id == id }) else { return [.outOfLoop] }
+        var moves: [LoopMove] = []
+        if index > 0, elements[index - 1].loopValue != nil {
+            moves.append(.intoLoopAbove)
         }
+        if index + 1 < elements.count, elements[index + 1].loopValue != nil {
+            moves.append(.intoLoopBelow)
+        }
+        return moves
+    }
+
+    /// Applies a loop move. Going in, the timer keeps its place in the running order: it
+    /// becomes the last timer of the loop above, or the first of the loop below. Going
+    /// out, a loop's first timer lands above the loop and any other below it.
+    mutating func move(_ id: UUID, _ loopMove: LoopMove) {
+        guard loopMoves(for: id).contains(loopMove) else { return }
+        switch loopMove {
+        case .intoLoopAbove:
+            guard let index = elements.firstIndex(where: { $0.id == id }) else { return }
+            drop(id, at: .endOfLoop(elements[index - 1].id))
+        case .intoLoopBelow:
+            guard let index = elements.firstIndex(where: { $0.id == id }),
+                  let loop = elements[index + 1].loopValue else { return }
+            drop(id, at: loop.steps.first.map { .before($0.id) } ?? .endOfLoop(loop.id))
+        case .outOfLoop:
+            guard case .loop(let loopID) = level(of: id),
+                  let loop = elements.first(where: { $0.id == loopID })?.loopValue else { return }
+            drop(id, at: loop.steps.first?.id == id ? .before(loopID) : .after(loopID))
+        }
+    }
+
+    /// The timer with `id`, on either level; `nil` for a loop.
+    private func step(_ id: UUID) -> SessionStep? {
+        for element in elements {
+            switch element {
+            case .step(let step) where step.id == id:
+                return step
+            case .loop(let loop):
+                if let step = loop.steps.first(where: { $0.id == id }) {
+                    return step
+                }
+            default:
+                break
+            }
+        }
+        return nil
     }
 
     /// Moves the block `id` one place up (`offset` −1) or down (+1) within its level.
@@ -202,17 +301,6 @@ struct SessionDraft: Equatable {
         var copy = self
         copy.move(id, by: offset)
         return copy != self
-    }
-
-    private static func move<Item: Identifiable>(_ id: UUID, onto targetID: UUID, in items: inout [Item])
-    where Item.ID == UUID {
-        guard let from = items.firstIndex(where: { $0.id == id }),
-              let to = items.firstIndex(where: { $0.id == targetID }) else { return }
-        // Taking the block out first shifts everything after it up by one, so inserting at
-        // the target's old index puts it after the target when moving down, before it when
-        // moving up: in both cases where the target was.
-        let item = items.remove(at: from)
-        items.insert(item, at: to)
     }
 
     private static func move<Item: Identifiable>(_ id: UUID, by offset: Int, in items: inout [Item])
@@ -246,5 +334,12 @@ struct SessionDraft: Equatable {
         } else {
             modelContext.insert(TrainingSession(name: storedName, elements: elements))
         }
+    }
+}
+
+private extension SessionElement {
+    /// The loop, when the element is one.
+    var loopValue: SessionLoop? {
+        if case .loop(let loop) = self { loop } else { nil }
     }
 }
