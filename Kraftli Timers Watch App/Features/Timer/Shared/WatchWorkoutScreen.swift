@@ -86,6 +86,13 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
             || starter.workoutAwaitingHealthAccess == workoutID
     }
 
+    /// True when this workout is a step of a training session run on the iPhone. Its end
+    /// is not the session's end: the Health session stays with the run, nothing is
+    /// logged here, and the screen closes by itself (ADR-0012).
+    private var isSessionStep: Bool {
+        starter.isSessionStep(workoutID)
+    }
+
     /// Live heart rate as an integer string, or "--" before the first sample.
     private var heartRateText: String {
         sessionManager.currentHeartRate.map { "\(Int($0))" } ?? "--"
@@ -145,6 +152,15 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
     /// writes the entry of a workout it started).
     private func tearDown() {
         isEnding = true
+        guard !isSessionStep else {
+            // Only the step ends. The iPhone records it and reports the session's
+            // progress; `WatchSessionFollower` pauses or ends the Health session from that.
+            countdown.cancelCountdown()
+            model.reset()
+            dismiss()
+            starter.workoutEnded()
+            return
+        }
         var stoppedLog: WorkoutLog?
         if timerSession.workoutID == workoutID, let state = timerSession.renderedState {
             switch EarlyStop(of: state, at: Date()) {
@@ -215,7 +231,8 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
         .toolbar(.hidden)
         .watchTimerLifecycle(
             timer: model,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
+            isEnding: isEnding
         )
         .onAppear {
             // Run setup exactly once. onAppear can fire again when the view
@@ -258,6 +275,13 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
             // clamp must not log/celebrate a workout the user just paused.
             guard didComplete && !hasLoggedWorkout else { return }
             hasLoggedWorkout = true
+            if isSessionStep {
+                // Publish the completion before letting go of the step, then close: the
+                // session's next screen is the iPhone's.
+                timerSession.checkCompletion()
+                if !isEnding { tearDown() }
+                return
+            }
             // Build the log now, while the model still holds the result: pressing End
             // while the HealthKit save below is pending resets the model.
             let log = startedOnPhone ? nil : makeWorkoutLog()

@@ -65,10 +65,11 @@ final class PhoneWorkoutStarter {
 
     /// Starts a workout, on the Watch if possible.
     ///
-    /// - Parameter onWatch: False keeps the workout on the iPhone without asking the
-    ///   Watch. A session's steps run that way until the Watch can follow a whole
-    ///   session: started one by one, each would become a Health workout of its own.
-    func start(workoutID: UUID, config: TimerConfig, onWatch: Bool = true) {
+    /// - Parameters:
+    ///   - onWatch: False keeps the workout on the iPhone without asking the Watch. The
+    ///     steps of a session whose Health workout the iPhone holds run that way.
+    ///   - session: Names the run when the workout is a step of a session (ADR-0012).
+    func start(workoutID: UUID, config: TimerConfig, onWatch: Bool = true, session: SessionContext? = nil) {
         cancel()
         self.config = config
 
@@ -78,7 +79,9 @@ final class PhoneWorkoutStarter {
             return
         }
 
-        controller.requestStart(StartRequest(workoutID: workoutID, config: config, requestedAt: now()))
+        controller.requestStart(
+            StartRequest(workoutID: workoutID, config: config, requestedAt: now(), session: session)
+        )
         launchTask = Task { [weak self, launchWatchApp] in
             do {
                 try await launchWatchApp(config)

@@ -126,4 +126,30 @@ struct PhoneMessageCoordinatorTests {
 
         #expect(log.healthKitWorkoutUUID == watchUUID)
     }
+
+    // MARK: - A session's run (UC-0005 extension 3d)
+
+    @Test @MainActor func sessionEnded_forARun_linksEveryStepsLog() throws {
+        let container = try makeInMemoryContainer(for: WorkoutLog.self)
+        let context = container.mainContext
+        let runID = UUID()
+        for name in ["Push-ups", "Squats"] {
+            context.insert(WorkoutLog(
+                exerciseName: name, timerKind: .amrap, durationSeconds: 240, roundsCompleted: 5,
+                sessionName: "Full Body", sessionRunID: runID
+            ))
+        }
+        let other = WorkoutLog(exerciseName: "Other", timerKind: .amrap, durationSeconds: 240, roundsCompleted: 5)
+        context.insert(other)
+        try context.save()
+
+        let coordinator = PhoneMessageCoordinator()
+        coordinator.modelContext = context
+        let watchUUID = UUID()
+        coordinator.handleMessage(WorkoutSessionEndedMessage(healthKitWorkoutUUID: watchUUID, correlationID: runID))
+
+        let logs = try context.fetch(FetchDescriptor<WorkoutLog>())
+        #expect(logs.filter { $0.sessionRunID == runID }.allSatisfy { $0.healthKitWorkoutUUID == watchUUID })
+        #expect(other.healthKitWorkoutUUID == nil)
+    }
 }

@@ -44,6 +44,9 @@ struct TimerScreenLink {
     /// `PhoneWorkoutStarter.start`).
     var startsOnWatch = true
 
+    /// Names the run when the workout is a step of a session (ADR-0012).
+    var session: SessionContext? = nil
+
     /// Parent controls whether swipe is disabled (true during countdown).
     var isSwipeDisabled: Binding<Bool> = .constant(false)
 
@@ -270,7 +273,9 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
         timerSession.onRenderedStateChange = { [model] state in
             model.apply(state)
         }
-        workoutStarter.start(workoutID: workoutID, config: config, onWatch: link.startsOnWatch)
+        workoutStarter.start(
+            workoutID: workoutID, config: config, onWatch: link.startsOnWatch, session: link.session
+        )
     }
 
     /// Cleanup action called by parent before dismissing. Safe to call more than once.

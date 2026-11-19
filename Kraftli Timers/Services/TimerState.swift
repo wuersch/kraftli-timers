@@ -85,6 +85,9 @@ nonisolated struct StartRequest: Codable, Equatable, Sendable {
     /// When the iPhone asked. The request is also the persisted application context,
     /// so a Watch launched much later can tell a stale request from a fresh one.
     let requestedAt: Date
+    /// Set when the workout is a step of a session's run (ADR-0012). Optional on the
+    /// wire: a request from an app version without sessions decodes without it.
+    var session: SessionContext?
 }
 
 // MARK: - TimerState

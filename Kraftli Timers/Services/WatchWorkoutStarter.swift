@@ -46,11 +46,22 @@ final class WatchWorkoutStarter {
     /// An iPhone-started workout the UI should present. Cleared with `requestPresented()`.
     private(set) var requestedWorkout: StartRequest?
 
+    /// The requested workout that is a step of a training session, if the current one is.
+    /// Such a step doesn't end the Health session or show "DONE": the session goes on.
+    private(set) var sessionStepID: UUID?
+
+    /// True when `workoutID` is a step of a training session (ADR-0012).
+    func isSessionStep(_ workoutID: UUID) -> Bool {
+        sessionStepID == workoutID
+    }
+
     /// A Watch-started workout that is waiting for the athlete's answer about Apple Health
     /// access before it starts. The UI shows it as starting.
     private(set) var workoutAwaitingHealthAccess: UUID?
 
     @ObservationIgnored private let controller: TimerSessionController
+    /// Holds the Health session of a session's run across its steps (ADR-0012).
+    @ObservationIgnored private let sessionFollower: WatchSessionFollower?
     @ObservationIgnored private let startHealthSession: (TimerKind) async throws -> Void
     @ObservationIgnored private let discardHealthSession: () -> Void
     @ObservationIgnored private let isHealthAccessUndecided: () -> Bool
@@ -75,6 +86,8 @@ final class WatchWorkoutStarter {
     /// - Parameters:
     ///   - controller: The Watch's timer session.
     ///   - transport: Its transport, whose start requests this starter handles.
+    ///   - sessionFollower: Holds the Health session of a training session's run. Its
+    ///     steps arrive here as start requests naming the run.
     ///   - startHealthSession: Starts (and mirrors) a HealthKit workout session.
     ///   - discardHealthSession: Ends the current session without saving it.
     ///   - isHealthAccessUndecided: True while the athlete has never been asked for Apple
@@ -86,6 +99,7 @@ final class WatchWorkoutStarter {
     init(
         controller: TimerSessionController,
         transport: CompositeTimerSyncTransport,
+        sessionFollower: WatchSessionFollower? = nil,
         startHealthSession: @escaping (TimerKind) async throws -> Void,
         discardHealthSession: @escaping () -> Void,
         isHealthAccessUndecided: @escaping () -> Bool = { false },
@@ -96,6 +110,7 @@ final class WatchWorkoutStarter {
         schedulesWatchdog: Bool = true
     ) {
         self.controller = controller
+        self.sessionFollower = sessionFollower
         self.startHealthSession = startHealthSession
         self.discardHealthSession = discardHealthSession
         self.isHealthAccessUndecided = isHealthAccessUndecided
@@ -105,6 +120,7 @@ final class WatchWorkoutStarter {
         self.now = now
         self.schedulesWatchdog = schedulesWatchdog
         transport.onStartRequest = { [weak self] request in self?.receive(request) }
+        transport.onSessionStatus = { [weak sessionFollower] status in sessionFollower?.receive(status) }
         controller.onConfirmedStateChange = { [weak self] state in self?.confirmed(state) }
     }
 
@@ -118,6 +134,18 @@ final class WatchWorkoutStarter {
             return
         }
         guard controller.workoutID != request.workoutID else { return }
+        sessionStepID = request.session == nil ? nil : request.workoutID
+
+        if let session = request.session, sessionFollower?.isHolding(session.runID) == true {
+            // A further step of the run whose Health session is already up: there is
+            // nothing to wait for, so the Watch owns the step at once (ADR-0012 rule 2).
+            Logger.timerSync.info("Start request \(request.workoutID) is a step of the held session run; owning it")
+            cancelWatchdog()
+            yieldedWorkoutID = nil
+            requestedWorkout = request
+            controller.startAsOwner(TimerState(workoutID: request.workoutID, owner: .watch, config: request.config, now: now()))
+            return
+        }
 
         Logger.timerSync.info("Start request \(request.workoutID) received; starting HealthKit session")
         controller.startAsViewer(workoutID: request.workoutID)
@@ -137,6 +165,9 @@ final class WatchWorkoutStarter {
     /// Handles `handle(_ workoutConfiguration:)`: the iPhone launched the app for a workout.
     /// Shares the session start with a start request that arrived (or arrives) alongside.
     func watchAppLaunched(startSession: @escaping () async throws -> Void) {
+        // The iPhone launches the app for every step of a session. While the run's
+        // Health session is held, another start would end it and begin a second workout.
+        guard sessionFollower?.held == nil else { return }
         _ = ensureHealthSession(startSession)
     }
 
@@ -146,6 +177,7 @@ final class WatchWorkoutStarter {
         cancelWatchdog()
         cancelWatchStart()
         yieldedWorkoutID = nil
+        sessionStepID = nil
 
         guard isHealthAccessUndecided() else {
             beginWatchOwnedWorkout(workoutID: workoutID, config: config)
@@ -188,7 +220,9 @@ final class WatchWorkoutStarter {
     func watchdogFired() {
         guard controller.isAwaitingOwner, let workoutID = controller.workoutID else { return }
         Logger.timerSync.warning("No owner for workout \(workoutID) after the watchdog timeout; closing it")
-        discardHealthSession()
+        if sessionFollower?.held == nil {
+            discardHealthSession()
+        }
         workoutEnded()
     }
 
@@ -196,6 +230,9 @@ final class WatchWorkoutStarter {
 
     /// Takes ownership of a Watch-started workout and starts its HealthKit session alongside.
     private func beginWatchOwnedWorkout(workoutID: UUID, config: TimerConfig) {
+        // A workout started here takes over the Health session manager. A session's run
+        // held until now ends with it: starting a session saves a stale one.
+        sessionFollower?.release()
         controller.startAsOwner(TimerState(workoutID: workoutID, owner: .watch, config: config, now: now()))
         sessionStart = nil
         let session = ensureHealthSession { [startHealthSession] in
@@ -270,14 +307,26 @@ final class WatchWorkoutStarter {
         }
         cancelWatchdog()
         Logger.timerSync.info("Taking ownership of workout \(request.workoutID)")
+        if let session = request.session {
+            // The first step of a session's run the Watch owns: its Health session now
+            // belongs to the run and stays up between the steps.
+            sessionFollower?.hold(session)
+        }
         controller.startAsOwner(TimerState(workoutID: request.workoutID, owner: .watch, config: request.config, now: now()))
     }
 
     /// The yield rule: once the iPhone owns this workout, drop the HealthKit session.
     private func confirmed(_ state: TimerState) {
         guard state.owner == .phone, yieldedWorkoutID != state.workoutID else { return }
-        Logger.timerSync.info("iPhone owns workout \(state.workoutID); discarding the Watch's session")
         yieldedWorkoutID = state.workoutID
+        guard sessionFollower?.held == nil else {
+            // A step of a held run fell back to the iPhone. The Watch follows that step,
+            // but the run's Health workout stays here (ADR-0012 rule 2).
+            Logger.timerSync.info("iPhone owns workout \(state.workoutID); keeping the held session run's Health session")
+            cancelWatchdog()
+            return
+        }
+        Logger.timerSync.info("iPhone owns workout \(state.workoutID); discarding the Watch's session")
         cancelWatchdog()
         discardHealthSession()
         sessionStart = nil

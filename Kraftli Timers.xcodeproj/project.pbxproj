@@ -120,6 +120,7 @@
 				Services/FoundationTimerProvider.swift,
 				Services/HealthKitTimerSyncTransport.swift,
 				Services/PresetMaintenance.swift,
+				Services/SessionStatus.swift,
 				Services/SilentFeedback.swift,
 				Services/TimerProvider.swift,
 				Services/TimerSessionController.swift,
@@ -128,6 +129,7 @@
 				Services/TimerSyncTransport.swift,
 				Services/WatchConnectivityService.swift,
 				Services/WatchMessage.swift,
+				Services/WatchSessionFollower.swift,
 				Services/WatchWorkoutStarter.swift,
 				Services/WorkoutLoggingService.swift,
 			);

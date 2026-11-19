@@ -37,6 +37,7 @@ struct SessionRunnerView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.workoutRecorder) private var workoutRecorder
     @Environment(AppSettings.self) private var settings
+    @Environment(TimerSessionController.self) private var timerSession
 
     /// Created in `onAppear`, because it needs the recorder from the environment.
     @State private var runner: SessionRunner?
@@ -76,6 +77,12 @@ struct SessionRunnerView: View {
             // two: start every step from their initial values.
             isSwipeDisabled = false
             showHint = true
+        }
+        .onChange(of: timerSession.renderedState?.owner) { _, owner in
+            // The first step's owner holds the session's Health workout from then on.
+            if let owner, let runner, timerSession.workoutID == runner.stepWorkoutID {
+                runner.stepOwned(by: owner)
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             // A rest's timer doesn't fire while the app is suspended.
@@ -219,9 +226,8 @@ struct SessionRunnerView: View {
             exerciseName: step.exerciseName,
             workoutID: runner.stepWorkoutID,
             autoStart: true,
-            // Until the Watch can follow a whole session, its steps stay on the iPhone:
-            // started one by one on the Watch, each would be a Health workout of its own.
-            startsOnWatch: false,
+            startsOnWatch: runner.startsStepsOnWatch,
+            session: runner.context,
             isSwipeDisabled: $isSwipeDisabled,
             showHint: $showHint,
             onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
@@ -238,7 +244,13 @@ struct SessionRunnerView: View {
             : SilentFeedback()
         feedbackProvider = feedback
 
-        let runner = SessionRunner(name: request.name, elements: request.elements, recorder: workoutRecorder)
+        let timerSession = timerSession
+        let runner = SessionRunner(
+            name: request.name,
+            elements: request.elements,
+            recorder: workoutRecorder,
+            sendStatus: { timerSession.send($0) }
+        )
         runner.onCompleted = {
             feedback.onWorkoutComplete()
             celebrate()

@@ -144,6 +144,12 @@ final class TimerSessionController {
         renderedState = nil
     }
 
+    /// Tells the other device how far a session's run has come (ADR-0012). Separate from
+    /// the workout this controller holds: a run spans the workouts of its steps.
+    func send(_ status: SessionStatus) {
+        transport.send(status)
+    }
+
     // MARK: - Actions (either role)
 
     func pause() { act(.pause) }
@@ -242,8 +248,9 @@ final class TimerSessionController {
             if isAwaitingOwner {
                 earlyIntents.append(contentsOf: intents)
             }
-        case (nil, _), (_, .startRequest):
-            // Start requests arrive through `onStartRequest`, never here.
+        case (nil, _), (_, .startRequest), (_, .sessionStatus):
+            // Start requests and session statuses arrive through their own callbacks
+            // (`onStartRequest`, `onSessionStatus`), never here.
             break
         }
     }
