@@ -28,7 +28,7 @@ be implemented; ideas live in the [backlog](backlog.md) until promoted to a use 
 | [UC-0012](use-cases/UC-0012-run-a-for-time-workout.md) | Run a For Time workout | user-goal | approved |
 | [UC-0013](use-cases/UC-0013-compose-a-training-session.md) | Compose a training session | user-goal | implemented |
 | [UC-0014](use-cases/UC-0014-plan-the-training-week.md) | Plan the training week | user-goal | implemented |
-| [UC-0015](use-cases/UC-0015-run-a-training-session.md) | Run a training session | user-goal | clarified |
+| [UC-0015](use-cases/UC-0015-run-a-training-session.md) | Run a training session | user-goal | approved |
 
 `approved` means the specified behavior isn't fully realized yet; each such use case lists its
 known deviations under *Related Information*. `implemented` means the app behaves as specified.

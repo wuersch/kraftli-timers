@@ -121,11 +121,14 @@ case wins.
   rows: kind colour, exercise, "5 min · 50 reps" / "4 min" / "30 reps · ≈ 4 min"; a loop's rows sit
   next to "N×" and end with "Rest · 1 min". "Change" opens a sheet with the session cards,
   the current one checked, and "Rest day". Swipe left on the card: "Remove" (gray, no
-  confirmation) makes the day a rest day; the session itself stays.
+  confirmation) makes the day a rest day; the session itself stays. At the foot of the card,
+  "Start" (play glyph, tinted capsule) opens the [Session Runner](#session-runner).
 - **Selected day, rest:** "Rest day" — "Tap + on a session to train on Wednesdays." While a rest
   day is selected, each session card below carries a "+" that plans it on that day.
 - **Sessions:** below the selected day, one card per session in alphabetical order: name, shape,
-  "≈ N min", followed by the days it is planned on ("≈ 37 min · Mon, Thu"). Tap opens the [Session Editor](#session-editor-sheet). Swipe to delete, with a
+  "≈ N min", followed by the days it is planned on ("≈ 37 min · Mon, Thu"). Tap opens the [Session Editor](#session-editor-sheet). A blue play
+  button on the trailing edge, as on a timer preset, starts the session in the
+  [Session Runner](#session-runner); while a rest day is selected, the "+" sits to its left. Swipe to delete, with a
   confirmation alert: "Delete "Name"?" — "It is also removed from your week. This action cannot be
   undone." Long-press menu: Duplicate (opens the editor on a copy named "Name 2", "Name 3" …), Delete.
 - Empty state (no sessions; the week strip is hidden): "No Sessions" — "Compose a session first,
@@ -170,6 +173,42 @@ case wins.
 - The [Preset Editor](#preset-editor-sheet) form (kind, exercise, wheels) applied to one timer of
   a session. Titles "New Timer" / "Edit Timer"; Cancel (xmark) / Done (checkmark) returns to the
   Session Editor, where Save stores everything.
+
+### Session Runner
+
+- Full screen, opened by "Start" or a session's play button. It runs the session as it was at
+  that moment. It closes only through "End Session" or the summary's "Done".
+- **Session header**, on every screen but the summary: the session's name, the position
+  ("Timer 2 of 8", in a loop followed by "· Round 1 of 3") and the session's shape as a bar.
+  Finished and skipped segments are dimmed, the current one has a white ring.
+- **Between steps** (also before the first timer): a card "DONE" with the timer just finished
+  ("Jumping Jacks · EMOM" — "5:00 · 50 reps"; "Skipped" for a skipped one; no card before the
+  first timer). Centre: "UP NEXT", the kind as a pill, the exercise in large type, its settings
+  ("4 min", "5 min · 50 reps", "30 reps") and, in a loop, "Round 1 of 3". Buttons: "Start"
+  (prominent), below it "Skip" and "End Session" (red text) side by side. Footer "Session paused
+  · take your time". Swipe down does nothing here.
+  - "End Session" asks first: "End session?" — "Completed timers stay in your history." — "End
+    Session" (destructive) / "Cancel". Then the summary appears.
+  - "Skip" needs no confirmation and shows the next timer; skipping the last one ends the session.
+- **Running step:** the timer's own screen ([EMOM](#emom-timer), [AMRAP](#amrap-timer),
+  [For Time](#for-time-timer)) with its countdown, gestures, signals and
+  [Watch sync indicators](#watch-sync-indicators), under the session header. Swipe down ends
+  this timer only, and the hint line says so ("Swipe down to end this timer"). When the timer
+  ends, the between-steps screen (or the loop rest) replaces it directly: no completion sound,
+  no confetti, no single-workout summary.
+- **Loop rest:** after a round's last timer when another round follows and the loop has a rest.
+  The "DONE" card, a gray ring counting down with "REST" and M:SS, below it "THEN · ROUND 2 OF 3"
+  with the loop's first timer, and "Skip Rest". Footer "Counts as training time". When the rest
+  is over or skipped, the between-steps screen shows that timer.
+- **End of the session:** completion sound and, if enabled, confetti for 3 s, once, after the
+  last timer. Not when the session was ended with "End Session".
+- **Session summary:** header "Summary" with "Name · 7 of 8 timers" (timers completed or stopped
+  early, of all). Cards: Total Time (the active time: timers and loop rests, without the waits
+  between timers), Active Calories, Avg Heart Rate, Max Heart Rate ("--" while Watch data is
+  pending). Then every timer in running order with its kind colour, exercise and result
+  ("4:00 · 9 rounds"; "· stopped early" appended; "Skipped" in gray), a loop's timers under
+  "ROUND 1", "ROUND 2" … Without a Watch: footer "Connect Apple Watch for heart rate and
+  calories". "Open Health" when Health data exists; "Done" (prominent) closes the runner.
 
 ### Stats
 
@@ -221,3 +260,8 @@ case wins.
   End stay on the controls page.
   "DONE" at the end until End is pressed. No sounds, no haptics, no confetti, no summary.
 - **iPhone-started:** "Starting…" until ownership is settled.
+- **Session (iPhone-started):** a step runs like an iPhone-started workout, without "DONE" at its
+  end. Between steps: the session's shape bar with the position, "UP NEXT", the exercise,
+  "AMRAP · 4 min", in a loop "Round 1 of 3", and "Start on iPhone"; no controls. During a loop
+  rest: "REST" with the countdown and what comes next. After the last step: "DONE" until End is
+  pressed, as for a single workout.
