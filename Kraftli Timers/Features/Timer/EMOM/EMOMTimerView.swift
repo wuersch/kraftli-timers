@@ -52,7 +52,7 @@ struct EMOMTimerView: View {
             ),
             link: link,
             style: TimerScreenStyle(
-                sizes: TimerSizes.emom(for:),
+                sizes: { TimerSizes.emom(for: $0) },
                 color: TimerKind.emom.color,
                 startingIconScale: 0.6,
                 countdownScale: 1.5

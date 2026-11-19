@@ -37,7 +37,7 @@ struct WatchPresetEditorView: View {
     init(presetToEdit: TimerPreset? = nil) {
         self.presetToEdit = presetToEdit
 
-        let draft = presetToEdit.map(PresetDraft.init(preset:)) ?? PresetDraft()
+        let draft = presetToEdit.map { PresetDraft(preset: $0) } ?? PresetDraft()
         _timerKind = State(initialValue: draft.kind)
         _selectedExerciseId = State(initialValue: draft.exerciseId)
         _durationMinutes = State(initialValue: Double(draft.durationMinutes))
