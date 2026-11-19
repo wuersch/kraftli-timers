@@ -27,6 +27,14 @@ struct WorkoutRow: View {
             Text("\(workout.formattedDate)\(UISeparator.dot)\(workout.summaryText)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+
+            // A step of a session names it (UC-0008).
+            if let sessionName = workout.sessionName {
+                Label(sessionName, systemImage: "calendar")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
         .padding(14)
         .cardStyle(padded: false)

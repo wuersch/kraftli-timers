@@ -28,6 +28,12 @@ final class WorkoutLog {
     /// True for a workout that was ended early (UC-0005 extension 1a). Its duration is
     /// then the active time up to the stop, and the count is what was done so far.
     var stoppedEarly: Bool = false
+    /// The name of the session the workout was a step of, as it was then (UC-0015).
+    /// Text, not a reference: renaming or deleting the session doesn't change the history.
+    var sessionName: String?
+    /// Identifies the run of the session, shared by all its steps' entries. Its one
+    /// Health workout is linked to them through it.
+    var sessionRunID: UUID?
 
     // MARK: - Computed Properties
 
@@ -88,7 +94,9 @@ final class WorkoutLog {
         repsCompleted: Int? = nil,
         roundsCompleted: Int? = nil,
         healthKitWorkoutUUID: UUID? = nil,
-        stoppedEarly: Bool = false
+        stoppedEarly: Bool = false,
+        sessionName: String? = nil,
+        sessionRunID: UUID? = nil
     ) {
         precondition(durationSeconds > 0, "durationSeconds must be positive")
         precondition(
@@ -109,5 +117,7 @@ final class WorkoutLog {
         self.roundsCompleted = roundsCompleted
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
         self.stoppedEarly = stoppedEarly
+        self.sessionName = sessionName
+        self.sessionRunID = sessionRunID
     }
 }

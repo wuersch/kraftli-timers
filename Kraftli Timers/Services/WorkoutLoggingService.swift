@@ -27,6 +27,8 @@ protocol WorkoutLoggingService {
     ///   - id: The log's ID. Pass the workout's ID so the Watch's HealthKit summary can be
     ///     matched to this log; nil generates a new one.
     ///   - stoppedEarly: True for a workout ended early (UC-0005 extension 1a).
+    ///   - sessionName: The session the workout was a step of, if any (UC-0015).
+    ///   - sessionRunID: The run of that session, shared by all its steps' entries.
     /// - Returns: The created WorkoutLog instance.
     @discardableResult
     func logWorkout(
@@ -37,7 +39,9 @@ protocol WorkoutLoggingService {
         roundsCompleted: Int?,
         healthKitWorkoutUUID: UUID?,
         id: UUID?,
-        stoppedEarly: Bool
+        stoppedEarly: Bool,
+        sessionName: String?,
+        sessionRunID: UUID?
     ) -> WorkoutLog
 }
 
@@ -58,7 +62,9 @@ final class DefaultWorkoutLoggingService: WorkoutLoggingService {
         roundsCompleted: Int?,
         healthKitWorkoutUUID: UUID? = nil,
         id: UUID? = nil,
-        stoppedEarly: Bool = false
+        stoppedEarly: Bool = false,
+        sessionName: String? = nil,
+        sessionRunID: UUID? = nil
     ) -> WorkoutLog {
         let workoutLog = WorkoutLog(
             id: id ?? UUID(),
@@ -68,7 +74,9 @@ final class DefaultWorkoutLoggingService: WorkoutLoggingService {
             repsCompleted: repsCompleted,
             roundsCompleted: roundsCompleted,
             healthKitWorkoutUUID: healthKitWorkoutUUID,
-            stoppedEarly: stoppedEarly
+            stoppedEarly: stoppedEarly,
+            sessionName: sessionName,
+            sessionRunID: sessionRunID
         )
 
         modelContext.insert(workoutLog)
@@ -95,7 +103,9 @@ final class SilentWorkoutLoggingService: WorkoutLoggingService {
         roundsCompleted: Int?,
         healthKitWorkoutUUID: UUID? = nil,
         id: UUID? = nil,
-        stoppedEarly: Bool = false
+        stoppedEarly: Bool = false,
+        sessionName: String? = nil,
+        sessionRunID: UUID? = nil
     ) -> WorkoutLog {
         // Return a placeholder — never persisted
         WorkoutLog(
@@ -106,7 +116,9 @@ final class SilentWorkoutLoggingService: WorkoutLoggingService {
             repsCompleted: repsCompleted,
             roundsCompleted: roundsCompleted,
             healthKitWorkoutUUID: healthKitWorkoutUUID,
-            stoppedEarly: stoppedEarly
+            stoppedEarly: stoppedEarly,
+            sessionName: sessionName,
+            sessionRunID: sessionRunID
         )
     }
 }

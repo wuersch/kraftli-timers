@@ -53,20 +53,13 @@ struct SessionEstimate: Equatable {
     let segments: [Segment]
 
     init(of elements: [SessionElement], pace: Pace? = nil) {
-        segments = elements.flatMap { element -> [Segment] in
-            switch element {
+        // The running order comes from `SessionOrder`, the same one a run follows.
+        segments = SessionOrder.items(of: elements).map { item in
+            switch item.content {
             case .step(let step):
-                return [Segment(kind: step.kind, seconds: Self.seconds(of: step, pace: pace), loopID: nil)]
-            case .loop(let loop):
-                return (0..<loop.rounds).flatMap { round -> [Segment] in
-                    var segments = loop.steps.map {
-                        Segment(kind: $0.kind, seconds: Self.seconds(of: $0, pace: pace), loopID: loop.id)
-                    }
-                    if loop.restSeconds > 0, round < loop.rounds - 1 {
-                        segments.append(Segment(kind: nil, seconds: TimeInterval(loop.restSeconds), loopID: loop.id))
-                    }
-                    return segments
-                }
+                Segment(kind: step.kind, seconds: Self.seconds(of: step, pace: pace), loopID: item.loopID)
+            case .rest(let seconds):
+                Segment(kind: nil, seconds: TimeInterval(seconds), loopID: item.loopID)
             }
         }
     }

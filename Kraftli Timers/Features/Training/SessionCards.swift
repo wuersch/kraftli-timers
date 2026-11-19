@@ -40,6 +40,7 @@ struct SelectedDayCard: View {
     let title: String
     let session: TrainingSession
     let onChange: () -> Void
+    let onStart: () -> Void
 
     var body: some View {
         // Decoded and estimated once per redraw; the lines below all read from these.
@@ -102,6 +103,20 @@ struct SelectedDayCard: View {
                     }
                 }
             }
+
+            // `.bordered` with the tint is the quiet form of a main action: tinted
+            // label on a wash of the tint, instead of `.borderedProminent`'s solid fill.
+            Button(action: onStart) {
+                Label("Start", systemImage: "play.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .tint(.accentColor)
+            .padding(.top, 14)
+            .accessibilityLabel("Start \(session.name)")
         }
         .padding(16)
         .background(Color(UIColor.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))

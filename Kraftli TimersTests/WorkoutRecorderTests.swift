@@ -20,7 +20,7 @@ struct WorkoutRecorderTests {
         var isAvailable = true
         var failsToSave = false
         let savedUUID = UUID()
-        private(set) var saves: [(start: Date, end: Date, metadata: [String: Any]?)] = []
+        private(set) var saves: [(start: Date, end: Date, pauses: [DateInterval], metadata: [String: Any]?)] = []
 
         func requestAuthorization() async throws {}
 
@@ -28,10 +28,11 @@ struct WorkoutRecorderTests {
             activityType: HKWorkoutActivityType,
             start: Date,
             end: Date,
+            pauses: [DateInterval],
             metadata: [String: Any]?
         ) async throws -> UUID {
             if failsToSave { throw HealthKitServiceError.saveFailed }
-            saves.append((start, end, metadata))
+            saves.append((start, end, pauses, metadata))
             return savedUUID
         }
 
@@ -157,5 +158,65 @@ struct WorkoutRecorderTests {
         await recorder.record(completion(ownedByWatch: false), exerciseName: "Burpees", timerKind: .amrap).value
 
         #expect(try #require(try logs(in: context).first).stoppedEarly == false)
+    }
+
+    // MARK: - Sessions (UC-0005 extension 3d)
+
+    private func stepOfASession(_ runID: UUID) -> WorkoutCompletionData {
+        var data = completion(ownedByWatch: false)
+        data.sessionName = "Full Body"
+        data.sessionRunID = runID
+        return data
+    }
+
+    @Test func stepOfASession_isLoggedWithItsSession_butGetsNoHealthWorkoutOfItsOwn() async throws {
+        let healthKit = FakeHealthKitService()
+        let (recorder, context) = try makeRecorder(healthKit)
+        let runID = UUID()
+
+        await recorder.record(stepOfASession(runID), exerciseName: "Burpees", timerKind: .amrap).value
+
+        let log = try #require(try logs(in: context).first)
+        #expect(log.sessionName == "Full Body")
+        #expect(log.sessionRunID == runID)
+        #expect(log.healthKitWorkoutUUID == nil)
+        #expect(healthKit.saves.isEmpty)
+    }
+
+    @Test func session_getsOneHealthWorkout_withTheWaitsAsPauses_linkedToEveryStep() async throws {
+        let healthKit = FakeHealthKitService()
+        let (recorder, context) = try makeRecorder(healthKit)
+        let runID = UUID()
+        await recorder.record(stepOfASession(runID), exerciseName: "Burpees", timerKind: .amrap).value
+        await recorder.record(stepOfASession(runID), exerciseName: "Squats", timerKind: .amrap).value
+        // A workout that has nothing to do with the session.
+        await recorder.record(completion(ownedByWatch: true), exerciseName: "Other", timerKind: .amrap).value
+
+        await recorder.recordSession(runID: runID, name: "Full Body", activeIntervals: [
+            DateInterval(start: now, duration: 600),
+            DateInterval(start: now.addingTimeInterval(900), duration: 600)
+        ]).value
+
+        let save = try #require(healthKit.saves.first)
+        #expect(healthKit.saves.count == 1)
+        #expect(save.start == now)
+        #expect(save.end == now.addingTimeInterval(1500))
+        #expect(save.pauses == [DateInterval(start: now.addingTimeInterval(600), duration: 300)])
+        #expect(save.metadata?[HKMetadataKeyExternalUUID] as? String == runID.uuidString)
+
+        let all = try logs(in: context)
+        #expect(all.filter { $0.sessionRunID == runID }.allSatisfy { $0.healthKitWorkoutUUID == healthKit.savedUUID })
+        #expect(all.first { $0.exerciseName == "Other" }?.healthKitWorkoutUUID == nil)
+    }
+
+    @Test func sessionWithoutARecordedStep_getsNoHealthWorkout() async throws {
+        let healthKit = FakeHealthKitService()
+        let (recorder, _) = try makeRecorder(healthKit)
+
+        await recorder.recordSession(
+            runID: UUID(), name: "Full Body", activeIntervals: [DateInterval(start: now, duration: 30)]
+        ).value
+
+        #expect(healthKit.saves.isEmpty)
     }
 }

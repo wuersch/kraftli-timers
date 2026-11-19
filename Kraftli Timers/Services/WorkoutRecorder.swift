@@ -31,6 +31,19 @@ protocol WorkoutRecorder {
         exerciseName: String,
         timerKind: TimerKind
     ) -> Task<Void, Never>
+
+    /// Saves the one Health workout of a session the iPhone ran, and links the entries
+    /// of its steps to it (UC-0005 extension 3d). Nothing is saved for a run without an
+    /// entry or without active time.
+    ///
+    /// - Parameters:
+    ///   - runID: The run, as recorded on its steps' entries.
+    ///   - name: The session's name, kept in the Health workout's metadata.
+    ///   - activeIntervals: The stretches in which the session wasn't paused, in order.
+    ///     The workout runs from the first one's start to the last one's end; the gaps
+    ///     between them become its pauses.
+    @discardableResult
+    func recordSession(runID: UUID, name: String, activeIntervals: [DateInterval]) -> Task<Void, Never>
 }
 
 // MARK: - Default Implementation
@@ -40,6 +53,7 @@ final class DefaultWorkoutRecorder: WorkoutRecorder {
     enum MetadataKey {
         static let timerKind = "com.kraftli.timer.kind"
         static let exercise = "com.kraftli.timer.exercise"
+        static let session = "com.kraftli.timer.session"
     }
 
     private let modelContext: ModelContext
@@ -76,8 +90,14 @@ final class DefaultWorkoutRecorder: WorkoutRecorder {
             // The workout's ID, so the Watch can match its HealthKit UUID to this exact
             // log (instead of a "latest" heuristic).
             id: completion.correlationID,
-            stoppedEarly: completion.stoppedEarly
+            stoppedEarly: completion.stoppedEarly,
+            sessionName: completion.sessionName,
+            sessionRunID: completion.sessionRunID
         )
+
+        // A step of a session gets no Health workout of its own: the session gets one
+        // for all its steps when it ends (`recordSession`).
+        guard completion.sessionRunID == nil else { return Task {} }
 
         // 2. Save to HealthKit (if the iPhone is handling it)
         guard !completion.ownedByWatch else {
@@ -97,6 +117,7 @@ final class DefaultWorkoutRecorder: WorkoutRecorder {
                     activityType: timerKind.healthKitActivityType,
                     start: startDate,
                     end: endDate,
+                    pauses: [],
                     metadata: [
                         HKMetadataKeyExternalUUID: workoutLog.id.uuidString,
                         MetadataKey.timerKind: timerKind.rawValue,
@@ -116,7 +137,48 @@ final class DefaultWorkoutRecorder: WorkoutRecorder {
 // MARK: - Silent Implementation
 
 /// Records nothing. For previews and tests.
+extension DefaultWorkoutRecorder {
+    @discardableResult
+    func recordSession(runID: UUID, name: String, activeIntervals: [DateInterval]) -> Task<Void, Never> {
+        let descriptor = FetchDescriptor<WorkoutLog>(predicate: #Predicate { $0.sessionRunID == runID })
+        guard healthKit.isAvailable,
+              let start = activeIntervals.first?.start, let end = activeIntervals.last?.end, end > start,
+              let logs = try? modelContext.fetch(descriptor), !logs.isEmpty
+        else { return Task {} }
+
+        let pauses = zip(activeIntervals, activeIntervals.dropFirst()).compactMap { earlier, later in
+            later.start > earlier.end ? DateInterval(start: earlier.end, end: later.start) : nil
+        }
+        return Task {
+            do {
+                let healthKitUUID = try await healthKit.saveWorkout(
+                    // Every kind is the same activity in Health.
+                    activityType: TimerKind.emom.healthKitActivityType,
+                    start: start,
+                    end: end,
+                    pauses: pauses,
+                    metadata: [
+                        HKMetadataKeyExternalUUID: runID.uuidString,
+                        MetadataKey.session: name
+                    ]
+                )
+                for log in logs {
+                    log.healthKitWorkoutUUID = healthKitUUID
+                }
+                try modelContext.save()
+            } catch {
+                Logger.healthKit.error("Failed to save session to HealthKit: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
 final class SilentWorkoutRecorder: WorkoutRecorder {
+    @discardableResult
+    func recordSession(runID: UUID, name: String, activeIntervals: [DateInterval]) -> Task<Void, Never> {
+        Task {}
+    }
+
     @discardableResult
     func record(
         _ completion: WorkoutCompletionData,
