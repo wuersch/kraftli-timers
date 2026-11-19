@@ -20,7 +20,7 @@ struct TimerPresetEditorView: View {
 
     init(presetToEdit: TimerPreset? = nil) {
         self.presetToEdit = presetToEdit
-        _draft = State(initialValue: presetToEdit.map(PresetDraft.init(preset:)) ?? PresetDraft())
+        _draft = State(initialValue: presetToEdit.map { PresetDraft(preset: $0) } ?? PresetDraft())
     }
 
     // MARK: - Body

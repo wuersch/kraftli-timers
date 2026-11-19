@@ -40,7 +40,7 @@ struct AMRAPTimerView: View {
             ),
             link: link,
             style: TimerScreenStyle(
-                sizes: TimerSizes.amrap(for:),
+                sizes: { TimerSizes.amrap(for: $0) },
                 color: accentColor,
                 startingIconScale: 0.5,
                 countdownScale: 1.2
