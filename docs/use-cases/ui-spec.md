@@ -120,7 +120,8 @@ case wins.
   name, "≈ N min · N timers", the shape as a bar with a bracket under each loop, and the timers as
   rows: kind colour, exercise, "5 min · 50 reps" / "4 min" / "30 reps · ≈ 4 min"; a loop's rows sit
   next to "N×" and end with "Rest · 1 min". "Change" opens a sheet with the session cards,
-  the current one checked, and "Rest day".
+  the current one checked, and "Rest day". Swipe left on the card: "Remove" (gray, no
+  confirmation) makes the day a rest day; the session itself stays.
 - **Selected day, rest:** "Rest day" — "Tap + on a session to train on Wednesdays." While a rest
   day is selected, each session card below carries a "+" that plans it on that day.
 - **Sessions:** below the selected day, one card per session in alphabetical order: name, shape,
