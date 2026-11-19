@@ -116,5 +116,4 @@ The athlete starts a session on the iPhone.
   need its own ADR.
 - Requires revisions of:
   [UC-0005](UC-0005-record-a-workout.md) (entries per step marked with the session; one Health
-  workout per session), [UC-0008](UC-0008-review-workout-stats.md) (show the session on an entry),
-  [UC-0011](UC-0011-clear-stored-data.md) (clearing sessions and the week plan).
+  workout per session), [UC-0008](UC-0008-review-workout-stats.md) (show the session on an entry).

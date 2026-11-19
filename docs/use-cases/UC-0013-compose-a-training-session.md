@@ -19,7 +19,7 @@
   - a **step**: one timer as in a preset, with its kind (EMOM, AMRAP or For Time), its exercise and
     its settings ([UC-0006](UC-0006-manage-timer-presets.md)), or
   - a **loop**: a sequence of at least one step, repeated 2–20 times, with an optional rest of
-    whole seconds after each round except the last.
+    whole seconds, at most 10 minutes, after each round except the last.
 - The athlete can see roughly how long each session takes. This estimated length is always
   presented as approximate and never changes how a step runs. It adds up, with a loop's steps
   counted once per round:
@@ -59,7 +59,8 @@ The athlete wants to create, change or remove a session.
   - 1c1. System creates a copy under a new, unique name and presents it for changes.
   - 1c2. Use case continues at step 3.
 - 3a. Athlete adds a loop instead of a single step:
-  - 3a1. Athlete sets the number of rounds (2–20) and optionally the rest after each round.
+  - 3a1. Athlete sets the number of rounds (2–20) and optionally the rest after each round
+    (at most 10 minutes).
   - 3a2. Athlete adds one or more steps to the loop, as in step 3. A loop can't contain another loop.
   - 3a3. Use case continues at step 4.
 - 3b. Athlete builds a step from an existing preset:
