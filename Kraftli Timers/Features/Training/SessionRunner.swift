@@ -30,8 +30,8 @@ final class SessionRunner {
     /// because a step in a loop runs several times and each time is a workout of its own.
     private(set) var stepWorkoutID = UUID()
 
-    /// Called once when the run went through to its last timer: time for the completion
-    /// sound and confetti. Not called for a session the athlete ended early.
+    /// Called once when the session was done in full: time for the completion sound and
+    /// confetti. Not called when a timer was skipped or stopped early, or the session ended early.
     @ObservationIgnored var onCompleted: (() -> Void)?
 
     @ObservationIgnored private let recorder: any WorkoutRecorder
@@ -121,15 +121,22 @@ final class SessionRunner {
 
     /// The athlete cuts the rest short.
     func skipRest() {
-        run.restEnded(at: now())
-        phaseChanged()
+        endRest()
     }
 
     /// Ends the rest if its time is up. Scheduled when a rest begins; also called when
     /// the app returns to the foreground, where a suspended timer may be late.
     func checkRest() {
         guard case .resting(let until) = run.phase, now() >= until else { return }
+        endRest()
+    }
+
+    /// Ends the rest. The timer after it normally starts by itself, as a workout of its own.
+    private func endRest() {
         run.restEnded(at: now())
+        if run.phase == .running {
+            stepWorkoutID = UUID()
+        }
         phaseChanged()
     }
 
@@ -152,7 +159,7 @@ final class SessionRunner {
             guard !hasFinished else { return }
             hasFinished = true
             recorder.recordSession(runID: runID, name: run.name, activeIntervals: run.activeIntervals)
-            if run.endedAtItsLastTimer {
+            if run.wasCompletedInFull {
                 onCompleted?()
             }
         case .upNext, .running:
