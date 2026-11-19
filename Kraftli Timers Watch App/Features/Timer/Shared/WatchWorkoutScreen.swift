@@ -137,10 +137,39 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
         tearDown()
     }
 
-    /// Ends (and saves) the HealthKit session, reports to the iPhone and closes the screen.
+    /// Ends the HealthKit session, records or reports the workout and closes the screen.
+    ///
+    /// A workout stopped early is judged by `EarlyStop` first, while the session still
+    /// holds its state: too short, and the Health workout is discarded instead of saved;
+    /// long enough, and a Watch-started workout gets its history entry here (the iPhone
+    /// writes the entry of a workout it started).
     private func tearDown() {
         isEnding = true
-        coordinator.stopAndCleanup(timer: model, countdown: countdown, dismiss: dismiss)
+        var stoppedLog: WorkoutLog?
+        if timerSession.workoutID == workoutID, let state = timerSession.renderedState {
+            switch EarlyStop(of: state, at: Date()) {
+            case .discard:
+                sessionManager.discardSession()
+            case .record(let activeTime, let reps, let rounds) where !startedOnPhone:
+                stoppedLog = WorkoutLog(
+                    exerciseName: config.exerciseName,
+                    timerKind: timerKind,
+                    durationSeconds: activeTime,
+                    repsCompleted: reps,
+                    roundsCompleted: rounds,
+                    stoppedEarly: true
+                )
+            case .record, nil:
+                break
+            }
+        }
+        coordinator.stopAndCleanup(
+            timer: model,
+            countdown: countdown,
+            stoppedLog: stoppedLog,
+            modelContext: modelContext,
+            dismiss: dismiss
+        )
         starter.workoutEnded()
     }
 
@@ -154,11 +183,7 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
 
     /// The workout was stopped elsewhere (the iPhone, or a stop sent while starting).
     private func finishChanged(_ finish: TimerState.Finish?) {
-        guard case .stopped(let stoppedAt) = finish, !isEnding else { return }
-        if let startDate = timerSession.renderedState?.startDate, stoppedAt <= startDate {
-            // Cancelled before the workout began: nothing worth saving to Health.
-            sessionManager.discardSession()
-        }
+        guard case .stopped = finish, !isEnding else { return }
         tearDown()
     }
 

@@ -75,7 +75,8 @@ final class DefaultWorkoutRecorder: WorkoutRecorder {
             healthKitWorkoutUUID: nil,
             // The workout's ID, so the Watch can match its HealthKit UUID to this exact
             // log (instead of a "latest" heuristic).
-            id: completion.correlationID
+            id: completion.correlationID,
+            stoppedEarly: completion.stoppedEarly
         )
 
         // 2. Save to HealthKit (if the iPhone is handling it)

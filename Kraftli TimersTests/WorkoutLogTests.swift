@@ -246,4 +246,49 @@ struct WorkoutLogTests {
         // Note: current implementation uses "1 reps" - this test documents behavior
         #expect(workout.summaryText.contains("1 rep"))
     }
+
+    // MARK: - Stopped early (UC-0005 extension 1a)
+
+    @Test func summaryText_stoppedEarly_showsTheTimeToTheSecond_andSaysSo() {
+        let amrap = WorkoutLog(
+            exerciseName: "Push-ups",
+            timerKind: .amrap,
+            durationSeconds: 163,
+            roundsCompleted: 5,
+            stoppedEarly: true
+        )
+        #expect(amrap.summaryText == "2:43 · 5 rounds · stopped early")
+
+        let emom = WorkoutLog(
+            exerciseName: "Burpees",
+            timerKind: .emom,
+            durationSeconds: 150,
+            repsCompleted: 2,
+            stoppedEarly: true
+        )
+        #expect(emom.summaryText == "2:30 · 2 reps · stopped early")
+    }
+
+    @Test func summaryText_forTimeStoppedEarly_hasNoRepCount() {
+        let workout = WorkoutLog(
+            exerciseName: "Squats",
+            timerKind: .forTime,
+            durationSeconds: 95,
+            stoppedEarly: true
+        )
+
+        #expect(workout.summaryText == "1:35 · stopped early")
+    }
+
+    @Test func init_isNotStoppedEarlyByDefault() {
+        let workout = WorkoutLog(
+            exerciseName: "Burpees",
+            timerKind: .amrap,
+            durationSeconds: 600,
+            roundsCompleted: 5
+        )
+
+        #expect(workout.stoppedEarly == false)
+        #expect(workout.summaryText == "10 min · 5 rounds")
+    }
 }

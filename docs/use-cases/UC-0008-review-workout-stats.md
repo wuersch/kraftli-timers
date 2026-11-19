@@ -76,7 +76,6 @@ The athlete wants to review their training.
 
 - Interaction design: [ui-spec.md](ui-spec.md#stats)
 - Known deviations (fix candidates):
-  - Workouts stopped early don't exist yet ([UC-0005](UC-0005-record-a-workout.md)).
   - Each workout is rounded down to whole minutes before the totals are added up, so workouts
     under a minute add nothing (Special Requirements).
 - The stats approach is planned to be reworked; a revision of this use case is expected.

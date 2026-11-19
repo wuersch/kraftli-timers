@@ -25,6 +25,9 @@ final class WorkoutLog {
     var repsCompleted: Int?
     var roundsCompleted: Int?
     var healthKitWorkoutUUID: UUID?
+    /// True for a workout that was ended early (UC-0005 extension 1a). Its duration is
+    /// then the active time up to the stop, and the count is what was done so far.
+    var stoppedEarly: Bool = false
 
     // MARK: - Computed Properties
 
@@ -48,26 +51,30 @@ final class WorkoutLog {
         date.formatted(date: .omitted, time: .shortened)
     }
 
-    /// The duration as shown in lists: "20 min", or the finish time "4:32" for For Time.
+    /// The duration as shown in lists: "20 min", or to the second ("4:32") for For Time's
+    /// finish time and for a workout stopped early, which rarely ends on a whole minute.
     var formattedDuration: String {
-        switch timerKind {
-        case .emom, .amrap:
-            "\(durationMinutes) min"
-        case .forTime:
+        if timerKind == .forTime || stoppedEarly {
             String(format: "%d:%02d", Int(durationSeconds) / 60, Int(durationSeconds) % 60)
+        } else {
+            "\(durationMinutes) min"
         }
     }
 
     /// Summary text for the workout (e.g., "20 min · 100 reps", "20 min · 5 rounds",
-    /// or "4:32 · 100 reps" for For Time).
+    /// or "4:32 · 100 reps" for For Time). A workout stopped early says so at the end:
+    /// "2:43 · 5 rounds · stopped early".
     var summaryText: String {
-        let duration = formattedDuration
+        var parts = [formattedDuration]
         if let reps = repsCompleted {
-            return "\(duration)\(UISeparator.dot)\(reps) reps"
+            parts.append("\(reps) reps")
         } else if let rounds = roundsCompleted {
-            return "\(duration)\(UISeparator.dot)\(rounds) rounds"
+            parts.append("\(rounds) rounds")
         }
-        return duration
+        if stoppedEarly {
+            parts.append("stopped early")
+        }
+        return parts.joined(separator: UISeparator.dot)
     }
 
     // MARK: - Initialization
@@ -80,7 +87,8 @@ final class WorkoutLog {
         durationSeconds: TimeInterval,
         repsCompleted: Int? = nil,
         roundsCompleted: Int? = nil,
-        healthKitWorkoutUUID: UUID? = nil
+        healthKitWorkoutUUID: UUID? = nil,
+        stoppedEarly: Bool = false
     ) {
         precondition(durationSeconds > 0, "durationSeconds must be positive")
         precondition(
@@ -100,5 +108,6 @@ final class WorkoutLog {
         self.repsCompleted = repsCompleted
         self.roundsCompleted = roundsCompleted
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
+        self.stoppedEarly = stoppedEarly
     }
 }

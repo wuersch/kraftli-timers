@@ -125,8 +125,6 @@ A workout ends.
 - Architecture: [ADR-0002](../adr/ADR-0002-healthkit-integration.md),
   [ADR-0006](../adr/ADR-0006-single-owner-timer-state.md) (the device that runs the workout saves it to Health)
 - Known deviations (fix candidates):
-  - Early stops (1a) are not recorded today: the iPhone records nothing, and a Watch-run workout
-    saves only a partial Health workout.
   - The iPhone's Health workout spans the nominal duration ending at completion, ignoring the
     actual start and pauses (step 3).
   - A failed or denied Health save is silent today (3a, 3b, 3e).

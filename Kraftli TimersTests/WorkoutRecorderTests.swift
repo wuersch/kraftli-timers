@@ -132,4 +132,30 @@ struct WorkoutRecorderTests {
         #expect(try logs(in: context).count == 1)
         #expect(healthKit.saves.isEmpty)
     }
+
+    /// A workout stopped early is recorded with its active time and marked (UC-0005 1a).
+    /// The iPhone's Health workout then covers that active time.
+    @Test func stoppedEarly_marksTheLog_andSavesTheActiveTimeToHealth() async throws {
+        let healthKit = FakeHealthKitService()
+        let (recorder, context) = try makeRecorder(healthKit)
+        var stopped = WorkoutCompletionData(durationSeconds: 163, repsCompleted: nil, roundsCompleted: 5)
+        stopped.stoppedEarly = true
+
+        await recorder.record(stopped, exerciseName: "Burpees", timerKind: .amrap).value
+
+        let log = try #require(try logs(in: context).first)
+        #expect(log.stoppedEarly)
+        #expect(log.durationSeconds == 163)
+        #expect(log.roundsCompleted == 5)
+        let save = try #require(healthKit.saves.first)
+        #expect(save.end.timeIntervalSince(save.start) == 163)
+    }
+
+    @Test func completedWorkout_isNotMarkedAsStoppedEarly() async throws {
+        let (recorder, context) = try makeRecorder(FakeHealthKitService())
+
+        await recorder.record(completion(ownedByWatch: false), exerciseName: "Burpees", timerKind: .amrap).value
+
+        #expect(try #require(try logs(in: context).first).stoppedEarly == false)
+    }
 }
