@@ -76,6 +76,15 @@ struct TrainingView: View {
                             session: selectedSession,
                             onChange: { sheet = .plan(weekday: selectedWeekday) }
                         )
+                        // Takes the session off this day; the session itself stays. Not
+                        // destructive, so no red and no confirmation: one tap plans it again.
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button("Remove", systemImage: "calendar.badge.minus") {
+                                withAnimation {
+                                    WeekPlanning.plan(nil, on: selectedWeekday, plans: plans, in: modelContext)
+                                }
+                            }
+                        }
                     } else {
                         restDay(title: dayTitle(selectedWeekday, today: today))
                     }
