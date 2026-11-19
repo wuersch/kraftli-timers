@@ -7,9 +7,12 @@
 
 import Foundation
 
-/// Estimates a session's length. Pure functions: the pace of an exercise comes in as a
-/// closure, so tests don't need the bundled library.
-enum SessionEstimate {
+/// A session's estimated length and its shape: every timer and rest in running order.
+///
+/// It is a value built once from the elements. A view makes one and reads the segments,
+/// the length and the summary from it, instead of working each of them out again. The
+/// pace of an exercise comes in as a closure, so tests don't need the bundled library.
+struct SessionEstimate: Equatable {
     /// Looks up the seconds one rep of an exercise takes; `nil` if there is none.
     typealias Pace = (UUID?) -> Double?
 
@@ -47,15 +50,17 @@ enum SessionEstimate {
 
     /// The session in running order with every loop unrolled: its steps once per round,
     /// and its rest after each round except the last.
-    static func segments(of elements: [SessionElement], pace: Pace = libraryPace) -> [Segment] {
-        elements.flatMap { element -> [Segment] in
+    let segments: [Segment]
+
+    init(of elements: [SessionElement], pace: Pace = SessionEstimate.libraryPace) {
+        segments = elements.flatMap { element -> [Segment] in
             switch element {
             case .step(let step):
-                return [Segment(kind: step.kind, seconds: seconds(of: step, pace: pace), loopID: nil)]
+                return [Segment(kind: step.kind, seconds: Self.seconds(of: step, pace: pace), loopID: nil)]
             case .loop(let loop):
                 return (0..<loop.rounds).flatMap { round -> [Segment] in
                     var segments = loop.steps.map {
-                        Segment(kind: $0.kind, seconds: seconds(of: $0, pace: pace), loopID: loop.id)
+                        Segment(kind: $0.kind, seconds: Self.seconds(of: $0, pace: pace), loopID: loop.id)
                     }
                     if loop.restSeconds > 0, round < loop.rounds - 1 {
                         segments.append(Segment(kind: nil, seconds: TimeInterval(loop.restSeconds), loopID: loop.id))
@@ -66,29 +71,28 @@ enum SessionEstimate {
         }
     }
 
-    static func totalSeconds(of elements: [SessionElement], pace: Pace = libraryPace) -> TimeInterval {
-        segments(of: elements, pace: pace).reduce(0) { $0 + $1.seconds }
+    var totalSeconds: TimeInterval {
+        segments.reduce(0) { $0 + $1.seconds }
     }
 
-    /// The number of timers the athlete runs: a loop's steps count once per round.
-    static func timerCount(of elements: [SessionElement]) -> Int {
-        elements.reduce(0) { count, element in
-            switch element {
-            case .step: count + 1
-            case .loop(let loop): count + loop.steps.count * loop.rounds
-            }
-        }
+    /// The number of timers the athlete runs: a loop's steps count once per round, and
+    /// rests don't count.
+    var timerCount: Int {
+        segments.count { $0.kind != nil }
+    }
+
+    /// "≈ 37 min"
+    var lengthText: String {
+        Self.text(forSeconds: totalSeconds)
+    }
+
+    /// "≈ 37 min · 8 timers"
+    var summary: String {
+        lengthText + UISeparator.dot + (timerCount == 1 ? "1 timer" : "\(timerCount) timers")
     }
 
     /// "≈ 37 min": whole minutes, at least one, always marked as approximate.
     static func text(forSeconds seconds: TimeInterval) -> String {
         "≈ \(max(1, Int((seconds / 60).rounded()))) min"
-    }
-
-    /// "≈ 37 min · 8 timers"
-    static func summary(of elements: [SessionElement], pace: Pace = libraryPace) -> String {
-        let count = timerCount(of: elements)
-        let timers = count == 1 ? "1 timer" : "\(count) timers"
-        return text(forSeconds: totalSeconds(of: elements, pace: pace)) + UISeparator.dot + timers
     }
 }

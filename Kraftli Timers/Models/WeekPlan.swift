@@ -29,32 +29,29 @@ final class WeekPlan {
         self.id = id
     }
 
-    /// The id planned on `weekday`, numbered like `Calendar`: 1 = Sunday … 7 = Saturday.
+    /// The attribute of each weekday, in `Calendar`'s numbering: 1 = Sunday … 7 = Saturday.
+    ///
+    /// A key path names a property without reading it, so one list serves both reading
+    /// and writing a day. The attributes stay seven separate ones because that is what
+    /// the CloudKit record looks like (ADR-0011).
+    private static var dayKeyPaths: [ReferenceWritableKeyPath<WeekPlan, UUID?>] {
+        [\.sundayId, \.mondayId, \.tuesdayId, \.wednesdayId, \.thursdayId, \.fridayId, \.saturdayId]
+    }
+
+    private static func keyPath(of weekday: Int) -> ReferenceWritableKeyPath<WeekPlan, UUID?>? {
+        let keyPaths = dayKeyPaths
+        return keyPaths.indices.contains(weekday - 1) ? keyPaths[weekday - 1] : nil
+    }
+
+    /// The id planned on `weekday`; `nil` for a rest day and for a number that is no weekday.
     func sessionId(on weekday: Int) -> UUID? {
-        switch weekday {
-        case 1: sundayId
-        case 2: mondayId
-        case 3: tuesdayId
-        case 4: wednesdayId
-        case 5: thursdayId
-        case 6: fridayId
-        case 7: saturdayId
-        default: nil
-        }
+        Self.keyPath(of: weekday).flatMap { self[keyPath: $0] }
     }
 
     /// Plans a session on `weekday`, replacing what was there; `nil` makes it a rest day.
     func setSessionId(_ sessionId: UUID?, on weekday: Int) {
-        switch weekday {
-        case 1: sundayId = sessionId
-        case 2: mondayId = sessionId
-        case 3: tuesdayId = sessionId
-        case 4: wednesdayId = sessionId
-        case 5: thursdayId = sessionId
-        case 6: fridayId = sessionId
-        case 7: saturdayId = sessionId
-        default: break
-        }
+        guard let keyPath = Self.keyPath(of: weekday) else { return }
+        self[keyPath: keyPath] = sessionId
     }
 
     /// The weekdays `sessionId` is planned on.

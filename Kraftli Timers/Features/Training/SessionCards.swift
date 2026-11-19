@@ -15,15 +15,15 @@ struct SessionCardContent: View {
     var detail: String?
 
     var body: some View {
-        let elements = session.elements
+        let estimate = SessionEstimate(of: session.elements)
 
         VStack(alignment: .leading, spacing: 7) {
             Text(session.name)
                 .font(.headline)
                 .foregroundStyle(.primary)
-            SessionShapeBar(segments: SessionEstimate.segments(of: elements), thickness: 6)
+            SessionShapeBar(segments: estimate.segments, thickness: 6)
             Text(
-                [SessionEstimate.text(forSeconds: SessionEstimate.totalSeconds(of: elements)), detail]
+                [estimate.lengthText, detail]
                     .compactMap { $0 }
                     .joined(separator: UISeparator.dot)
             )
@@ -42,7 +42,9 @@ struct SelectedDayCard: View {
     let onChange: () -> Void
 
     var body: some View {
+        // Decoded and estimated once per redraw; the lines below all read from these.
         let elements = session.elements
+        let estimate = SessionEstimate(of: elements)
 
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -59,12 +61,12 @@ struct SelectedDayCard: View {
             Text(session.name)
                 .font(.title.weight(.bold))
                 .padding(.top, 4)
-            Text(SessionEstimate.summary(of: elements))
+            Text(estimate.summary)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.top, 2)
 
-            SessionShapeBar(segments: SessionEstimate.segments(of: elements), thickness: 26, showsLoops: true)
+            SessionShapeBar(segments: estimate.segments, thickness: 26, showsLoops: true)
                 .padding(.top, 14)
                 .padding(.bottom, 10)
 

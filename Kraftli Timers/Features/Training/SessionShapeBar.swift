@@ -2,99 +2,89 @@
 //  SessionShapeBar.swift
 //  Kraftli Timers
 //
-//  A session drawn as a bar of segments: its shape.
+//  A session drawn as a bar of segments: its shape, lying and upright.
 //
 
 import SwiftUI
 
-/// Draws a session as one segment per timer in running order, coloured by kind and
-/// sized by duration. The same shape stands for a session wherever it appears: in the
-/// week strip (vertical), on cards and in the editor (horizontal).
+/// A session drawn as a horizontal bar: one segment per timer in running order, coloured
+/// by kind and sized by duration. The same shape stands for a session wherever it
+/// appears; `SessionShapeColumn` is its upright form for the week strip.
 struct SessionShapeBar: View {
     let segments: [SessionEstimate.Segment]
-    var axis: Axis = .horizontal
-    /// The bar's thickness when horizontal. A vertical bar fills the width it is given.
     var thickness: CGFloat = 8
-    /// Draws a bracket under each loop. Horizontal bars only.
+    /// Draws a bracket under each loop.
     var showsLoops = false
 
-    private let spacing: CGFloat = 2
+    private let preferredSpacing: CGFloat = 2
     private let bracketHeight: CGFloat = 6
+    private let bracketGap: CGFloat = 3
 
     var body: some View {
         // GeometryReader hands its content the size it was offered, which is what the
         // segment lengths have to be computed from.
         GeometryReader { proxy in
-            let length = axis == .horizontal ? proxy.size.width : proxy.size.height
-            let lengths = Self.lengths(of: segments, in: length, spacing: spacing)
+            let spacing = ShapeLayout.spacing(
+                forCount: segments.count, in: proxy.size.width, preferred: preferredSpacing
+            )
+            let lengths = ShapeLayout.lengths(of: segments, in: proxy.size.width, spacing: spacing)
 
-            if axis == .horizontal {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: spacing) {
-                        ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
-                            RoundedRectangle(cornerRadius: min(3, thickness / 2))
-                                .fill(Self.color(of: segment))
-                                .frame(width: lengths[index], height: thickness)
-                        }
-                    }
-                    if showsLoops {
-                        HStack(spacing: spacing) {
-                            ForEach(Array(Self.runs(of: segments, lengths: lengths, spacing: spacing).enumerated()),
-                                    id: \.offset) { _, run in
-                                LoopBracket()
-                                    .stroke(.secondary, lineWidth: 1)
-                                    .opacity(run.isLoop ? 1 : 0)
-                                    .frame(width: run.length, height: bracketHeight)
-                            }
-                        }
+            VStack(alignment: .leading, spacing: bracketGap) {
+                HStack(spacing: spacing) {
+                    ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
+                        RoundedRectangle(cornerRadius: min(3, thickness / 2))
+                            .fill(segment.color)
+                            .frame(width: lengths[index], height: thickness)
                     }
                 }
-            } else {
-                VStack(spacing: spacing) {
-                    ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Self.color(of: segment))
-                            .frame(height: lengths[index])
+                if showsLoops {
+                    HStack(spacing: spacing) {
+                        let runs = ShapeLayout.runs(of: segments, lengths: lengths, spacing: spacing)
+                        ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
+                            LoopBracket()
+                                .stroke(.secondary, lineWidth: 1)
+                                .opacity(run.isLoop ? 1 : 0)
+                                .frame(width: run.length, height: bracketHeight)
+                        }
                     }
                 }
             }
         }
-        .frame(height: axis == .horizontal ? thickness + (showsLoops ? bracketHeight + 3 : 0) : nil)
+        .frame(height: thickness + (showsLoops ? bracketHeight + bracketGap : 0))
         .accessibilityHidden(true)
     }
+}
 
-    static func color(of segment: SessionEstimate.Segment) -> Color {
-        segment.kind?.color ?? Color(UIColor.systemGray3)
-    }
+/// A session drawn upright, top to bottom, filling the space it is given: the shape in
+/// a day tile of the week strip.
+struct SessionShapeColumn: View {
+    let segments: [SessionEstimate.Segment]
 
-    /// Each segment's share of `length`, in proportion to its duration, after the gaps
-    /// between the segments are taken off.
-    static func lengths(of segments: [SessionEstimate.Segment], in length: CGFloat, spacing: CGFloat) -> [CGFloat] {
-        guard !segments.isEmpty else { return [] }
-        let available = max(0, length - spacing * CGFloat(segments.count - 1))
-        let total = segments.reduce(0) { $0 + $1.seconds }
-        guard total > 0 else {
-            return segments.map { _ in available / CGFloat(segments.count) }
-        }
-        return segments.map { available * CGFloat($0.seconds / total) }
-    }
+    private let preferredSpacing: CGFloat = 2
 
-    /// Neighbouring segments grouped into runs: a loop's segments form one run, as long
-    /// as the segments and the gaps between them.
-    static func runs(
-        of segments: [SessionEstimate.Segment],
-        lengths: [CGFloat],
-        spacing: CGFloat
-    ) -> [(isLoop: Bool, length: CGFloat)] {
-        var runs: [(loopID: UUID?, length: CGFloat)] = []
-        for (index, segment) in segments.enumerated() {
-            if let last = runs.last, last.loopID == segment.loopID, segment.loopID != nil {
-                runs[runs.count - 1].length = last.length + spacing + lengths[index]
-            } else {
-                runs.append((segment.loopID, lengths[index]))
+    var body: some View {
+        GeometryReader { proxy in
+            let spacing = ShapeLayout.spacing(
+                forCount: segments.count, in: proxy.size.height, preferred: preferredSpacing
+            )
+            let lengths = ShapeLayout.lengths(of: segments, in: proxy.size.height, spacing: spacing)
+
+            VStack(spacing: spacing) {
+                ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
+                    RoundedRectangle(cornerRadius: min(2, lengths[index] / 2))
+                        .fill(segment.color)
+                        .frame(height: lengths[index])
+                }
             }
         }
-        return runs.map { ($0.loopID != nil, $0.length) }
+        .accessibilityHidden(true)
+    }
+}
+
+extension SessionEstimate.Segment {
+    /// The colour of the segment's kind; gray for a rest.
+    var color: Color {
+        kind?.color ?? Color(UIColor.systemGray3)
     }
 }
 
@@ -133,7 +123,7 @@ private struct LoopBracket: Shape {
     return VStack(spacing: 24) {
         SessionShapeBar(segments: segments, thickness: 26, showsLoops: true)
         SessionShapeBar(segments: segments)
-        SessionShapeBar(segments: segments, axis: .vertical)
+        SessionShapeColumn(segments: segments)
             .frame(width: 20, height: 80)
     }
     .padding()
