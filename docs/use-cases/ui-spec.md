@@ -276,9 +276,10 @@ case wins.
   "DONE" at the end until End is pressed. No sounds, no haptics, no confetti, no summary.
 - **iPhone-started:** "Starting…" until ownership is settled.
 - **Session (iPhone-started):** a step runs like an iPhone-started workout, without "DONE" at its
-  end: its screen closes by itself. Between steps, over the timer list: the session's shape bar
-  with the position, "UP NEXT", the exercise, "AMRAP · 4 min", in a loop "Round 1 of 3", and
-  "Start on iPhone". During a loop rest: "REST" with the countdown and "Then Push-ups". If a step runs on the iPhone only (the Watch
+  end: its screen closes by itself. Between steps, over the timer list: "UP NEXT", the exercise,
+  "AMRAP · 4 min", in a loop "Round 1 of 3", under them the session's progress bar as on the
+  iPhone (thin, finished segments dimmed), and "Start on iPhone" at the bottom. During a loop
+  rest: "REST" with the countdown, "Then Push-ups" and the progress bar. If a step runs on the iPhone only (the Watch
   didn't get its start): "NOW", the exercise and "Running on iPhone". A page
   to the left, as for a timer's controls, has one button, "End" (red ✕), with "Saves the workout
   on this Watch": it ends the session; the iPhone shows the summary as soon as it hears of it. After the last
