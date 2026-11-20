@@ -51,17 +51,15 @@ struct WatchSessionView: View {
     private var progressPage: some View {
         if let status = follower.status {
             VStack(alignment: .leading, spacing: 8) {
-                WatchSessionShapeBar(segments: status.shape, position: status.position)
-
                 switch status.phase {
                 case .upNext:
-                    stepInfo(heading: "UP NEXT", status: status)
+                    centered { stepInfo(heading: "UP NEXT", status: status) }
                     footer("Start on iPhone")
                 case .running:
-                    stepInfo(heading: "NOW", status: status)
+                    centered { stepInfo(heading: "NOW", status: status) }
                     footer("Running on iPhone")
                 case .resting(let until):
-                    restInfo(until: until, status: status)
+                    centered { restInfo(until: until, status: status) }
                 case .finished:
                     // Not reached: a finished run is released or shown as done.
                     EmptyView()
@@ -105,7 +103,6 @@ struct WatchSessionView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
@@ -129,8 +126,20 @@ struct WatchSessionView: View {
                     .minimumScaleFactor(0.7)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+
+    /// The lines of a phase with the session's shape bar under them, centred together
+    /// in the space above the footer. The bar is a detail below the text, as on the
+    /// iPhone, and stays clear of the clock at the top.
+    private func centered(@ViewBuilder _ lines: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            lines()
+            if let status = follower.status {
+                WatchSessionShapeBar(segments: status.shape, position: status.position)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
     private func footer(_ text: String) -> some View {
@@ -191,13 +200,13 @@ struct WatchSessionView: View {
 // MARK: - Shape Bar
 
 /// The session's shape as a thin bar: one segment per timer and rest, sized by duration.
-/// Segments already behind are dimmed, the current one has a ring. The Watch's small
-/// counterpart of the iPhone's `SessionShapeBar`, drawn from what the status carries.
+/// Segments already behind are dimmed. The Watch's counterpart of the iPhone's
+/// `SessionShapeBar`, in the same look, drawn from what the status carries.
 private struct WatchSessionShapeBar: View {
     let segments: [SessionStatus.Segment]
     let position: Int
 
-    private let thickness: CGFloat = 6
+    private let thickness: CGFloat = 4
     private let spacing: CGFloat = 2
 
     var body: some View {
@@ -210,22 +219,14 @@ private struct WatchSessionShapeBar: View {
             HStack(spacing: gap) {
                 ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
                     let share = total > 0 ? segment.seconds / total : 1 / Double(max(segments.count, 1))
-                    RoundedRectangle(cornerRadius: 3)
+                    RoundedRectangle(cornerRadius: 2)
                         .fill(segment.kind?.color ?? Color.gray.opacity(0.6))
-                        .opacity(index < position ? 0.35 : 1)
+                        .opacity(index < position ? 0.3 : 1)
                         .frame(width: available * share, height: thickness)
-                        .overlay {
-                            if index == position {
-                                RoundedRectangle(cornerRadius: 5)
-                                    .strokeBorder(.white, lineWidth: 1.5)
-                                    .padding(-2.5)
-                            }
-                        }
                 }
             }
         }
         .frame(height: thickness)
-        .padding(.vertical, 3)
         .accessibilityHidden(true)
     }
 }
