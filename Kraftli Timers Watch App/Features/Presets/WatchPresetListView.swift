@@ -74,7 +74,7 @@ struct WatchPresetListView: View {
             presentRequestedWorkout(request)
         }
         .fullScreenCover(item: $activeTimer) { timer in
-            timerView(for: timer)
+            WatchKindTimerView(timer: timer)
         }
         .sheet(item: $activeEditor) { editor in
             switch editor {
@@ -155,36 +155,6 @@ struct WatchPresetListView: View {
     }
 
     // MARK: - Actions
-
-    /// The timer view for the workout's kind.
-    @ViewBuilder
-    private func timerView(for timer: TimerPresentation) -> some View {
-        let config = timer.config
-        switch config.kind {
-        case .emom:
-            WatchEMOMTimerView(
-                totalDuration: config.totalDuration ?? 0,
-                intervalCount: config.intervalCount ?? 1,
-                exerciseName: config.exerciseName,
-                workoutID: timer.workoutID,
-                startedOnPhone: timer.startedOnPhone
-            )
-        case .amrap:
-            WatchAMRAPTimerView(
-                totalDuration: config.totalDuration ?? 0,
-                exerciseName: config.exerciseName,
-                workoutID: timer.workoutID,
-                startedOnPhone: timer.startedOnPhone
-            )
-        case .forTime:
-            WatchForTimeTimerView(
-                targetReps: config.targetReps ?? TimerPreset.defaultForTimeReps,
-                exerciseName: config.exerciseName,
-                workoutID: timer.workoutID,
-                startedOnPhone: timer.startedOnPhone
-            )
-        }
-    }
 
     private func launchTimer(for preset: TimerPreset) {
         let kind = preset.kind

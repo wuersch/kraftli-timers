@@ -11,65 +11,34 @@ import SwiftUI
 /// rep in progress.
 struct WatchEMOMTimerView: View {
     @State private var timerModel: EMOMTimerModel
+    private let timer: TimerPresentation
 
-    private let exerciseName: String
-    private let totalDuration: TimeInterval
-    private let intervalCount: Int
-    private let workoutID: UUID
-    private let startedOnPhone: Bool
-    private let syncService: WatchTimerSyncService
+    init(_ timer: TimerPresentation) {
+        self.timer = timer
+        self.timerModel = EMOMTimerModel(
+            totalDuration: timer.config.totalDuration ?? 0,
+            intervalCount: timer.config.intervalCount ?? 1,
+            timerProvider: FoundationTimerProvider(),
+            feedbackProvider: SilentFeedback()
+        )
+    }
 
-    private let timerKind: TimerKind = .emom
     private var isCompleted: Bool { timerModel.isCompleted }
+    private var kindColor: Color { TimerKind.emom.color }
 
     /// Interval row color: orange in the warning window, green when done.
     private var intervalColor: Color {
         if isCompleted { return .green }
-        return timerModel.isIntervalWarning ? .orange : timerKind.color
-    }
-
-    init(
-        totalDuration: TimeInterval = 20 * 60,
-        intervalCount: Int = 20,
-        exerciseName: String = "EMOM Workout",
-        workoutID: UUID = UUID(),
-        startedOnPhone: Bool = false,
-        syncService: WatchTimerSyncService = DefaultWatchTimerSyncService(),
-        timerProvider: TimerProvider = FoundationTimerProvider(),
-        feedbackProvider: FeedbackProvider = SilentFeedback()
-    ) {
-        self.totalDuration = totalDuration
-        self.intervalCount = intervalCount
-        self.exerciseName = exerciseName
-        self.workoutID = workoutID
-        self.startedOnPhone = startedOnPhone
-        self.syncService = syncService
-        self.timerModel = EMOMTimerModel(
-            totalDuration: totalDuration,
-            intervalCount: intervalCount,
-            timerProvider: timerProvider,
-            feedbackProvider: feedbackProvider
-        )
+        return timerModel.isIntervalWarning ? .orange : kindColor
     }
 
     var body: some View {
-        WatchWorkoutScreen(
-            model: timerModel,
-            config: TimerConfig(
-                kind: timerKind,
-                totalDuration: totalDuration,
-                intervalCount: intervalCount,
-                exerciseName: exerciseName
-            ),
-            workoutID: workoutID,
-            startedOnPhone: startedOnPhone,
-            syncService: syncService
-        ) {
+        WatchWorkoutScreen(model: timerModel, timer: timer) {
             // Total remaining
             WatchMetricRow(
-                value: isCompleted ? totalDuration.formatted : timerModel.totalTimeRemaining.formatted,
+                value: isCompleted ? timerModel.totalDuration.formatted : timerModel.totalTimeRemaining.formatted,
                 labelTop: "TOTAL",
-                valueColor: isCompleted ? .green : timerKind.color
+                valueColor: isCompleted ? .green : kindColor
             )
             // Interval remaining
             WatchMetricRow(
@@ -89,10 +58,7 @@ struct WatchEMOMTimerView: View {
 
 #Preview {
     NavigationStack {
-        WatchEMOMTimerView(
-            totalDuration: 60,
-            intervalCount: 5
-        )
+        WatchEMOMTimerView(.preview(.emom, targetReps: 5))
     }
     .environment(WatchTimerRuntime.shared.sessionManager)
     .environment(WatchTimerRuntime.shared.timerSession)

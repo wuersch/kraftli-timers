@@ -13,61 +13,33 @@ import SwiftUI
 /// either device add up, even offline.
 struct WatchAMRAPTimerView: View {
     @State private var timerModel: AMRAPTimerModel
+    private let timer: TimerPresentation
 
-    private let exerciseName: String
-    private let totalDuration: TimeInterval
-    private let workoutID: UUID
-    private let startedOnPhone: Bool
-    private let syncService: WatchTimerSyncService
-
-    private let timerKind: TimerKind = .amrap
-    private var isCompleted: Bool { timerModel.isCompleted }
-
-    init(
-        totalDuration: TimeInterval = 20 * 60,
-        exerciseName: String = "AMRAP Workout",
-        workoutID: UUID = UUID(),
-        startedOnPhone: Bool = false,
-        syncService: WatchTimerSyncService = DefaultWatchTimerSyncService(),
-        timerProvider: TimerProvider = FoundationTimerProvider(),
-        feedbackProvider: FeedbackProvider = SilentFeedback()
-    ) {
-        self.totalDuration = totalDuration
-        self.exerciseName = exerciseName
-        self.workoutID = workoutID
-        self.startedOnPhone = startedOnPhone
-        self.syncService = syncService
+    init(_ timer: TimerPresentation) {
+        self.timer = timer
         self.timerModel = AMRAPTimerModel(
-            totalDuration: totalDuration,
-            timerProvider: timerProvider,
-            feedbackProvider: feedbackProvider
+            totalDuration: timer.config.totalDuration ?? 0,
+            timerProvider: FoundationTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
     }
 
+    private var isCompleted: Bool { timerModel.isCompleted }
+    private var valueColor: Color { isCompleted ? .green : TimerKind.amrap.color }
+
     var body: some View {
-        WatchWorkoutScreen(
-            model: timerModel,
-            config: TimerConfig(
-                kind: timerKind,
-                totalDuration: totalDuration,
-                intervalCount: nil,
-                exerciseName: exerciseName
-            ),
-            workoutID: workoutID,
-            startedOnPhone: startedOnPhone,
-            syncService: syncService
-        ) {
+        WatchWorkoutScreen(model: timerModel, timer: timer) {
             // Total remaining
             WatchMetricRow(
-                value: isCompleted ? totalDuration.formatted : timerModel.totalTimeRemaining.formatted,
+                value: isCompleted ? timerModel.totalDuration.formatted : timerModel.totalTimeRemaining.formatted,
                 labelTop: "TOTAL",
-                valueColor: isCompleted ? .green : timerKind.color
+                valueColor: valueColor
             )
             // Rounds counted so far
             WatchMetricRow(
                 value: "\(timerModel.roundsCompleted)",
                 labelTop: "ROUNDS",
-                valueColor: isCompleted ? .green : timerKind.color
+                valueColor: valueColor
             )
         }
     }
@@ -75,7 +47,7 @@ struct WatchAMRAPTimerView: View {
 
 #Preview {
     NavigationStack {
-        WatchAMRAPTimerView(totalDuration: 60)
+        WatchAMRAPTimerView(.preview(.amrap))
     }
     .environment(WatchTimerRuntime.shared.sessionManager)
     .environment(WatchTimerRuntime.shared.timerSession)
