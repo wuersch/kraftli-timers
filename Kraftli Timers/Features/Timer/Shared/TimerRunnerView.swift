@@ -18,11 +18,12 @@ struct TimerRunnerView: View {
     /// Writes the workout log and, for an iPhone-owned workout, the Health workout.
     @Environment(\.workoutRecorder) private var workoutRecorder
 
-    /// Data for the workout summary screen, set when Watch sends completion message.
+    /// The workout summary, built when the workout completes; the Watch's health figures
+    /// are merged in whenever they arrive.
     @State private var summaryData: WorkoutSummaryData?
 
-    /// Tracks completion data from the timer for summary display.
-    @State private var lastCompletionData: WorkoutCompletionData?
+    /// Whether the summary has replaced the timer (shortly after completion).
+    @State private var showsSummary = false
 
     // MARK: - Swipe Gesture State
 
@@ -50,9 +51,6 @@ struct TimerRunnerView: View {
     /// Task that auto-transitions to the summary screen after a delay.
     @State private var summaryTransitionTask: Task<Void, Never>?
 
-    /// Watch data that arrived before the transition delay completed.
-    @State private var pendingWatchData: WorkoutSessionEndedMessage?
-
     /// Plays this workout's sounds. Created once in `onAppear` (it needs the settings from the
     /// environment), not in `body`: SwiftUI re-evaluates `body` on every state change here, and
     /// each new provider would set up the audio session and load its sounds again.
@@ -61,7 +59,7 @@ struct TimerRunnerView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                if let data = summaryData {
+                if showsSummary, let data = summaryData {
                     // Show summary inline (replaces timer content)
                     WorkoutSummaryContent(data: data)
                         .transition(.opacity)
@@ -115,25 +113,23 @@ struct TimerRunnerView: View {
             // The Watch's HealthKit summary (heart rate, calories) for this workout.
             .onChange(of: messageCoordinator.lastWorkoutSessionEnded) { _, endedMessage in
                 guard let endedMessage, endedMessage.correlationID == correlationID else { return }
-                handleWorkoutSessionEnded(endedMessage)
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    summaryData?.merge(endedMessage)
+                }
             }
         }
     }
 
-    /// Whether to show the swipe hint.
-    /// Summary: always show. Timer: use timer's hint state.
+    /// Whether to show the swipe hint: always on the summary, as the timer says otherwise.
     private var shouldShowHint: Bool {
-        if summaryData != nil {
-            return true
-        }
-        return showHint
+        showsSummary || showHint
     }
 
     /// Handles dismiss gesture - cleans up timer if running, then dismisses.
     private func handleDismiss() {
         summaryTransitionTask?.cancel()
         summaryTransitionTask = nil
-        if summaryData == nil {
+        if !showsSummary {
             // Timer is showing - call cleanup first. (Once the summary shows, the timer
             // session already ended with the timer view; ADR-006.)
             timerCleanup?()
@@ -188,41 +184,12 @@ struct TimerRunnerView: View {
         )
     }
 
-    /// Handles the workout session ended message from Watch.
+    /// The timer completed: record the workout and move on to the summary.
     ///
-    /// Merges health data into the summary. (The WorkoutLog HealthKit-UUID update
-    /// happens in `PhoneMessageCoordinator`, which outlives this view.) If the
-    /// summary is already showing, updates in-place with animation. If still in
-    /// the delay period, stores data for pickup.
-    private func handleWorkoutSessionEnded(_ endedMessage: WorkoutSessionEndedMessage) {
-        if summaryData != nil {
-            // Summary already showing — merge non-nil health fields in-place
-            // (Watch sends nil fields when session ends on dismiss; guard against overwriting real data)
-            withAnimation(.easeInOut(duration: 0.4)) {
-                if let hr = endedMessage.averageHeartRate {
-                    summaryData?.averageHeartRate = hr
-                }
-                if let maxHR = endedMessage.maxHeartRate {
-                    summaryData?.maxHeartRate = maxHR
-                }
-                if let cal = endedMessage.activeCalories {
-                    summaryData?.activeCalories = cal
-                }
-            }
-        } else {
-            // Still in delay period — store for transitionToSummary() to pick up
-            pendingWatchData = endedMessage
-        }
-    }
-
-    /// Transitions from the timer to the summary screen.
-    ///
-    /// Called after the post-completion delay. Creates the summary data
-    /// from the completion data, merging in any Watch health metrics that
-    /// arrived during the delay.
-    private func transitionToSummary() {
-        guard let completionData = lastCompletionData else { return }
-
+    /// The Watch's health figures may already be here (`PhoneMessageCoordinator` keeps
+    /// the last ones) or arrive later (`onChange` above). The WorkoutLog's HealthKit-UUID
+    /// update happens in `PhoneMessageCoordinator`, which outlives this view.
+    private func workoutCompleted(_ completionData: WorkoutCompletionData) {
         var data = WorkoutSummaryData(
             exerciseName: exerciseName,
             timerKind: preset.kind,
@@ -231,31 +198,21 @@ struct TimerRunnerView: View {
             rounds: completionData.roundsCompleted,
             ownedByWatch: completionData.ownedByWatch
         )
-
-        // Merge Watch data if it arrived during the delay
-        if let watchData = pendingWatchData {
-            data.averageHeartRate = watchData.averageHeartRate
-            data.maxHeartRate = watchData.maxHeartRate
-            data.activeCalories = watchData.activeCalories
+        if let endedMessage = messageCoordinator.lastWorkoutSessionEnded,
+           endedMessage.correlationID == correlationID {
+            data.merge(endedMessage)
         }
+        summaryData = data
 
-        withAnimation(.easeInOut(duration: 0.5)) {
-            summaryData = data
-        }
-    }
-
-    /// The timer completed: record the workout and move on to the summary.
-    private func workoutCompleted(_ completionData: WorkoutCompletionData) {
-        // Store completion data for the workout summary
-        lastCompletionData = completionData
-
-        // Schedule auto-transition to summary after a short delay
-        // (confetti plays during the delay, timer stays frozen at 0:00)
+        // Show the summary after a short delay: confetti plays meanwhile, and the timer
+        // stays frozen at 0:00.
         summaryTransitionTask?.cancel()
         summaryTransitionTask = Task {
             try? await Task.sleep(for: .seconds(0.3))
             guard !Task.isCancelled else { return }
-            transitionToSummary()
+            withAnimation(.easeInOut(duration: 0.5)) {
+                showsSummary = true
+            }
         }
 
         record(completionData)

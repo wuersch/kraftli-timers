@@ -40,6 +40,14 @@ struct WorkoutSummaryData {
     /// Active calories burned during the workout (kilocalories).
     var activeCalories: Double?
 
+    /// Takes the Watch's health figures for the workout. A figure the message lacks keeps
+    /// the one already shown: the Watch sends none when its session ends on dismiss.
+    mutating func merge(_ message: WorkoutSessionEndedMessage) {
+        averageHeartRate = message.averageHeartRate ?? averageHeartRate
+        maxHeartRate = message.maxHeartRate ?? maxHeartRate
+        activeCalories = message.activeCalories ?? activeCalories
+    }
+
     /// Whether this summary has meaningful health data to display.
     ///
     /// Returns true if at least one health metric (HR or calories) is available.
