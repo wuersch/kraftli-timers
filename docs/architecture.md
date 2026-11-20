@@ -246,7 +246,9 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 | `StepEditorView` | Editor for one timer of a session, on a `PresetDraft` |
 | `SessionShapeBar`, `SessionShapeColumn` | A session drawn as a bar of segments, coloured by kind and sized by duration: lying (cards, editor) and upright (week strip) |
 | `ExerciseSelectionView` | Exercise browser with filtering |
-| `TimerScreen` | The screen all three timer kinds run on: starts the workout, follows the timer session, countdown, gestures. A container view; the kinds fill its ring and center slots |
+| `TimerScreen` | The screen all three timer kinds run on: starts the workout, follows the timer session, countdown, gestures. Derives the phase, tap hint, VoiceOver text, tap/hold behaviour and layout from the kind. A container view; the kinds fill its ring and center slots (usually a `TimerCenterStack`) |
+| `KindTimerView` | The one place that maps a `TimerConfig`'s kind to its timer view and model; used by `TimerRunnerView` and `SessionRunnerView`. The Watch's counterpart is `WatchKindTimerView` |
+| `TimerChrome` | What a timer screen shares with the view presenting it: tap hint, confetti, swipe disabled during the countdown, and `endWorkout` for the swipe-down (@Observable) |
 | `EMOMTimerView` | EMOM face of `TimerScreen`: two rings, interval time |
 | `AMRAPTimerView` | AMRAP face of `TimerScreen`: one ring, round count |
 | `ForTimeTimerView` | For Time face of `TimerScreen`: circling arc, tap = done |
@@ -259,11 +261,14 @@ See [ADR-0002: HealthKit Integration](adr/ADR-0002-healthkit-integration.md),
 ### Timer Models
 | Model | Purpose |
 |-------|---------|
-| `TimerStateRendering` | Protocol + extension shared by the three timer models: adopts a `TimerState`, ticks while it runs, detects completion. Its stored state lives in `TimerRenderCore` (shared with the Watch) |
+| `TimerModel` | Protocol + extension shared by the three timer models: adopts a `TimerState`, ticks while it runs, detects completion (`isCompleted`), and gives the workout's `WorkoutResult`. Its stored state — elapsed time, round count, running/completed flags and the tick timer — lives in `TimerRenderCore` (shared with the Watch) |
 | `EMOMTimerModel` | Renders an EMOM `TimerState`: interval display and feedback (@Observable) |
 | `AMRAPTimerModel` | Renders an AMRAP `TimerState`: remaining time and rounds (@Observable) |
 | `ForTimeTimerModel` | Renders an open-ended `TimerState`: elapsed time, finish time and pace (@Observable, shared with the Watch) |
-| `TimerSessionState` | Shared hint/confetti state management (@Observable) |
+
+The models store no display state: every displayed value is a computed property over the
+core's `elapsed`, so adopting a state or a tick only sets the elapsed time. EMOM's interval
+beeps are its only per-kind hook (`didAdopt` seeds them, `didTick` plays them).
 
 ### Training Logic
 Plain values and pure functions in `Features/Training/`, next to the views that use them.
@@ -281,8 +286,7 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 ### Services
 | Service | Purpose |
 |---------|---------|
-| `TimerCoordinator` | Tick scheduler: drives a timer model from a `TimerProvider` |
-| `TimerProvider` | Protocol for timer implementations |
+| `TimerProvider` | Protocol for the tick timer that drives a timer model's re-rendering |
 | `DisplayLinkTimerProvider` | CADisplayLink ticks (Smooth Animations on) |
 | `FoundationTimerProvider` | 0.2 s Foundation Timer (Smooth Animations off; always on Watch) |
 | `FeedbackProvider` | Protocol for countdown/interval/completion feedback (`SilentFeedback` when Sound is off and on the Watch) |
@@ -295,6 +299,7 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 | `HealthKitService` | iPhone: authorization, workout saving, Watch app launching |
 | `TimerState` / `TimerStateReducer` | Shared: replicated timer state and the only code that changes it |
 | `EarlyStop` | Shared: whether a workout ended early is recorded or discarded, and with what |
+| `WorkoutResult` | Shared: what a workout achieved (duration, reps, rounds); history entries and completion reports are built from it |
 | `SessionContext` / `SessionStatus` | Shared: the run a step's start request belongs to, and the session's progress the iPhone sends the Watch one way (ADR-0012) |
 | `WatchSessionFollower` | Watch: holds one Health session for a session's run across its steps; pauses, resumes, saves or discards it from the `SessionStatus`; keeps the latest status and a just-finished run for `WatchSessionView`; can end the session from the Watch by saving its workout, whose report ends the session on the iPhone (@Observable) |
 | `TimerSessionController` | Shared: one device's role (owner/viewer), confirmed state, pending intents (@Observable) |

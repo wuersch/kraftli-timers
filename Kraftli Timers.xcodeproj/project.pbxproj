@@ -98,7 +98,6 @@
 				Features/Timer/EMOM/EMOMTimerModel.swift,
 				Features/Timer/ForTime/ForTimeTimerModel.swift,
 				Features/Timer/Shared/CountdownCoordinator.swift,
-				Features/Timer/Shared/TimerCoordinator.swift,
 				Features/Timer/Shared/TimerModel.swift,
 				Features/Timer/Shared/UISeparator.swift,
 				"kraftli-icon-v1.icon",
