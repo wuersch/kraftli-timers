@@ -60,6 +60,18 @@ nonisolated struct TimerConfig: Codable, Equatable, Sendable {
         self.targetReps = targetReps
     }
 
+    /// The workout a timer with these settings starts, as a preset or a session's step
+    /// holds them: only the fields its kind uses, with the kind's defaults.
+    init(kind: TimerKind, duration: TimeInterval, targetReps: Int?, exerciseName: String) {
+        self.init(
+            kind: kind,
+            totalDuration: kind.hasFixedDuration ? duration : nil,
+            intervalCount: kind == .emom ? targetReps ?? 1 : nil,
+            exerciseName: exerciseName,
+            targetReps: kind == .forTime ? targetReps ?? TimerPreset.defaultForTimeReps : nil
+        )
+    }
+
     /// `kind` keeps its original key on the wire, so devices running different app
     /// versions still understand each other's snapshots and start requests.
     private enum CodingKeys: String, CodingKey {

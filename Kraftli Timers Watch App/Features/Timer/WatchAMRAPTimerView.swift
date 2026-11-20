@@ -55,8 +55,7 @@ struct WatchAMRAPTimerView: View {
             ),
             workoutID: workoutID,
             startedOnPhone: startedOnPhone,
-            syncService: syncService,
-            metricsTap: .countRound,
+            syncService: syncService
         ) {
             // Total remaining
             WatchMetricRow(

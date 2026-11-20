@@ -10,14 +10,6 @@
 import SwiftUI
 import SwiftData
 
-/// What a tap on the metrics page does while the workout is running.
-enum WatchMetricsTap {
-    /// AMRAP: count a round.
-    case countRound
-    /// For Time: declare the workout done.
-    case declareDone
-}
-
 /// Runs a workout through the Watch's `TimerSessionController` (ADR-006).
 ///
 /// - **Watch-started:** the Watch owns the workout from the first moment.
@@ -63,9 +55,6 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
     /// Sends the HealthKit summary (`WorkoutSessionEndedMessage`) to the iPhone.
     let syncService: WatchTimerSyncService
 
-    /// What a tap on the metrics page does while running; nil for a kind without one.
-    let metricsTap: WatchMetricsTap?
-
     /// The kind's own metric rows, shown above heart rate and calories.
     @ViewBuilder let kindRows: () -> KindRows
 
@@ -74,6 +63,12 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
 
     /// Drives the accent color and the top-left glyph.
     private var timerKind: TimerKind { config.kind }
+
+    /// What a tap on the metrics page does while running; nil for a kind that pauses
+    /// with a tap (EMOM), which pauses from the controls page here.
+    private var metricsTap: TimerRunningTap? {
+        timerKind.runningTap == .pause ? nil : timerKind.runningTap
+    }
 
     /// True while waiting to own (or follow) an iPhone-started workout, or for the
     /// athlete's answer about Apple Health access before the first Watch-started one.
@@ -125,9 +120,10 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
     }
 
     /// A tap on the metrics page: the kind's action, while the workout runs.
-    private func metricsTapped(_ tap: WatchMetricsTap) {
+    private func metricsTapped(_ tap: TimerRunningTap) {
         guard model.isRunning, !isCompleted, timerSession.workoutID == workoutID else { return }
         switch tap {
+        case .pause: break
         case .countRound: timerSession.incrementRound()
         case .declareDone: timerSession.done()
         }
@@ -346,13 +342,13 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
 
 /// Makes the whole metrics column tappable for the kinds whose tap means something.
 private struct MetricsTapGesture: ViewModifier {
-    let tap: WatchMetricsTap?
+    let tap: TimerRunningTap?
     let isCompleted: Bool
-    let action: (WatchMetricsTap) -> Void
+    let action: (TimerRunningTap) -> Void
 
     func body(content: Content) -> some View {
         switch tap {
-        case nil:
+        case nil, .pause:
             content
         case .countRound:
             content

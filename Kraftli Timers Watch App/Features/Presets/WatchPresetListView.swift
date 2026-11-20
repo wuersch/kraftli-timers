@@ -190,10 +190,9 @@ struct WatchPresetListView: View {
         let kind = preset.kind
         activeTimer = TimerPresentation(config: TimerConfig(
             kind: kind,
-            totalDuration: kind.hasFixedDuration ? preset.durationInterval : nil,
-            intervalCount: kind == .emom ? preset.targetReps ?? 1 : nil,
-            exerciseName: preset.exerciseInfo?.name ?? "\(kind.rawValue) Workout",
-            targetReps: kind == .forTime ? preset.targetReps ?? TimerPreset.defaultForTimeReps : nil
+            duration: preset.durationInterval,
+            targetReps: preset.targetReps,
+            exerciseName: preset.exerciseInfo?.name ?? "\(kind.rawValue) Workout"
         ))
     }
 

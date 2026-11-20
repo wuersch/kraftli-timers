@@ -168,13 +168,11 @@ struct SessionRunnerView: View {
     ) -> some View {
         VStack(spacing: 0) {
             KindTimerView(
-                kind: step.kind,
-                duration: step.durationInterval,
-                targetReps: step.targetReps,
+                config: step.timerConfig,
                 // A step keeps its countdown beeps and interval signals, but not its
                 // completion sound: the session plays that once, at its end.
                 feedbackProvider: StepFeedback(base: feedbackProvider),
-                link: timerScreenLink(for: step, runner: runner)
+                link: timerScreenLink(for: runner)
             )
                 // A new identity per start gives every step a fresh timer screen and
                 // model, also when a loop runs the same step again.
@@ -192,11 +190,10 @@ struct SessionRunnerView: View {
     }
 
     /// Connects a step's timer screen to the run instead of to a single workout's summary.
-    private func timerScreenLink(for step: SessionStep, runner: SessionRunner) -> TimerScreenLink {
+    private func timerScreenLink(for runner: SessionRunner) -> TimerScreenLink {
         TimerScreenLink(
             onWorkoutCompleted: { runner.stepCompleted($0) },
             onWorkoutStopped: { runner.stepStopped($0) },
-            exerciseName: step.exerciseName,
             workoutID: runner.stepWorkoutID,
             autoStart: true,
             startsOnWatch: runner.startsStepsOnWatch,

@@ -30,9 +30,6 @@ struct TimerScreenLink {
     /// time to be recorded as stopped early (UC-0005 extension 1a). Used for logging.
     var onWorkoutStopped: ((WorkoutCompletionData) -> Void)? = nil
 
-    /// Exercise name, part of the workout's `TimerConfig`.
-    var exerciseName = "Workout"
-
     /// Identifies the workout on both devices; also used as the `WorkoutLog.id`.
     var workoutID = UUID()
 
@@ -66,29 +63,62 @@ struct TimerScreenLink {
     var onDismissRequested: (() -> Void)? = nil
 }
 
-// MARK: - What a kind configures
-
-/// What a tap does while the workout is running. (A tap starts a workout that hasn't
-/// started and resumes a paused one, for every kind.)
-enum TimerRunningTap {
-    /// EMOM: pause.
-    case pause
-    /// AMRAP: count a round.
-    case countRound
-    /// For Time: declare the workout done.
-    case declareDone
-}
+// MARK: - What follows from the kind
 
 /// The kind-specific look of the parts the screen draws itself.
 struct TimerScreenStyle {
     /// Layout sizes for the available space.
     let sizes: (CGSize) -> TimerSizes
-    /// Color of the "Starting on Watch" icon.
-    let color: Color
     /// Size of the "Starting on Watch" icon, relative to the primary font.
     let startingIconScale: CGFloat
     /// Size of the 3-2-1 countdown, relative to the primary font.
     let countdownScale: CGFloat
+}
+
+extension TimerKind {
+    /// EMOM has two rings and needs its own layout; the one-ring kinds share AMRAP's.
+    var screenStyle: TimerScreenStyle {
+        switch self {
+        case .emom:
+            TimerScreenStyle(sizes: { TimerSizes.emom(for: $0) }, startingIconScale: 0.6, countdownScale: 1.5)
+        case .amrap, .forTime:
+            TimerScreenStyle(sizes: { TimerSizes.amrap(for: $0) }, startingIconScale: 0.5, countdownScale: 1.2)
+        }
+    }
+}
+
+/// Where the workout stands, as far as the screen's hint and VoiceOver are concerned.
+enum TimerPhase {
+    /// Not started yet: waiting for the Watch, counting down, or waiting for a tap.
+    case notStarted
+    case running
+    case paused
+    case completed
+}
+
+extension TimerRunningTap {
+    /// The hint while running. A long press pauses the kinds whose tap means something else.
+    var hint: String {
+        switch self {
+        case .pause: "Tap to pause"
+        case .countRound: "Tap to count · Hold to pause"
+        case .declareDone: "Tap when done · Hold to pause"
+        }
+    }
+
+    /// The same for VoiceOver.
+    var accessibilityHint: String {
+        switch self {
+        case .pause: "Tap to pause"
+        case .countRound: "Tap to add round, hold to pause"
+        case .declareDone: "Tap when done, hold to pause"
+        }
+    }
+
+    /// Whether a long press pauses and resumes (the kinds whose tap means something else).
+    var holdTogglesPause: Bool {
+        self != .pause
+    }
 }
 
 /// What the bottom section shows.
@@ -105,6 +135,9 @@ struct TimerScreenContext {
     let isCompleted: Bool
     /// True before the workout clock starts: waiting for the Watch, or counting down.
     let isWaitingToStart: Bool
+    /// The tap hint for the current phase, even while hidden (it reserves the hint's
+    /// space).
+    let hint: String
     /// The text for the hint line: a sync notice takes precedence over the tap hint.
     /// nil while the hint is hidden.
     let visibleHint: String?
@@ -114,23 +147,80 @@ struct TimerScreenContext {
 
 // MARK: - Shared pieces for the kinds
 
-/// The line under the center value showing the tap hint or a sync notice.
-struct TimerHintLine: View {
-    let text: String
+/// The center of a kind's ring: a label, the big value, and under it the hint line —
+/// or, while the hint is hidden, the kind's `footer`.
+struct TimerCenterStack<Footer: View>: View {
+    let label: String
+    let value: String
+    var weight: Font.Weight = .bold
+    var color: Color = .primary
+    let accessibilityLabel: String
+    var accessibilityValue: String = ""
     let context: TimerScreenContext
-    /// How far a tap hint may shrink to fit. A sync notice may always shrink to 0.6.
-    let minimumScaleFactor: CGFloat
+    @ViewBuilder var footer: () -> Footer
 
     var body: some View {
-        Text(text)
+        VStack(spacing: 8) {
+            Text(label)
+                .font(.system(size: context.sizes.labelFont))
+                .foregroundStyle(.gray)
+
+            Text(value)
+                .font(.system(size: context.sizes.primaryFont, weight: weight, design: .rounded))
+                .foregroundStyle(color)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityLabel)
+                .accessibilityValue(accessibilityValue)
+
+            if let visibleHint = context.visibleHint {
+                Text(visibleHint)
+                    .font(.system(size: context.sizes.labelFont))
+                    .foregroundStyle(.gray)
+                    .lineLimit(1)
+                    // A sync notice is longer than a tap hint, so it may shrink further.
+                    .minimumScaleFactor(context.showsSyncNotice ? 0.6 : 0.8)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .accessibilityHidden(true)
+            } else {
+                footer()
+            }
+        }
+    }
+}
+
+extension TimerCenterStack where Footer == TimerHintPlaceholder {
+    /// A center whose hint line stays empty while the hint is hidden, without the layout
+    /// shifting.
+    init(
+        label: String,
+        value: String,
+        weight: Font.Weight = .bold,
+        color: Color = .primary,
+        accessibilityLabel: String,
+        accessibilityValue: String = "",
+        context: TimerScreenContext
+    ) {
+        self.init(
+            label: label, value: value, weight: weight, color: color,
+            accessibilityLabel: accessibilityLabel, accessibilityValue: accessibilityValue,
+            context: context
+        ) {
+            TimerHintPlaceholder(context: context)
+        }
+    }
+}
+
+/// Keeps the hint line's space while the hint is hidden, so the center doesn't jump.
+struct TimerHintPlaceholder: View {
+    let context: TimerScreenContext
+
+    var body: some View {
+        Text(context.hint)
             .font(.system(size: context.sizes.labelFont))
-            .foregroundStyle(.gray)
             .lineLimit(1)
-            .minimumScaleFactor(context.showsSyncNotice ? 0.6 : minimumScaleFactor)
-            .transition(
-                .opacity.combined(with: .scale(scale: 0.98))
-            )
-            .accessibilityHidden(true)
+            .hidden()
     }
 }
 
@@ -174,24 +264,57 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
 
     /// The kind's timer model. Owned by the kind's view (`@State` there).
     let model: Model
-    /// The workout to start. Its exercise name and ID come from `link`.
+    /// The workout to start. Its ID comes from `link`.
     let config: TimerConfig
     let link: TimerScreenLink
-    let style: TimerScreenStyle
-    let runningTap: TimerRunningTap
-    /// Whether a long press pauses and resumes (the kinds whose tap means something else).
-    let holdTogglesPause: Bool
-    /// The tap hint for the current state ("Tap to start", …).
-    let hintText: String
-    let accessibilityLabel: String
-    let accessibilityHint: String
     let total: TimerScreenTotal
+    /// What VoiceOver says about the workout after its phase ("12 rounds completed").
+    let accessibilitySummary: String
     @ViewBuilder let ring: (TimerScreenContext) -> Ring
     @ViewBuilder let center: (TimerScreenContext) -> Center
 
     // MARK: - Computed Properties
     private var isCompleted: Bool { model.isCompleted }
     private var workoutID: UUID { link.workoutID }
+    private var runningTap: TimerRunningTap { config.kind.runningTap }
+    private var style: TimerScreenStyle { config.kind.screenStyle }
+
+    private var phase: TimerPhase {
+        if isCompleted { return .completed }
+        if model.isRunning { return .running }
+        return workoutState?.isPaused == true ? .paused : .notStarted
+    }
+
+    /// The tap hint for the current phase.
+    private var hintText: String {
+        switch phase {
+        case .notStarted: "Tap to start"
+        case .running: runningTap.hint
+        case .paused: "Tap to resume"
+        case .completed: ""
+        }
+    }
+
+    private var accessibilityLabel: String {
+        let kind = config.kind.rawValue
+        let status = switch phase {
+        case .notStarted: "\(kind) timer ready"
+        case .running: "\(kind) timer running"
+        case .paused: "\(kind) timer paused"
+        case .completed: "Timer completed"
+        }
+        return accessibilitySummary.isEmpty ? status : "\(status), \(accessibilitySummary)"
+    }
+
+    private var accessibilityHint: String {
+        let action = switch phase {
+        case .notStarted: "Tap to start"
+        case .running: runningTap.accessibilityHint
+        case .paused: runningTap.holdTogglesPause ? "Tap or hold to resume" : "Tap to resume"
+        case .completed: ""
+        }
+        return action.isEmpty ? "Swipe down to close" : "\(action), swipe down to close"
+    }
 
     /// True while the iPhone waits for the Watch to confirm this workout.
     private var isStartingOnWatch: Bool {
@@ -219,6 +342,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
             sizes: sizes,
             isCompleted: isCompleted,
             isWaitingToStart: isWaitingToStart,
+            hint: hintText,
             visibleHint: visibleHint,
             showsSyncNotice: syncNotice != nil
         )
@@ -412,7 +536,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
             .onTapGesture {
                 handleTap()
             }
-            .modifier(HoldGesture(isEnabled: holdTogglesPause, action: handleLongPress))
+            .modifier(HoldGesture(isEnabled: runningTap.holdTogglesPause, action: handleLongPress))
         }
         .timerLifecycle(
             timer: model,
@@ -479,7 +603,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
         VStack(spacing: 12) {
             Image(systemName: "applewatch")
                 .font(.system(size: sizes.primaryFont * style.startingIconScale))
-                .foregroundStyle(style.color)
+                .foregroundStyle(config.kind.color)
                 .symbolEffect(.pulse)
             Text("Starting on Watch…")
                 .font(.system(size: sizes.labelFont))

@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-/// The timer for a kind (EMOM, AMRAP, For Time) with its model, from the settings a
-/// preset or a session's step holds.
+/// The timer for a kind (EMOM, AMRAP, For Time) with its model, from the workout's
+/// `TimerConfig`.
 ///
 /// The one place that knows which view and model belong to a kind and which defaults
 /// apply. A single workout (`TimerRunnerView`) and a session's step (`SessionRunnerView`)
@@ -18,11 +18,8 @@ import SwiftUI
 /// `@State`, so later re-evaluations of this body don't replace a running timer. Give
 /// the view a new `.id` to start a fresh one.
 struct KindTimerView: View {
-    let kind: TimerKind
-    /// The length of an EMOM or AMRAP; unused for For Time.
-    let duration: TimeInterval
-    /// An EMOM's reps (one per interval) or a For Time's target.
-    let targetReps: Int?
+    /// The workout, as built by `TimerConfig(kind:duration:targetReps:exerciseName:)`.
+    let config: TimerConfig
     let feedbackProvider: any FeedbackProvider
     let link: TimerScreenLink
 
@@ -33,34 +30,37 @@ struct KindTimerView: View {
     }
 
     var body: some View {
-        switch kind {
+        switch config.kind {
         case .emom:
             EMOMTimerView(
                 timerModel: EMOMTimerModel(
-                    totalDuration: duration,
-                    intervalCount: targetReps ?? 1,
+                    totalDuration: config.totalDuration ?? 0,
+                    intervalCount: config.intervalCount ?? 1,
                     timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
+                config: config,
                 showRepsInCenter: settings.emomShowRepsInCenter,
                 link: link
             )
         case .amrap:
             AMRAPTimerView(
                 timerModel: AMRAPTimerModel(
-                    totalDuration: duration,
+                    totalDuration: config.totalDuration ?? 0,
                     timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
+                config: config,
                 link: link
             )
         case .forTime:
             ForTimeTimerView(
                 timerModel: ForTimeTimerModel(
-                    targetReps: targetReps ?? TimerPreset.defaultForTimeReps,
+                    targetReps: config.targetReps ?? TimerPreset.defaultForTimeReps,
                     timerProvider: timerProvider,
                     feedbackProvider: feedbackProvider
                 ),
+                config: config,
                 link: link
             )
         }

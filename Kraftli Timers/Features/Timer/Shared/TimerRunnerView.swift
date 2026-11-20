@@ -161,9 +161,12 @@ struct TimerRunnerView: View {
     /// The timer for the preset's kind.
     private func timerContent(feedbackProvider: any FeedbackProvider) -> some View {
         KindTimerView(
-            kind: preset.kind,
-            duration: preset.durationInterval,
-            targetReps: preset.targetReps,
+            config: TimerConfig(
+                kind: preset.kind,
+                duration: preset.durationInterval,
+                targetReps: preset.targetReps,
+                exerciseName: exerciseName
+            ),
             feedbackProvider: feedbackProvider,
             link: timerScreenLink
         )
@@ -175,7 +178,6 @@ struct TimerRunnerView: View {
         TimerScreenLink(
             onWorkoutCompleted: workoutCompleted,
             onWorkoutStopped: record,
-            exerciseName: exerciseName,
             workoutID: correlationID,
             autoStart: true,
             isSwipeDisabled: $isSwipeDisabled,
