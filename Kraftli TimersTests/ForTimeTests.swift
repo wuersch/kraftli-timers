@@ -197,6 +197,7 @@ struct ForTimeTests {
 
     @Test @MainActor func model_stopIsNotACompletion() {
         let model = ForTimeTimerModel(
+            targetReps: 100,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback(),
             now: { self.at(3 + 90) }
@@ -211,6 +212,7 @@ struct ForTimeTests {
 
     @Test @MainActor func model_finishTimeIsAtLeastOneSecond() {
         let model = ForTimeTimerModel(
+            targetReps: 100,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback(),
             now: { self.at(3.4) }
@@ -223,6 +225,7 @@ struct ForTimeTests {
 
     @Test @MainActor func model_lapProgressWrapsEveryLap() {
         let model = ForTimeTimerModel(
+            targetReps: 100,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback(),
             now: { self.at(3 + 72.5) }

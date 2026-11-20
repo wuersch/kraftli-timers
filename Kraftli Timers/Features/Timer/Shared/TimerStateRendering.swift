@@ -28,6 +28,13 @@ final class TimerRenderCore {
     fileprivate(set) var isRunning = false
     fileprivate(set) var didComplete = false
 
+    /// Workout time elapsed, pauses excluded, as of the last adopted state or tick. The
+    /// models derive every displayed value from it, so they store no display state.
+    fileprivate(set) var elapsed: TimeInterval = 0
+
+    /// Rounds counted by the workout's owner (`TimerState.roundCount`; AMRAP).
+    fileprivate(set) var roundCount = 0
+
     /// The timing source of truth. nil until the workout starts (and after `reset()`).
     @ObservationIgnored fileprivate(set) var state: TimerState?
 
@@ -64,40 +71,30 @@ final class TimerRenderCore {
 
 /// A timer model that renders a `TimerState`.
 ///
-/// All timing comes from the state: the model derives the displayed values from
-/// `state.elapsed(at: now())` on every tick and keeps no stopwatch of its own. `apply(_:)`
-/// adopts each state the `TimerSessionController` renders; the model never changes the
-/// state itself.
+/// All timing comes from the state: on every adopted state and tick the core stores
+/// `state.elapsed(at: now())`, and the model derives its displayed values from
+/// `core.elapsed` as computed properties. It keeps no stopwatch and no display state of
+/// its own. `apply(_:)` adopts each state the `TimerSessionController` renders; the model
+/// never changes the state itself.
 ///
-/// A conforming model provides its `core` and the display hooks below. `apply(_:)`,
-/// `reset()`, `isRunning` and `didComplete` come from the extension.
+/// A conforming model provides its `core` and, if it needs them, the hooks below.
+/// `apply(_:)`, `reset()`, `isRunning` and `didComplete` come from the extension.
 protocol TimerStateRendering: WorkoutTimer {
     var core: TimerRenderCore { get }
 
-    /// Updates the displayed values for the workout time `elapsed`. Called on every
-    /// adopted state and every tick.
-    func render(elapsed: TimeInterval)
-
-    /// Called after a new state was adopted and before it is rendered, for values that
-    /// come from the state itself rather than from the clock (e.g. the round count).
+    /// Called when a new state is adopted, before it is rendered (e.g. to re-seed
+    /// feedback trackers after a jump).
     func didAdopt(_ newState: TimerState, replacing previous: TimerState?, at date: Date)
 
-    /// Called on a tick while the workout runs, after `render(elapsed:)`, for feedback
-    /// tied to the clock (e.g. interval beeps). Never called for an adopted state, so
-    /// joining or resyncing a workout replays nothing.
+    /// Called on a tick while the workout runs, for feedback tied to the clock (e.g.
+    /// interval beeps). Never called for an adopted state, so joining or resyncing a
+    /// workout replays nothing.
     func didTick(elapsed: TimeInterval)
-
-    /// Pins the displayed values to their final state once the workout has completed.
-    func renderCompletion()
-
-    /// Returns the displayed values to their state before the workout started.
-    func resetDisplay()
 }
 
 extension TimerStateRendering {
     func didAdopt(_ newState: TimerState, replacing previous: TimerState?, at date: Date) {}
     func didTick(elapsed: TimeInterval) {}
-    func renderCompletion() {}
 }
 
 // MARK: - Shared behavior
@@ -129,6 +126,7 @@ extension TimerStateRendering {
             core.didComplete = false
         }
         core.state = newState
+        core.roundCount = newState.roundCount
         didAdopt(newState, replacing: previous, at: date)
         refresh(at: date, isTick: false)
     }
@@ -138,16 +136,17 @@ extension TimerStateRendering {
         core.state = nil
         core.isRunning = false
         core.didComplete = false
-        resetDisplay()
+        core.elapsed = 0
+        core.roundCount = 0
     }
 
-    /// Re-renders from the state at `date`: displayed values, running flag, completion
-    /// and ticking.
+    /// Re-renders from the state at `date`: elapsed time, running flag, completion and
+    /// ticking.
     private func refresh(at date: Date, isTick: Bool) {
         guard let state = core.state else { return }
         let wasRunning = core.isRunning
         let elapsed = state.elapsed(at: date)
-        render(elapsed: elapsed)
+        core.elapsed = elapsed
 
         let finished = state.isFinished(at: date)
         core.isRunning = !state.isPaused && !finished
@@ -163,13 +162,10 @@ extension TimerStateRendering {
         case .stopped: false
         case nil: finished
         }
-        if completed {
-            renderCompletion()
-            if !core.didComplete {
-                core.didComplete = true
-                if wasRunning {
-                    core.feedbackProvider.onWorkoutComplete()
-                }
+        if completed, !core.didComplete {
+            core.didComplete = true
+            if wasRunning {
+                core.feedbackProvider.onWorkoutComplete()
             }
         }
 
