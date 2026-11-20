@@ -62,7 +62,8 @@ Learning project: educational value matters as much as working code. Explain Swi
   every core, and the power draw can exceed what the charger delivers: on 2026-11-16 the MacBook Air
   hard-reset (undervoltage) on a 35W adapter although it was on AC. So being on AC is not enough:
   - check the charger first (`system_profiler SPPowerDataType | grep Wattage`); below 60W, don't run a full suite
-  - run one suite at a time, with `-parallel-testing-enabled NO`, never right after another full run
+  - always pass `-parallel-testing-enabled NO`, and never start a run while another build or test is
+    still running; sequential runs (e.g. iOS, then Watch) are fine
   - never run all tests without explicit permission
 
 ## Xcode Project
