@@ -90,9 +90,11 @@ struct SessionRunnerView: View {
         }
         // The Watch reports the session's Health workout under the run's ID.
         .onChange(of: messageCoordinator.lastWorkoutSessionEnded) { _, message in
-            if let message, message.correlationID == runner?.runID {
-                watchData = message
-            }
+            guard let message, let runner, message.correlationID == runner.runID else { return }
+            watchData = message
+            // Normally this answers the session's end. If the session is still going, the
+            // athlete ended it on the Watch: it ends here too (ADR-0012 rule 4).
+            endSessionEndedOnWatch(runner)
         }
         .onChange(of: scenePhase) { _, phase in
             // A rest's timer doesn't fire while the app is suspended.
@@ -163,7 +165,15 @@ struct SessionRunnerView: View {
                 .font(.headline)
                 .padding(.top, 28)
 
-            timer(for: step, runner: runner, feedbackProvider: feedbackProvider)
+            KindTimerView(
+                kind: step.kind,
+                duration: step.durationInterval,
+                targetReps: step.targetReps,
+                // A step keeps its countdown beeps and interval signals, but not its
+                // completion sound: the session plays that once, at its end.
+                feedbackProvider: StepFeedback(base: feedbackProvider),
+                link: timerScreenLink(for: step, runner: runner)
+            )
                 // A new identity per start gives every step a fresh timer screen and
                 // model, also when a loop runs the same step again.
                 .id(runner.stepWorkoutID)
@@ -185,52 +195,6 @@ struct SessionRunnerView: View {
                 DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
             }
         }
-    }
-
-    @ViewBuilder
-    private func timer(
-        for step: SessionStep, runner: SessionRunner, feedbackProvider: any FeedbackProvider
-    ) -> some View {
-        let link = timerScreenLink(for: step, runner: runner)
-        // A step keeps its countdown beeps and interval signals, but not its completion
-        // sound: the session plays that once, at its end.
-        let feedback = StepFeedback(base: feedbackProvider)
-
-        switch step.kind {
-        case .emom:
-            EMOMTimerView(
-                timerModel: EMOMTimerModel(
-                    totalDuration: step.durationInterval,
-                    intervalCount: step.targetReps ?? 1,
-                    timerProvider: timerProvider,
-                    feedbackProvider: feedback
-                ),
-                showRepsInCenter: settings.emomShowRepsInCenter,
-                link: link
-            )
-        case .amrap:
-            AMRAPTimerView(
-                timerModel: AMRAPTimerModel(
-                    totalDuration: step.durationInterval,
-                    timerProvider: timerProvider,
-                    feedbackProvider: feedback
-                ),
-                link: link
-            )
-        case .forTime:
-            ForTimeTimerView(
-                timerModel: ForTimeTimerModel(
-                    targetReps: step.targetReps ?? TimerPreset.defaultForTimeReps,
-                    timerProvider: timerProvider,
-                    feedbackProvider: feedback
-                ),
-                link: link
-            )
-        }
-    }
-
-    private var timerProvider: any TimerProvider {
-        settings.smoothAnimationsEnabled ? DisplayLinkTimerProvider() : FoundationTimerProvider()
     }
 
     /// Connects a step's timer screen to the run instead of to a single workout's summary.
@@ -282,6 +246,17 @@ struct SessionRunnerView: View {
         runner.stepClosed()
         dragOffset = 0
         isHandleActive = false
+    }
+
+    /// The Watch saved the session's Health workout while the session was still going:
+    /// a running step ends as after a swipe-down, then the session ends.
+    private func endSessionEndedOnWatch(_ runner: SessionRunner) {
+        guard runner.run.phase != .finished else { return }
+        isConfirmingEnd = false
+        if runner.run.phase == .running {
+            endStep(runner)
+        }
+        runner.endSession()
     }
 
     private func celebrate() {

@@ -215,6 +215,22 @@ struct SessionRunnerTests {
         #expect(runner.run.restTime == 15)
     }
 
+    @Test func sessionEndedDuringARest_endsTheRestWithIt_andIsRecorded() {
+        let loop = SessionLoop(rounds: 2, restSeconds: 60, steps: [pushUps])
+        let (runner, recorder, clock) = makeRunner([.loop(loop)])
+        runner.startStep()
+        runner.stepCompleted(completion(240, rounds: 9))
+
+        // The way a session ended on the Watch arrives while the iPhone rests.
+        clock.advance(15)
+        runner.endSession()
+
+        #expect(runner.run.phase == .finished)
+        #expect(runner.run.endedEarly)
+        #expect(runner.run.restTime == 15)
+        #expect(recorder.sessions.count == 1)
+    }
+
     // MARK: - The Watch (ADR-0012)
 
     /// A runner whose statuses for the Watch are collected.

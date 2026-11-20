@@ -17,7 +17,7 @@ nonisolated struct SessionContext: Codable, Equatable, Sendable {
 
 /// The progress of a session's run, sent by the iPhone on every change of phase.
 ///
-/// One-way: the Watch never answers and never changes a session (ADR-0012). From it the
+/// One-way: the Watch never answers it (ADR-0012). From it the
 /// Watch pauses, resumes and ends the Health session it holds for the run, and shows
 /// what comes next.
 nonisolated struct SessionStatus: Codable, Equatable, Sendable {

@@ -103,7 +103,7 @@ final class SessionRunner {
     }
 
     func endSession() {
-        run.endSession()
+        run.endSession(at: now())
         phaseChanged()
     }
 

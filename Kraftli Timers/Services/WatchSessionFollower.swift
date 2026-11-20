@@ -83,8 +83,8 @@ final class WatchSessionFollower {
 
     /// The athlete ends the run's workout from the Watch, between steps: the way out
     /// when the iPhone, which would normally say so, is out of reach. The Health workout
-    /// is saved as far as it got. The iPhone isn't told (statuses are one-way); a step it
-    /// starts afterwards begins a workout of its own.
+    /// is saved as far as it got and reported to the iPhone like any saved workout; the
+    /// iPhone ends the session when that report reaches it (ADR-0012 rule 4).
     func endOnWatch() {
         guard let held else { return }
         Logger.workoutSession.info("Session run \(held.runID) ended on the Watch; saving its Health session")

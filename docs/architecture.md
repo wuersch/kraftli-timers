@@ -296,7 +296,7 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 | `TimerState` / `TimerStateReducer` | Shared: replicated timer state and the only code that changes it |
 | `EarlyStop` | Shared: whether a workout ended early is recorded or discarded, and with what |
 | `SessionContext` / `SessionStatus` | Shared: the run a step's start request belongs to, and the session's progress the iPhone sends the Watch one way (ADR-0012) |
-| `WatchSessionFollower` | Watch: holds one Health session for a session's run across its steps; pauses, resumes, saves or discards it from the `SessionStatus`; keeps the latest status and a just-finished run for `WatchSessionView`; can end the tracking on the Watch alone (@Observable) |
+| `WatchSessionFollower` | Watch: holds one Health session for a session's run across its steps; pauses, resumes, saves or discards it from the `SessionStatus`; keeps the latest status and a just-finished run for `WatchSessionView`; can end the session from the Watch by saving its workout, whose report ends the session on the iPhone (@Observable) |
 | `TimerSessionController` | Shared: one device's role (owner/viewer), confirmed state, pending intents (@Observable) |
 | `TimerSyncTransport` | Shared: payloads, inbox filtering, composite + WatchConnectivity channels |
 | `HealthKitTimerSyncTransport` | Shared: payloads over the mirrored `HKWorkoutSession` data channel |

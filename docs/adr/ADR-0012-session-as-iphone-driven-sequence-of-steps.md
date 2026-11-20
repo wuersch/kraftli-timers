@@ -51,8 +51,13 @@ would put its tested behaviour at risk for no requirement. Three rules make it o
    workout stays with the Watch: it does not yield its session for a run it holds.
 3. **The Watch learns the session's progress from the iPhone, one way.** On every change of
    phase the iPhone sends a numbered `SessionStatus` (up next, running, resting until, finished).
-   The Watch never answers it and never changes a session. From it the Watch pauses and resumes
-   its Health session, ends and saves it, and shows what comes next.
+   The Watch never answers it. From it the Watch pauses and resumes its Health session, ends
+   and saves it, and shows what comes next.
+4. **The Watch can end a session only by ending its tracking.** Between steps the athlete can
+   end the Health workout on the Watch. The Watch saves it and reports it as it reports every
+   saved workout, under the run's ID. An iPhone that gets this report while the session is still
+   going ends the session. No further message type is needed, and an iPhone out of reach ends
+   the session when the report arrives.
 
 ### Consequences
 
@@ -66,7 +71,7 @@ would put its tested behaviour at risk for no requirement. Three rules make it o
 - Bad, because the Watch's Health session depends on a message to end. If the iPhone app dies
   mid-session, the Watch keeps a paused session until the next workout starts and saves it then,
   or until the Watch app is relaunched and recovers it. Between steps the Watch therefore offers
-  to end its tracking itself, which saves the workout as far as it got without the iPhone.
+  to end its tracking itself (rule 4), which saves the workout as far as it got without the iPhone.
 - Bad, because every step repeats the start request. On a poor connection a later step can fall
   back to the iPhone while the Watch holds the Health workout; that step is then timed on the
   iPhone, and the Watch tracks it only if it still receives the session status.
