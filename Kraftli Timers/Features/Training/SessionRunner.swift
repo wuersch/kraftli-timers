@@ -103,7 +103,7 @@ final class SessionRunner {
     }
 
     func endSession() {
-        run.endSession(at: now())
+        run.endSession()
         phaseChanged()
     }
 
@@ -217,8 +217,6 @@ extension SessionRunner {
         status.position = run.position
         if let step = run.currentStep {
             status.step = step.timerConfig
-            status.timerNumber = run.timerNumber
-            status.timerCount = run.timerCount
             status.loopRound = run.currentLoopRound?.round
             status.loopRounds = run.currentLoopRound?.of
         }

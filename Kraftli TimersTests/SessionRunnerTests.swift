@@ -251,8 +251,6 @@ struct SessionRunnerTests {
         // What is running, and where in the session.
         #expect(sent[0].step?.kind == .amrap)
         #expect(sent[0].step?.totalDuration == 240)
-        #expect(sent[0].timerNumber == 1)
-        #expect(sent[0].timerCount == 2)
         #expect(sent[2].loopRound == 2)
         #expect(sent[3].step == nil)
 

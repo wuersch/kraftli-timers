@@ -288,12 +288,17 @@ struct SessionRestView: View {
 /// every timer came to.
 struct SessionSummaryView: View {
     let run: SessionRun
-    /// True when the Watch recorded the session's Health workout: its figures are then
-    /// expected, and shown as "--" until they arrive.
-    let expectsWatchData: Bool
+    /// True when the Watch tracked the session.
+    let trackedByWatch: Bool
     /// The Watch's figures for the session's Health workout, once they arrived.
     let watchData: WorkoutSessionEndedMessage?
     let onDone: () -> Void
+
+    /// The Watch's figures are expected, and shown as "--" until they arrive. Not when
+    /// nothing was recorded: the Watch saved nothing then either.
+    private var expectsWatchData: Bool {
+        trackedByWatch && run.recordedCount > 0
+    }
 
     private var hasHealthData: Bool {
         guard let watchData else { return false }
@@ -333,7 +338,7 @@ struct SessionSummaryView: View {
                         .cardStyle(padded: false)
                     }
 
-                    if !expectsWatchData {
+                    if !trackedByWatch {
                         Text("Connect Apple Watch for heart rate and calories")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -414,10 +419,11 @@ private struct SummaryTile: View {
         self.value = value
     }
 
-    /// A whole number from the Watch; `nil` shows "--".
+    /// A whole number from the Watch, cut off like in a single workout's summary; `nil`
+    /// shows "--".
     init(title: String, number: Double?, unit: String) {
         self.title = title
-        self.value = number.map { "\(Int($0.rounded()))" } ?? "--"
+        self.value = number.map { "\(Int($0))" } ?? "--"
         self.unit = unit
     }
 

@@ -75,6 +75,9 @@ final class WatchWorkoutStarter {
     @ObservationIgnored private var sessionStartedAt: Date?
     @ObservationIgnored private var watchdogTask: Task<Void, Never>?
     @ObservationIgnored private var yieldedWorkoutID: UUID?
+    /// The step with which the Watch began to hold a session's run. If the iPhone turns
+    /// out to own that very step, the run was never the Watch's to hold.
+    @ObservationIgnored private var firstHeldStepID: UUID?
 
     /// The HealthKit session start for the current request, exposed so tests can await it.
     @ObservationIgnored private(set) var ownershipTask: Task<Void, Never>?
@@ -311,6 +314,7 @@ final class WatchWorkoutStarter {
             // The first step of a session's run the Watch owns: its Health session now
             // belongs to the run and stays up between the steps.
             sessionFollower?.hold(session)
+            firstHeldStepID = request.workoutID
         }
         controller.startAsOwner(TimerState(workoutID: request.workoutID, owner: .watch, config: request.config, now: now()))
     }
@@ -319,12 +323,20 @@ final class WatchWorkoutStarter {
     private func confirmed(_ state: TimerState) {
         guard state.owner == .phone, yieldedWorkoutID != state.workoutID else { return }
         yieldedWorkoutID = state.workoutID
-        guard sessionFollower?.held == nil else {
-            // A step of a held run fell back to the iPhone. The Watch follows that step,
-            // but the run's Health workout stays here (ADR-0012 rule 2).
-            Logger.timerSync.info("iPhone owns workout \(state.workoutID); keeping the held session run's Health session")
-            cancelWatchdog()
-            return
+        if sessionFollower?.held != nil {
+            guard firstHeldStepID == state.workoutID else {
+                // A later step of a held run fell back to the iPhone. The Watch follows
+                // that step, but the run's Health workout stays here (ADR-0012 rule 2).
+                Logger.timerSync.info("iPhone owns workout \(state.workoutID); keeping the held session run's Health session")
+                cancelWatchdog()
+                return
+            }
+            // The handshake of the run's first step crossed: the iPhone took it over just
+            // as the Watch began to hold the run. The first step's owner holds the Health
+            // workout, so that is the iPhone; the session started here goes, as for a
+            // single workout.
+            sessionFollower?.release()
+            firstHeldStepID = nil
         }
         Logger.timerSync.info("iPhone owns workout \(state.workoutID); discarding the Watch's session")
         cancelWatchdog()

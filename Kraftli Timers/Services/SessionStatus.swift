@@ -48,9 +48,6 @@ nonisolated struct SessionStatus: Codable, Equatable, Sendable {
 
     /// The timer that is up next, running, or follows the rest; `nil` once finished.
     var step: TimerConfig?
-    /// That timer's number among the run's timers, counted from 1, and their count.
-    var timerNumber = 0
-    var timerCount = 0
     /// Its round in a loop, and the loop's rounds; `nil` outside a loop.
     var loopRound: Int?
     var loopRounds: Int?
