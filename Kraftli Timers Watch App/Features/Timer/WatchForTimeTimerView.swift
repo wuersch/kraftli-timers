@@ -15,60 +15,33 @@ import SwiftUI
 /// completion at the tap time. Pause and End stay on the controls page.
 struct WatchForTimeTimerView: View {
     @State private var timerModel: ForTimeTimerModel
+    private let timer: TimerPresentation
 
-    private let exerciseName: String
-    private let workoutID: UUID
-    private let startedOnPhone: Bool
-    private let syncService: WatchTimerSyncService
-
-    private let timerKind: TimerKind = .forTime
-    private var isCompleted: Bool { timerModel.isCompleted }
-
-    init(
-        targetReps: Int = TimerPreset.defaultForTimeReps,
-        exerciseName: String = "For Time Workout",
-        workoutID: UUID = UUID(),
-        startedOnPhone: Bool = false,
-        syncService: WatchTimerSyncService = DefaultWatchTimerSyncService(),
-        timerProvider: TimerProvider = FoundationTimerProvider(),
-        feedbackProvider: FeedbackProvider = SilentFeedback()
-    ) {
-        self.exerciseName = exerciseName
-        self.workoutID = workoutID
-        self.startedOnPhone = startedOnPhone
-        self.syncService = syncService
+    init(_ timer: TimerPresentation) {
+        self.timer = timer
         self.timerModel = ForTimeTimerModel(
-            targetReps: targetReps,
-            timerProvider: timerProvider,
-            feedbackProvider: feedbackProvider
+            targetReps: timer.config.targetReps ?? TimerPreset.defaultForTimeReps,
+            timerProvider: FoundationTimerProvider(),
+            feedbackProvider: SilentFeedback()
         )
     }
 
+    private var isCompleted: Bool { timerModel.isCompleted }
+    private var valueColor: Color { isCompleted ? .green : TimerKind.forTime.color }
+
     var body: some View {
-        WatchWorkoutScreen(
-            model: timerModel,
-            config: TimerConfig(
-                kind: timerKind,
-                totalDuration: nil,
-                intervalCount: nil,
-                exerciseName: exerciseName,
-                targetReps: timerModel.targetReps
-            ),
-            workoutID: workoutID,
-            startedOnPhone: startedOnPhone,
-            syncService: syncService
-        ) {
+        WatchWorkoutScreen(model: timerModel, timer: timer) {
             // Elapsed time, counting up; the finish time once done
             WatchMetricRow(
                 value: timerModel.elapsedTime.formatted,
                 labelTop: isCompleted ? "FINISH" : "ELAPSED",
-                valueColor: isCompleted ? .green : timerKind.color
+                valueColor: valueColor
             )
             // Target reps
             WatchMetricRow(
                 value: "\(timerModel.targetReps)",
                 labelTop: "REPS",
-                valueColor: isCompleted ? .green : timerKind.color
+                valueColor: valueColor
             )
         }
     }
@@ -76,7 +49,7 @@ struct WatchForTimeTimerView: View {
 
 #Preview {
     NavigationStack {
-        WatchForTimeTimerView(targetReps: 50)
+        WatchForTimeTimerView(.preview(.forTime, targetReps: 50))
     }
     .environment(WatchTimerRuntime.shared.sessionManager)
     .environment(WatchTimerRuntime.shared.timerSession)

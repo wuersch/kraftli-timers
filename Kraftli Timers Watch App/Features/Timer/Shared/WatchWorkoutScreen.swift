@@ -44,22 +44,23 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
     /// The kind's timer model. Owned by the kind's view (`@State` there).
     let model: Model
     /// The workout to start (Watch-started) or the one being joined (iPhone-started).
-    let config: TimerConfig
-
-    /// Identifies the workout on both devices; the iPhone's `WorkoutLog.id` for iPhone-started ones.
-    let workoutID: UUID
-
-    /// True for workouts started on the iPhone: the iPhone writes the `WorkoutLog`.
-    let startedOnPhone: Bool
+    let timer: TimerPresentation
 
     /// Sends the HealthKit summary (`WorkoutSessionEndedMessage`) to the iPhone.
-    let syncService: WatchTimerSyncService
+    var syncService: WatchTimerSyncService = DefaultWatchTimerSyncService()
 
     /// The kind's own metric rows, shown above heart rate and calories.
     @ViewBuilder let kindRows: () -> KindRows
 
     // MARK: - Computed Properties
     private var isCompleted: Bool { model.isCompleted }
+    private var config: TimerConfig { timer.config }
+
+    /// Identifies the workout on both devices; the iPhone's `WorkoutLog.id` for iPhone-started ones.
+    private var workoutID: UUID { timer.workoutID }
+
+    /// True for workouts started on the iPhone: the iPhone writes the `WorkoutLog`.
+    private var startedOnPhone: Bool { timer.startedOnPhone }
 
     /// Drives the accent color and the top-left glyph.
     private var timerKind: TimerKind { config.kind }
@@ -73,7 +74,7 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
     /// True while waiting to own (or follow) an iPhone-started workout, or for the
     /// athlete's answer about Apple Health access before the first Watch-started one.
     private var isStarting: Bool {
-        (timerSession.isAwaitingOwner && timerSession.workoutID == workoutID)
+        timerSession.isAwaitingOwner(of: workoutID)
             || starter.workoutAwaitingHealthAccess == workoutID
     }
 
@@ -108,8 +109,8 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
     // MARK: - Actions
 
     private func togglePause() {
-        guard !countdown.isCountingDown, let state = timerSession.renderedState,
-              timerSession.workoutID == workoutID, !isCompleted else { return }
+        guard !countdown.isCountingDown, let state = timerSession.renderedState(of: workoutID),
+              !isCompleted else { return }
         if state.isPaused {
             timerSession.resume()
             // Resuming brings the running timer back into view.
@@ -121,7 +122,7 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
 
     /// A tap on the metrics page: the kind's action, while the workout runs.
     private func metricsTapped(_ tap: TimerRunningTap) {
-        guard model.isRunning, !isCompleted, timerSession.workoutID == workoutID else { return }
+        guard model.isRunning, !isCompleted, timerSession.follows(workoutID) else { return }
         switch tap {
         case .pause: break
         case .countRound: timerSession.incrementRound()
@@ -154,7 +155,7 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
             return
         }
         var stoppedLog: WorkoutLog?
-        if timerSession.workoutID == workoutID, let state = timerSession.renderedState {
+        if let state = timerSession.renderedState(of: workoutID) {
             switch EarlyStop(of: state, at: Date()) {
             case .discard:
                 sessionManager.discardSession()
@@ -237,7 +238,7 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
             }
             if startedOnPhone {
                 // The request was handled before this view existed; catch up with its state.
-                if let state = timerSession.renderedState, timerSession.workoutID == workoutID {
+                if let state = timerSession.renderedState(of: workoutID) {
                     model.apply(state)
                     beginCountdown(until: state.startDate)
                 }
@@ -246,11 +247,11 @@ struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
             }
         }
         // The owner's first snapshot fixes the start date: count down toward it.
-        .onChange(of: timerSession.renderedState?.startDate) { _, startDate in
-            guard let startDate, timerSession.workoutID == workoutID else { return }
+        .onChange(of: timerSession.renderedState(of: workoutID)?.startDate) { _, startDate in
+            guard let startDate else { return }
             beginCountdown(until: startDate)
         }
-        .onChange(of: timerSession.renderedState?.finish) { _, finish in
+        .onChange(of: timerSession.renderedState(of: workoutID)?.finish) { _, finish in
             finishChanged(finish)
         }
         .onChange(of: timerSession.workoutID) { _, newID in

@@ -68,6 +68,26 @@ final class TimerSessionController {
         role == .viewer && confirmedState == nil
     }
 
+    // MARK: - One Workout's View
+
+    // A timer screen shows one workout, while the controller may already follow the next
+    // one (a newly presented timer, a session's next step). These answer for that one.
+
+    /// Whether the controller follows workout `id`.
+    func follows(_ id: UUID) -> Bool {
+        workoutID == id
+    }
+
+    /// The rendered state of workout `id`; nil if the controller follows another, or none.
+    func renderedState(of id: UUID) -> TimerState? {
+        follows(id) ? renderedState : nil
+    }
+
+    /// True while waiting for the owner's first snapshot of workout `id`.
+    func isAwaitingOwner(of id: UUID) -> Bool {
+        isAwaitingOwner && follows(id)
+    }
+
     // MARK: - Callbacks
 
     /// Called with every new `renderedState`, e.g. to feed a timer model's `apply(_:)`.

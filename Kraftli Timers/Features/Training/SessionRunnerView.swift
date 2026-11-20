@@ -81,7 +81,7 @@ struct SessionRunnerView: View {
         }
         .onChange(of: timerSession.renderedState?.owner) { _, owner in
             // The first step's owner holds the session's Health workout from then on.
-            if let owner, let runner, timerSession.workoutID == runner.stepWorkoutID {
+            if let owner, let runner, timerSession.follows(runner.stepWorkoutID) {
                 runner.stepOwned(by: owner)
             }
         }

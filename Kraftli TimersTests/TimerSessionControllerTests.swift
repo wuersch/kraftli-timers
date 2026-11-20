@@ -327,4 +327,31 @@ struct TimerSessionControllerTests {
 
         #expect(seen == [true, true, false])
     }
+
+    // MARK: - One workout's view
+
+    @Test func workoutQueries_answerOnlyForTheWorkoutFollowed() {
+        let clock = Clock()
+        let viewer = TimerSessionController(
+            transport: CompositeTimerSyncTransport(transports: [FakeLink().phoneEnd]),
+            now: { clock.now },
+            schedulesCompletion: false
+        )
+        let followed = UUID()
+        let other = UUID()
+        viewer.startAsViewer(workoutID: followed)
+
+        #expect(viewer.follows(followed))
+        #expect(!viewer.follows(other))
+        #expect(viewer.isAwaitingOwner(of: followed))
+        #expect(!viewer.isAwaitingOwner(of: other))
+        #expect(viewer.renderedState(of: other) == nil)
+    }
+
+    @Test func renderedStateOfWorkout_isTheRenderedState() {
+        let pair = Pair()
+        #expect(pair.viewer.renderedState(of: pair.state.workoutID) == pair.viewer.renderedState)
+        #expect(pair.viewer.renderedState(of: pair.state.workoutID) != nil)
+        #expect(pair.viewer.renderedState(of: UUID()) == nil)
+    }
 }

@@ -313,7 +313,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
 
     /// True while the iPhone waits for the Watch to confirm this workout.
     private var isStartingOnWatch: Bool {
-        timerSession.isAwaitingOwner && timerSession.workoutID == workoutID
+        timerSession.isAwaitingOwner(of: workoutID)
     }
 
     /// True before the workout clock starts: waiting for the Watch, or counting down.
@@ -323,7 +323,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
 
     /// The rendered state of this view's workout, if it has started.
     private var workoutState: TimerState? {
-        timerSession.workoutID == workoutID ? timerSession.renderedState : nil
+        timerSession.renderedState(of: workoutID)
     }
 
     /// The text for the hint line: a sync notice takes precedence over the tap hint.
@@ -408,7 +408,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
         syncNoticeTask?.cancel()
         // Only tear down the session if it still belongs to this workout — a newly
         // presented timer may already have started the next one.
-        if timerSession.workoutID == workoutID {
+        if timerSession.follows(workoutID) {
             workoutStarter.cancel()
             timerSession.stop()
             timerSession.onRenderedStateChange = nil
@@ -421,8 +421,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
     /// to be recorded (`EarlyStop`). Runs before the session is torn down, while its
     /// state still tells how far the workout got, and only on the first cleanup.
     private func reportEarlyStop() {
-        guard !isEnding, timerSession.workoutID == workoutID,
-              let state = timerSession.renderedState,
+        guard !isEnding, let state = workoutState,
               case .record(let result) = EarlyStop(of: state, at: Date())
         else { return }
         link.onWorkoutStopped?(completionData(result, stoppedEarly: true))
@@ -433,7 +432,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
     private func completionData(_ result: WorkoutResult, stoppedEarly: Bool = false) -> WorkoutCompletionData {
         WorkoutCompletionData(
             result,
-            ownedByWatch: timerSession.renderedState?.owner == .watch,
+            ownedByWatch: workoutState?.owner == .watch,
             correlationID: workoutID,
             stoppedEarly: stoppedEarly
         )
@@ -561,14 +560,14 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
             }
         }
         // The owner's first snapshot fixes the start date: count down toward it.
-        .onChange(of: timerSession.renderedState?.startDate) { _, startDate in
-            guard let startDate, timerSession.workoutID == workoutID else { return }
+        .onChange(of: workoutState?.startDate) { _, startDate in
+            guard let startDate else { return }
             beginCountdown(until: startDate)
         }
-        .onChange(of: timerSession.renderedState?.isPaused) { _, isPaused in
+        .onChange(of: workoutState?.isPaused) { _, isPaused in
             pausedStateChanged(isPaused)
         }
-        .onChange(of: timerSession.renderedState?.finish) { _, finish in
+        .onChange(of: workoutState?.finish) { _, finish in
             finishChanged(finish)
         }
         .onChange(of: timerSession.lastRollbackDate) {
