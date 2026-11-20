@@ -224,7 +224,7 @@ struct SessionRunTests {
         var run = fullBody()
         complete(&run, from: 0, duration: 300)
 
-        run.endSession(at: at(400))
+        run.endSession()
 
         #expect(run.phase == .finished)
         #expect(run.endedEarly)
@@ -236,7 +236,7 @@ struct SessionRunTests {
         var run = fullBody()
         run.startStep(at: at(0))
 
-        run.endSession(at: at(10))
+        run.endSession()
         run.skip(at: at(10))
 
         #expect(run.phase == .running)

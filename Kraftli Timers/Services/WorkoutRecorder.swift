@@ -2,8 +2,8 @@
 //  WorkoutRecorder.swift
 //  Kraftli Timers
 //
-//  Records a completed workout: the workout log, and the Health workout when the
-//  iPhone owned the timer.
+//  Records a workout: the workout log, and the Health workout when the iPhone owned
+//  the timer. A training session's steps get a log each and one Health workout together.
 //
 
 #if os(iOS)
@@ -134,9 +134,10 @@ final class DefaultWorkoutRecorder: WorkoutRecorder {
     }
 }
 
-// MARK: - Silent Implementation
+// MARK: - Sessions
 
-/// Records nothing. For previews and tests.
+/// A session's run: one Health workout for all its steps, paused between the active
+/// stretches, and linked to every step's log (UC-0005 extension 3d).
 extension DefaultWorkoutRecorder {
     @discardableResult
     func recordSession(runID: UUID, name: String, activeIntervals: [DateInterval]) -> Task<Void, Never> {
@@ -146,9 +147,7 @@ extension DefaultWorkoutRecorder {
               let logs = try? modelContext.fetch(descriptor), !logs.isEmpty
         else { return Task {} }
 
-        let pauses = zip(activeIntervals, activeIntervals.dropFirst()).compactMap { earlier, later in
-            later.start > earlier.end ? DateInterval(start: earlier.end, end: later.start) : nil
-        }
+        let pauses = activeIntervals.gaps
         return Task {
             do {
                 let healthKitUUID = try await healthKit.saveWorkout(
@@ -173,6 +172,9 @@ extension DefaultWorkoutRecorder {
     }
 }
 
+// MARK: - Silent Implementation
+
+/// Records nothing. For previews and tests.
 final class SilentWorkoutRecorder: WorkoutRecorder {
     @discardableResult
     func recordSession(runID: UUID, name: String, activeIntervals: [DateInterval]) -> Task<Void, Never> {

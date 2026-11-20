@@ -118,8 +118,7 @@ struct SessionRunnerView: View {
         case .finished:
             SessionSummaryView(
                 run: run,
-                // Nothing recorded means nothing saved on the Watch either.
-                expectsWatchData: runner.healthOwner == .watch && run.recordedCount > 0,
+                trackedByWatch: runner.healthOwner == .watch,
                 watchData: watchData,
                 onDone: { dismiss() }
             )

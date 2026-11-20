@@ -176,9 +176,7 @@ nonisolated struct SessionRun: Equatable, Sendable {
 
     /// The pauses of the session's Health workout: the gaps between the active stretches.
     var pauses: [DateInterval] {
-        zip(activeIntervals, activeIntervals.dropFirst()).compactMap { earlier, later in
-            later.start > earlier.end ? DateInterval(start: earlier.end, end: later.start) : nil
-        }
+        activeIntervals.gaps
     }
 
     /// True when the session was done in full: every timer completed, none skipped or
@@ -258,8 +256,8 @@ nonisolated struct SessionRun: Equatable, Sendable {
         }
     }
 
-    /// The athlete ends the session between steps.
-    mutating func endSession(at now: Date) {
+    /// The athlete ends the session between steps, where no active stretch is open.
+    mutating func endSession() {
         guard phase == .upNext else { return }
         endedEarly = true
         phase = .finished
@@ -272,5 +270,14 @@ nonisolated struct SessionRun: Equatable, Sendable {
         }
         activeSince = nil
         phase = position < items.count ? .upNext : .finished
+    }
+}
+
+extension Array where Element == DateInterval {
+    /// The stretches between consecutive intervals, where one ends before the next begins.
+    nonisolated var gaps: [DateInterval] {
+        zip(self, dropFirst()).compactMap { earlier, later in
+            later.start > earlier.end ? DateInterval(start: earlier.end, end: later.start) : nil
+        }
     }
 }

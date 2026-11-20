@@ -152,6 +152,23 @@ struct WatchSessionTests {
         #expect(setup.follower.isHolding(setup.session.runID))
     }
 
+    @Test func firstStepWhoseHandshakeCrossed_goesToTheiPhone_withItsHealthWorkout() async {
+        let setup = Setup()
+        // The Watch owns the first step and holds the run...
+        let request = await setup.startFirstStep()
+        #expect(setup.follower.isHolding(setup.session.runID))
+
+        // ...but the iPhone had just timed out and taken the step over.
+        setup.phone.startAsOwner(
+            TimerState(workoutID: request.workoutID, owner: .phone, config: setup.config, now: setup.clock.now)
+        )
+
+        #expect(setup.watch.role == .viewer)
+        #expect(setup.follower.held == nil)
+        #expect(setup.health.discards >= 1)
+        #expect(setup.health.saved.isEmpty)
+    }
+
     @Test func firstStepTheiPhoneTookOver_isNotHeld() async {
         let setup = Setup()
 
@@ -348,8 +365,6 @@ struct WatchSessionTests {
             phase: .resting(until: Date(timeIntervalSince1970: 1_000_060))
         )
         status.step = TimerConfig(kind: .amrap, totalDuration: 240, intervalCount: nil, exerciseName: "Push-ups")
-        status.timerNumber = 4
-        status.timerCount = 8
         status.loopRound = 2
         status.loopRounds = 3
         status.shape = [.init(kind: .amrap, seconds: 240), .init(kind: nil, seconds: 60)]

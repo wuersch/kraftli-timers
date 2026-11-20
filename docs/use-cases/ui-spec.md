@@ -183,7 +183,7 @@ case wins.
   Finished and skipped segments are dimmed, the current one has a white ring.
 - **Between steps** (also before the first timer): a card "DONE" with the timer just finished
   ("Jumping Jacks · EMOM" — "5:00 · 50 reps"; titled "SKIPPED", without a result, for a
-  skipped one; no card before the first timer). Centre: "UP NEXT", the kind as a pill, the exercise in large type, its settings
+  skipped one, and for one ended too early to be recorded; no card before the first timer). Centre: "UP NEXT", the kind as a pill, the exercise in large type, its settings
   ("4 min", "5 min · 50 reps", "30 reps") and, in a loop, "Round 1 of 3". Buttons: "Start"
   (prominent), below it "Skip" and "End Session" (red text) side by side. Footer "Session paused
   · take your time". Swipe down does nothing here.
@@ -269,7 +269,8 @@ case wins.
 - **Session (iPhone-started):** a step runs like an iPhone-started workout, without "DONE" at its
   end: its screen closes by itself. Between steps, over the timer list: the session's shape bar
   with the position, "UP NEXT", the exercise, "AMRAP · 4 min", in a loop "Round 1 of 3", and
-  "Start on iPhone". During a loop rest: "REST" with the countdown and "Then Push-ups". A page
+  "Start on iPhone". During a loop rest: "REST" with the countdown and "Then Push-ups". If a step runs on the iPhone only (the Watch
+  didn't get its start): "NOW", the exercise and "Running on iPhone". A page
   to the left, as for a timer's controls, has one button, "End" (red ✕), with "Saves the workout
   on this Watch": it ends the Watch's tracking only, for an iPhone out of reach. After the last
   step: "DONE" with the session's name until "End" is pressed. Shown only when the Watch tracks
