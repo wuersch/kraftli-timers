@@ -47,4 +47,23 @@ struct ExerciseInfo: Identifiable, Hashable, Sendable, Decodable {
         self.isHold = isHold
         self.secondsPerRep = secondsPerRep
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, description, formTips, muscleGroup, difficulty, isHold, secondsPerRep
+    }
+
+    /// `isHold` is optional in the JSON: an exercise without it is counted in reps.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            name: try container.decode(String.self, forKey: .name),
+            description: try container.decode(String.self, forKey: .description),
+            formTips: try container.decode([String].self, forKey: .formTips),
+            muscleGroup: try container.decode(MuscleGroup.self, forKey: .muscleGroup),
+            difficulty: try container.decodeIfPresent(Difficulty.self, forKey: .difficulty),
+            isHold: try container.decodeIfPresent(Bool.self, forKey: .isHold) ?? false,
+            secondsPerRep: try container.decodeIfPresent(Double.self, forKey: .secondsPerRep)
+        )
+    }
 }
