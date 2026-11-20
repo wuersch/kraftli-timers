@@ -55,6 +55,9 @@ struct TimerScreenLink {
 
     /// Parent manages confetti display (persists across summary transition).
     var showConfetti: Binding<Bool> = .constant(false)
+    /// Shown under the total time; a session puts its progress there. `AnyView` erases
+    /// the view's type, so this struct needn't be generic over what a parent passes.
+    var footer: AnyView? = nil
 
     /// Callback to register cleanup action for parent to call on dismiss.
     var onCleanupForDismiss: ((@escaping () -> Void) -> Void)? = nil
@@ -386,15 +389,20 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
                 .accessibilityHint(accessibilityHint)
                 .accessibilityAddTraits(isCompleted ? [] : .isButton)
 
-                TimerBottomSection(
-                    time: total.time,
-                    isWaitingToStart: isWaitingToStart,
-                    sizes: sizes,
-                    isCompleted: isCompleted,
-                    totalDuration: total.totalDuration,
-                    countsUp: total.countsUp,
-                    showsWatchDisconnected: timerSession.hasUnconfirmedChanges
-                )
+                VStack(spacing: 26) {
+                    TimerBottomSection(
+                        time: total.time,
+                        isWaitingToStart: isWaitingToStart,
+                        sizes: sizes,
+                        isCompleted: isCompleted,
+                        totalDuration: total.totalDuration,
+                        countsUp: total.countsUp,
+                        showsWatchDisconnected: timerSession.hasUnconfirmedChanges
+                    )
+                    if let footer = link.footer {
+                        footer
+                    }
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
