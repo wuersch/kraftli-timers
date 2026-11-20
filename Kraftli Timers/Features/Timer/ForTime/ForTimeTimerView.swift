@@ -14,45 +14,34 @@ import SwiftUI
 /// the owner turns that into a completion.
 struct ForTimeTimerView: View {
     @State private var timerModel: ForTimeTimerModel
+    private let config: TimerConfig
     private let link: TimerScreenLink
 
     private let accentColor = TimerKind.forTime.color
 
-    init(
-        timerModel: ForTimeTimerModel,
-        link: TimerScreenLink = TimerScreenLink()
-    ) {
+    init(timerModel: ForTimeTimerModel, config: TimerConfig, link: TimerScreenLink = TimerScreenLink()) {
         self.timerModel = timerModel
+        self.config = config
         self.link = link
     }
 
     var body: some View {
         TimerScreen(
             model: timerModel,
-            config: TimerConfig(
-                kind: .forTime,
-                totalDuration: nil,
-                intervalCount: nil,
-                exerciseName: link.exerciseName,
-                targetReps: timerModel.targetReps
-            ),
+            config: config,
             link: link,
-            style: TimerScreenStyle(
-                sizes: { TimerSizes.amrap(for: $0) },
-                color: accentColor,
-                startingIconScale: 0.5,
-                countdownScale: 1.2
-            ),
-            runningTap: .declareDone,
-            holdTogglesPause: true,
-            hintText: hintText,
-            accessibilityLabel: accessibilityLabel,
-            accessibilityHint: accessibilityHint,
-            total: TimerScreenTotal(time: timerModel.elapsedTime, countsUp: true)
+            total: TimerScreenTotal(time: timerModel.elapsedTime, countsUp: true),
+            accessibilitySummary: accessibilitySummary
         ) { context in
             circlingArc(context)
         } center: { context in
-            centerContent(context)
+            TimerCenterStack(
+                label: "REPS",
+                value: "\(timerModel.targetReps)",
+                color: accentColor,
+                accessibilityLabel: "\(timerModel.targetReps) reps",
+                context: context
+            )
         }
     }
 
@@ -67,9 +56,7 @@ struct ForTimeTimerView: View {
                 size: context.sizes.primaryRing,
                 lineWidth: context.sizes.primaryLineWidth,
                 progress: 1.0,
-                color: accentColor,
-                backgroundColor: Color.gray.opacity(0.2),
-                rotationDegrees: -90
+                color: accentColor
             )
         } else {
             let lapProgress = context.isWaitingToStart ? 0 : timerModel.lapProgress
@@ -83,81 +70,22 @@ struct ForTimeTimerView: View {
         }
     }
 
-    // MARK: - Center Content
-    private func centerContent(_ context: TimerScreenContext) -> some View {
-        VStack(spacing: 8) {
-            Text("REPS")
-                .font(.system(size: context.sizes.labelFont))
-                .foregroundStyle(.gray)
-
-            Text("\(timerModel.targetReps)")
-                .font(
-                    .system(
-                        size: context.sizes.primaryFont,
-                        weight: .bold,
-                        design: .rounded
-                    )
-                )
-                .foregroundStyle(accentColor)
-                .monospacedDigit()
-                .accessibilityLabel("\(timerModel.targetReps) reps")
-
-            if let visibleHint = context.visibleHint {
-                TimerHintLine(text: visibleHint, context: context, minimumScaleFactor: 0.8)
-            } else {
-                // Invisible spacer to prevent layout shift
-                Text(hintText)
-                    .font(.system(size: context.sizes.labelFont))
-                    .lineLimit(1)
-                    .hidden()
-            }
-        }
-    }
-
-    // MARK: - Strings
-
-    private var hintText: String {
-        if !timerModel.isRunning && timerModel.elapsedTime <= 0 {
-            return "Tap to start"
-        } else if timerModel.isRunning {
-            return "Tap when done · Hold to pause"
-        } else {
-            return "Tap to resume"
-        }
-    }
-
-    private var accessibilityLabel: String {
+    private var accessibilitySummary: String {
         let elapsed = timerModel.elapsedTime.formatted
-        if timerModel.isCompleted {
-            return "Done, finish time \(elapsed), \(timerModel.targetReps) reps"
-        } else if timerModel.isRunning {
-            return "For Time running, \(elapsed) elapsed, \(timerModel.targetReps) reps"
-        } else {
-            return "For Time paused, \(elapsed) elapsed, \(timerModel.targetReps) reps"
-        }
-    }
-
-    private var accessibilityHint: String {
-        if timerModel.isCompleted {
-            return "Swipe down to close"
-        } else if timerModel.isRunning {
-            return "Tap when done, hold to pause, swipe down to end early"
-        } else {
-            return "Tap to resume, swipe down to end early"
-        }
+        let time = timerModel.isCompleted ? "finish time \(elapsed)" : "\(elapsed) elapsed"
+        return "\(time), \(timerModel.targetReps) reps"
     }
 }
 
 // MARK: - Preview
 #Preview("For Time Timer") {
     NavigationStack {
-        ForTimeTimerView(
-            timerModel: ForTimeTimerModel(
-                targetReps: 50,
-                timerProvider: DisplayLinkTimerProvider(),
-                feedbackProvider: DefaultFeedback()
-            )
+        KindTimerView(
+            config: TimerConfig(kind: .forTime, duration: 0, targetReps: 50, exerciseName: "Burpees"),
+            feedbackProvider: DefaultFeedback(),
+            link: TimerScreenLink()
         )
     }
+    .environment(AppSettings())
     .previewTimerSession()
 }

@@ -63,8 +63,7 @@ struct WatchEMOMTimerView: View {
             ),
             workoutID: workoutID,
             startedOnPhone: startedOnPhone,
-            syncService: syncService,
-            metricsTap: nil,
+            syncService: syncService
         ) {
             // Total remaining
             WatchMetricRow(

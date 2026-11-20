@@ -13,6 +13,7 @@ import SwiftUI
 /// for the whole workout, and the interval time (or the rep count) in the center.
 struct EMOMTimerView: View {
     @State private var timerModel: EMOMTimerModel
+    private let config: TimerConfig
     private let link: TimerScreenLink
 
     /// When true, shows reps count prominently in center instead of interval countdown.
@@ -20,10 +21,12 @@ struct EMOMTimerView: View {
 
     init(
         timerModel: EMOMTimerModel,
+        config: TimerConfig,
         showRepsInCenter: Bool = false,
         link: TimerScreenLink = TimerScreenLink()
     ) {
         self.timerModel = timerModel
+        self.config = config
         self.showRepsInCenter = showRepsInCenter
         self.link = link
     }
@@ -36,31 +39,22 @@ struct EMOMTimerView: View {
         return timerModel.isIntervalWarning ? .orange : TimerKind.emom.color
     }
 
+    /// "3/20": the rep in progress, or the reps done once completed.
+    private var repsValue: String {
+        let reps = isCompleted ? timerModel.completedIntervals : timerModel.currentInterval
+        return "\(reps)/\(timerModel.totalIntervals)"
+    }
+
     var body: some View {
         TimerScreen(
             model: timerModel,
-            config: TimerConfig(
-                kind: .emom,
-                totalDuration: timerModel.totalDuration,
-                intervalCount: timerModel.totalIntervals,
-                exerciseName: link.exerciseName
-            ),
+            config: config,
             link: link,
-            style: TimerScreenStyle(
-                sizes: { TimerSizes.emom(for: $0) },
-                color: TimerKind.emom.color,
-                startingIconScale: 0.6,
-                countdownScale: 1.5
-            ),
-            runningTap: .pause,
-            holdTogglesPause: false,
-            hintText: hintText,
-            accessibilityLabel: isCompleted ? "Timer completed" : (timerModel.isRunning ? "Timer running" : "Timer paused"),
-            accessibilityHint: isCompleted ? "Swipe down to close" : "\(hintText), swipe down to close",
             total: TimerScreenTotal(
                 time: timerModel.totalTimeRemaining,
                 totalDuration: timerModel.totalDuration
-            )
+            ),
+            accessibilitySummary: "rep \(timerModel.currentInterval) of \(timerModel.totalIntervals)"
         ) { context in
             rings(context)
         } center: { context in
@@ -80,7 +74,6 @@ struct EMOMTimerView: View {
             lineWidth: context.sizes.primaryLineWidth,
             progress: isFull ? 1.0 : timerModel.intervalProgress,
             color: accentColor,
-            backgroundColor: Color.gray.opacity(0.2),
             rotationDegrees: -89.5
         )
 
@@ -90,129 +83,80 @@ struct EMOMTimerView: View {
                 lineWidth: outerLineWidth,
                 progress: isFull ? 1.0 : timerModel.overallProgress,
                 color: .primary,
-                backgroundColor: Color.gray.opacity(0.2),
                 rotationDegrees: -90.5
             )
         }
     }
 
-    // MARK: - Helpers
-    private func makeRepsText(accent: Color) -> AttributedString {
-        var attr = AttributedString("\(timerModel.currentInterval)/\(timerModel.totalIntervals) REPS")
-        attr.foregroundColor = .primary
-        if let repsRange = attr.range(of: " REPS") {
-            attr[repsRange].foregroundColor = accent
-        }
-        return attr
-    }
-
-    private var hintText: String {
-        if !timerModel.isRunning && timerModel.overallProgress >= 1.0 {
-            return "Tap to start"
-        } else if timerModel.isRunning {
-            return "Tap to pause"
-        } else {
-            return "Tap to resume"
-        }
-    }
-
     // MARK: - Center Content
+
     @ViewBuilder
     private func centerContent(_ context: TimerScreenContext) -> some View {
-        let sizes = context.sizes
-        VStack(spacing: 8) {
-            Text(showRepsInCenter ? "REPS" : (isCompleted ? "INTERVALS" : "INTERVAL"))
-                .font(.system(size: sizes.labelFont))
-                .foregroundStyle(.gray)
-
-            if showRepsInCenter {
-                // Reps-focused mode: show reps count prominently
-                Text("\(timerModel.currentInterval)/\(timerModel.totalIntervals)")
-                    .font(
-                        .system(
-                            size: sizes.primaryFont,
-                            weight: .semibold,
-                            design: .rounded
-                        )
-                    )
-                    .foregroundStyle(.primary)
+        let reps = "\(timerModel.currentInterval) of \(timerModel.totalIntervals)"
+        if showRepsInCenter {
+            // Reps-focused: the rep count, with the interval time as secondary info.
+            TimerCenterStack(
+                label: "REPS",
+                value: repsValue,
+                weight: .semibold,
+                accessibilityLabel: "Reps completed",
+                accessibilityValue: reps,
+                context: context
+            ) {
+                Text(timerModel.intervalTimeRemaining.formatted)
+                    .font(.system(size: context.sizes.labelFont, weight: .medium, design: .rounded))
+                    .foregroundStyle(accentColor)
                     .monospacedDigit()
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Reps completed")
-                    .accessibilityValue(
-                        "\(timerModel.currentInterval) of \(timerModel.totalIntervals)"
-                    )
-
-                // Third element for vertical balance
-                if let visibleHint = context.visibleHint {
-                    TimerHintLine(text: visibleHint, context: context, minimumScaleFactor: 0.9)
-                } else {
-                    // Small interval countdown as secondary info
-                    Text(timerModel.intervalTimeRemaining.formatted)
-                        .font(.system(size: sizes.labelFont, weight: .medium, design: .rounded))
-                        .foregroundStyle(accentColor)
-                        .monospacedDigit()
-                        .accessibilityLabel("Interval time remaining")
-                        .accessibilityValue(timerModel.intervalTimeRemaining.formatted)
-                }
-            } else {
-                // Interval-focused mode: show countdown, or completed intervals when done
-                if isCompleted {
-                    Text("\(timerModel.completedIntervals)/\(timerModel.totalIntervals)")
-                        .font(
-                            .system(
-                                size: sizes.primaryFont,
-                                weight: .semibold,
-                                design: .rounded
-                            )
-                        )
-                        .foregroundStyle(.primary)
-                        .monospacedDigit()
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Intervals completed")
-                        .accessibilityValue(
-                            "\(timerModel.completedIntervals) of \(timerModel.totalIntervals)"
-                        )
-                } else {
-                    Text(timerModel.intervalTimeRemaining.formatted)
-                        .font(
-                            .system(
-                                size: sizes.primaryFont,
-                                weight: .semibold,
-                                design: .rounded
-                            )
-                        )
-                        .foregroundStyle(accentColor)
-                        .monospacedDigit()
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Interval time")
-                        .accessibilityValue(
-                            timerModel.intervalTimeRemaining.formatted
-                        )
-                }
-
-                if let visibleHint = context.visibleHint {
-                    TimerHintLine(text: visibleHint, context: context, minimumScaleFactor: 0.9)
-                } else {
-                    RepsPill(text: makeRepsText(accent: accentColor), accentColor: accentColor, fontSize: sizes.pillFont)
-                        .accessibilityLabel("Round \(timerModel.currentInterval) of \(timerModel.totalIntervals)")
-                }
+                    .accessibilityLabel("Interval time remaining")
+                    .accessibilityValue(timerModel.intervalTimeRemaining.formatted)
+            }
+        } else if isCompleted {
+            // Interval-focused, once done: the intervals completed.
+            TimerCenterStack(
+                label: "INTERVALS",
+                value: repsValue,
+                weight: .semibold,
+                accessibilityLabel: "Intervals completed",
+                accessibilityValue: "\(timerModel.completedIntervals) of \(timerModel.totalIntervals)",
+                context: context
+            )
+        } else {
+            // Interval-focused: the interval countdown, with the rep in progress below.
+            TimerCenterStack(
+                label: "INTERVAL",
+                value: timerModel.intervalTimeRemaining.formatted,
+                weight: .semibold,
+                color: accentColor,
+                accessibilityLabel: "Interval time",
+                accessibilityValue: timerModel.intervalTimeRemaining.formatted,
+                context: context
+            ) {
+                RepsPill(text: repsPillText, accentColor: accentColor, fontSize: context.sizes.pillFont)
+                    .accessibilityLabel("Round \(reps)")
             }
         }
+    }
+
+    /// "3/20 REPS", with "REPS" in the accent color.
+    private var repsPillText: AttributedString {
+        var text = AttributedString("\(repsValue) REPS")
+        text.foregroundColor = .primary
+        if let range = text.range(of: " REPS") {
+            text[range].foregroundColor = accentColor
+        }
+        return text
     }
 }
 
 // MARK: - Preview
 #Preview("EMOM Timer") {
     NavigationStack {
-        EMOMTimerView(
-            timerModel: EMOMTimerModel(
-                totalDuration: 20 * 60,
-                intervalCount: 100,
-                timerProvider: DisplayLinkTimerProvider(),
-                feedbackProvider: DefaultFeedback()
-            )
+        KindTimerView(
+            config: TimerConfig(kind: .emom, duration: 20 * 60, targetReps: 100, exerciseName: "Burpees"),
+            feedbackProvider: DefaultFeedback(),
+            link: TimerScreenLink()
         )
     }
+    .environment(AppSettings())
     .previewTimerSession()
 }

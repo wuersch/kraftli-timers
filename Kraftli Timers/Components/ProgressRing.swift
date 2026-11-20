@@ -12,8 +12,9 @@ struct ProgressRing: View {
     let lineWidth: CGFloat
     let progress: Double
     let color: Color
-    let backgroundColor: Color
-    let rotationDegrees: Double
+    var backgroundColor: Color = Color.gray.opacity(0.2)
+    /// Where the ring starts: 12 o'clock by default.
+    var rotationDegrees: Double = -90
 
     var body: some View {
         ZStack {

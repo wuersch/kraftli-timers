@@ -227,13 +227,7 @@ extension SessionRunner {
 extension SessionStep {
     /// The step as the timer it runs: what a preset of the same settings would start.
     var timerConfig: TimerConfig {
-        TimerConfig(
-            kind: kind,
-            totalDuration: kind.hasFixedDuration ? durationInterval : nil,
-            intervalCount: kind == .emom ? targetReps ?? 1 : nil,
-            exerciseName: exerciseName,
-            targetReps: kind == .forTime ? targetReps ?? TimerPreset.defaultForTimeReps : nil
-        )
+        TimerConfig(kind: kind, duration: durationInterval, targetReps: targetReps, exerciseName: exerciseName)
     }
 }
 
