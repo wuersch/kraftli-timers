@@ -38,7 +38,10 @@ final class TimerRenderCore {
     /// The timing source of truth. nil until the workout starts (and after `reset()`).
     @ObservationIgnored fileprivate(set) var state: TimerState?
 
-    @ObservationIgnored private let timerCoordinator: TimerCoordinator
+    /// Drives re-rendering while the workout runs: a run-loop Timer or CADisplayLink.
+    @ObservationIgnored private let timerProvider: TimerProvider
+    /// The scheduled tick timer; nil while not ticking.
+    @ObservationIgnored private var tickTimer: Any?
     @ObservationIgnored fileprivate let feedbackProvider: FeedbackProvider
     /// Wall-clock source. Injectable so tests can drive time deterministically.
     @ObservationIgnored fileprivate let now: () -> Date
@@ -48,22 +51,34 @@ final class TimerRenderCore {
         feedbackProvider: FeedbackProvider,
         now: @escaping () -> Date
     ) {
-        self.timerCoordinator = TimerCoordinator(timerProvider: timerProvider)
+        self.timerProvider = timerProvider
         self.feedbackProvider = feedbackProvider
         self.now = now
     }
 
-    /// Ticks while the workout runs, and stops otherwise.
+    /// Ticks (calls `onTick` on the main actor every 0.2 s) while the workout runs, and
+    /// stops otherwise. What a tick shows comes from the state, so no start date is kept.
     fileprivate func setTicking(_ onTick: @escaping () -> Void) {
-        if isRunning, !timerCoordinator.isActive {
-            timerCoordinator.start(updateBlock: onTick)
+        if isRunning, tickTimer == nil {
+            tickTimer = timerProvider.scheduleTimer(interval: 0.2, repeats: true) { _ in
+                Task { @MainActor in onTick() }
+            }
         } else if !isRunning {
-            timerCoordinator.stop()
+            stopTicking()
         }
     }
 
     fileprivate func stopTicking() {
-        timerCoordinator.stop()
+        guard let tickTimer else { return }
+        timerProvider.invalidateTimer(tickTimer)
+        self.tickTimer = nil
+    }
+
+    // `isolated deinit` runs on the main actor, so the run-loop Timer/CADisplayLink is
+    // invalidated on the thread that scheduled it, as the Timer API requires, rather than
+    // from whatever thread drops the last reference.
+    isolated deinit {
+        stopTicking()
     }
 }
 

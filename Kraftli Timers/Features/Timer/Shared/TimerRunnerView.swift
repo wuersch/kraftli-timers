@@ -104,7 +104,7 @@ struct TimerRunnerView: View {
     }
 
     private var navigationTitle: String {
-        "\(preset.exerciseInfo?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)"
+        "\(exerciseName)\(UISeparator.dot)\(preset.kind.rawValue)"
     }
 
     /// Pre-generated ID for correlating iPhone's WorkoutLog with Watch's HealthKit UUID.
