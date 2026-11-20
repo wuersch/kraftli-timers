@@ -33,20 +33,8 @@ struct TimerRunnerView: View {
     /// Whether the drag handle is currently active (being dragged).
     @State private var isHandleActive = false
 
-    /// Whether swipe is disabled (true during countdown).
-    @State private var isSwipeDisabled = false
-
-    /// Whether to show the swipe hint.
-    @State private var showHint = true
-
-    /// Whether to show confetti (triggered by timer completion, persists across summary transition).
-    @State private var showConfetti = false
-
-    /// Task to auto-hide confetti after 3 seconds.
-    @State private var confettiHideTask: Task<Void, Never>?
-
-    /// Cleanup action registered by timer view, called before dismissing.
-    @State private var timerCleanup: (() -> Void)?
+    /// The hint, confetti, swipe and end-the-workout state shared with the timer screen.
+    @State private var chrome = TimerChrome()
 
     /// Task that auto-transitions to the summary screen after a delay.
     @State private var summaryTransitionTask: Task<Void, Never>?
@@ -68,47 +56,24 @@ struct TimerRunnerView: View {
                         .transition(.opacity)
                 }
             }
-            .swipeToDismiss(
+            .endsBySwipe(
+                named: "Close",
                 dragOffset: $dragOffset,
                 isHandleActive: $isHandleActive,
-                onDismiss: handleDismiss,
-                isDisabled: isSwipeDisabled
+                isDisabled: chrome.isSwipeDisabled,
+                onEnd: handleDismiss
             )
             .overlay {
-                // Hide handle during countdown
-                if !isSwipeDisabled {
-                    DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
-                }
+                // Always on the summary; on the timer, as long as its tap hint shows.
+                SwipeHintOverlay(isVisible: showsSummary || chrome.showHint, fontSize: 15)
             }
-            .overlay {
-                // Show hint: always for summary, use timer's showHint otherwise
-                SwipeHintOverlay(isVisible: shouldShowHint, fontSize: 15)
-            }
-            .overlay {
-                // Confetti persists across timer→summary transition
-                if showConfetti && settings.confettiEnabled {
-                    ConfettiView()
-                        .ignoresSafeArea(.all)
-                        .allowsHitTesting(false)
-                }
-            }
-            .onChange(of: showConfetti) { _, newValue in
-                if newValue {
-                    confettiHideTask?.cancel()
-                    confettiHideTask = Task {
-                        try? await Task.sleep(for: .seconds(3))
-                        guard !Task.isCancelled else { return }
-                        showConfetti = false
-                    }
-                }
-            }
+            // Here rather than on the timer: it carries on into the summary.
+            .confetti(isPresented: $chrome.showConfetti)
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 guard feedbackProvider == nil else { return }
-                feedbackProvider = settings.audioEnabled
-                    ? settings.completionSoundStyle.makeFeedbackProvider()
-                    : SilentFeedback()
+                feedbackProvider = settings.makeFeedbackProvider()
             }
             // The Watch's HealthKit summary (heart rate, calories) for this workout.
             .onChange(of: messageCoordinator.lastWorkoutSessionEnded) { _, endedMessage in
@@ -120,11 +85,6 @@ struct TimerRunnerView: View {
         }
     }
 
-    /// Whether to show the swipe hint: always on the summary, as the timer says otherwise.
-    private var shouldShowHint: Bool {
-        showsSummary || showHint
-    }
-
     /// Handles dismiss gesture - cleans up timer if running, then dismisses.
     private func handleDismiss() {
         summaryTransitionTask?.cancel()
@@ -132,7 +92,7 @@ struct TimerRunnerView: View {
         if !showsSummary {
             // Timer is showing - call cleanup first. (Once the summary shows, the timer
             // session already ended with the timer view; ADR-006.)
-            timerCleanup?()
+            chrome.endWorkout()
         }
         dismiss()
     }
@@ -176,10 +136,7 @@ struct TimerRunnerView: View {
             onWorkoutStopped: record,
             workoutID: correlationID,
             autoStart: true,
-            isSwipeDisabled: $isSwipeDisabled,
-            showHint: $showHint,
-            showConfetti: $showConfetti,
-            onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
+            chrome: chrome,
             onDismissRequested: { dismiss() }
         )
     }
