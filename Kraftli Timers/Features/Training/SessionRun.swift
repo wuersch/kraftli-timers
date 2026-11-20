@@ -256,9 +256,22 @@ nonisolated struct SessionRun: Equatable, Sendable {
         }
     }
 
-    /// The athlete ends the session between steps, where no active stretch is open.
-    mutating func endSession() {
-        guard phase == .upNext else { return }
+    /// The athlete ends the session: between steps, or during a rest, which ends with
+    /// it. A running step has to end first.
+    mutating func endSession(at now: Date) {
+        switch phase {
+        case .upNext:
+            break
+        case .resting(let until):
+            let end = min(now, until)
+            if let restingSince {
+                restTime += max(end.timeIntervalSince(restingSince), 0)
+            }
+            restingSince = nil
+            settle(at: end)
+        case .running, .finished:
+            return
+        }
         endedEarly = true
         phase = .finished
     }

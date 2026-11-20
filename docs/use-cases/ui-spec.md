@@ -272,6 +272,6 @@ case wins.
   "Start on iPhone". During a loop rest: "REST" with the countdown and "Then Push-ups". If a step runs on the iPhone only (the Watch
   didn't get its start): "NOW", the exercise and "Running on iPhone". A page
   to the left, as for a timer's controls, has one button, "End" (red ✕), with "Saves the workout
-  on this Watch": it ends the Watch's tracking only, for an iPhone out of reach. After the last
+  on this Watch": it ends the session; the iPhone shows the summary as soon as it hears of it. After the last
   step: "DONE" with the session's name until "End" is pressed. Shown only when the Watch tracks
   the session.

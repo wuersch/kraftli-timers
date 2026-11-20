@@ -151,10 +151,6 @@ struct TimerRunnerView: View {
         "\(preset.exerciseInfo?.name ?? "Timer")\(UISeparator.dot)\(preset.kind.rawValue)"
     }
 
-    private var timerProvider: any TimerProvider {
-        settings.smoothAnimationsEnabled ? DisplayLinkTimerProvider() : FoundationTimerProvider()
-    }
-
     /// Pre-generated ID for correlating iPhone's WorkoutLog with Watch's HealthKit UUID.
     /// Sent to Watch via StartTimerMessage, echoed back in WorkoutSessionEndedMessage,
     /// and used as the WorkoutLog.id. @State so SwiftUI re-creating this struct keeps
@@ -162,41 +158,15 @@ struct TimerRunnerView: View {
     /// ID would break the match.
     @State private var correlationID = UUID()
 
-    /// The timer for the preset's kind. The models built here are cheap; each timer view keeps
-    /// only the first one in its `@State`, so later re-evaluations don't replace it.
-    @ViewBuilder
+    /// The timer for the preset's kind.
     private func timerContent(feedbackProvider: any FeedbackProvider) -> some View {
-        switch preset.kind {
-        case .emom:
-            EMOMTimerView(
-                timerModel: EMOMTimerModel(
-                    totalDuration: preset.durationInterval,
-                    intervalCount: preset.targetReps ?? 1,
-                    timerProvider: timerProvider,
-                    feedbackProvider: feedbackProvider
-                ),
-                showRepsInCenter: settings.emomShowRepsInCenter,
-                link: timerScreenLink
-            )
-        case .amrap:
-            AMRAPTimerView(
-                timerModel: AMRAPTimerModel(
-                    totalDuration: preset.durationInterval,
-                    timerProvider: timerProvider,
-                    feedbackProvider: feedbackProvider
-                ),
-                link: timerScreenLink
-            )
-        case .forTime:
-            ForTimeTimerView(
-                timerModel: ForTimeTimerModel(
-                    targetReps: preset.targetReps ?? TimerPreset.defaultForTimeReps,
-                    timerProvider: timerProvider,
-                    feedbackProvider: feedbackProvider
-                ),
-                link: timerScreenLink
-            )
-        }
+        KindTimerView(
+            kind: preset.kind,
+            duration: preset.durationInterval,
+            targetReps: preset.targetReps,
+            feedbackProvider: feedbackProvider,
+            link: timerScreenLink
+        )
     }
 
     /// Connects the timer screen to this view: logging, the swipe/hint/confetti state it
