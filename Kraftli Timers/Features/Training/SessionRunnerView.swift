@@ -128,7 +128,7 @@ struct SessionRunnerView: View {
 
         case .upNext:
             VStack(spacing: 0) {
-                SessionRunHeader(run: run)
+                SessionRunTitle(text: run.name)
                 SessionUpNextView(
                     run: run,
                     onStart: { runner.startStep() },
@@ -140,19 +140,16 @@ struct SessionRunnerView: View {
 
         case .resting(let until):
             VStack(spacing: 0) {
-                SessionRunHeader(run: run)
+                SessionRunTitle(text: run.name)
                 SessionRestView(run: run, until: until, onSkip: { runner.skipRest() })
             }
             .transition(.opacity)
 
         case .running:
-            VStack(spacing: 0) {
-                SessionRunHeader(run: run)
-                if let step = run.currentItem?.step {
-                    runningStep(step, runner: runner, feedbackProvider: feedbackProvider)
-                }
+            if let step = run.currentItem?.step {
+                runningStep(step, runner: runner, feedbackProvider: feedbackProvider)
+                    .transition(.opacity)
             }
-            .transition(.opacity)
         }
     }
 
@@ -161,9 +158,8 @@ struct SessionRunnerView: View {
         _ step: SessionStep, runner: SessionRunner, feedbackProvider: any FeedbackProvider
     ) -> some View {
         VStack(spacing: 0) {
-            Text("\(step.exerciseName)\(UISeparator.dot)\(step.kind.rawValue)")
-                .font(.headline)
-                .padding(.top, 28)
+            // The top looks like a single timer's: the drag handle and the title.
+            SessionRunTitle(text: "\(step.exerciseName)\(UISeparator.dot)\(step.kind.rawValue)")
 
             KindTimerView(
                 kind: step.kind,
@@ -182,6 +178,10 @@ struct SessionRunnerView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .opacity(showHint && !isSwipeDisabled ? 1 : 0)
+                .padding(.bottom, 14)
+
+            SessionProgressStrip(run: runner.run)
+                .padding(.horizontal, 20)
                 .padding(.bottom, 12)
         }
         .swipeToDismiss(

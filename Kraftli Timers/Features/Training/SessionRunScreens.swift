@@ -8,10 +8,26 @@
 
 import SwiftUI
 
-// MARK: - Header
+// MARK: - Title and progress
 
-/// The session's name, the position in it, and its shape with the progress so far.
-struct SessionRunHeader: View {
+/// The line at the top of a runner screen: the session's name between timers, the
+/// exercise while a timer runs. It sits where a single timer has its title, and leaves
+/// the top of the screen to the status bar and the drag handle.
+struct SessionRunTitle: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.headline)
+            .lineLimit(1)
+            .padding(.horizontal, 20)
+            .padding(.top, 28)
+    }
+}
+
+/// Where the session is: its shape as a bar, with the position in words below. At the
+/// bottom of every runner screen but the summary.
+struct SessionProgressStrip: View {
     let run: SessionRun
 
     /// "Timer 2 of 8", in a loop followed by "· Round 1 of 3".
@@ -24,22 +40,15 @@ struct SessionRunHeader: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(run.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                Spacer(minLength: 12)
-                Text(positionText)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            SessionShapeBar(segments: run.segments, thickness: 10, position: run.position)
+        VStack(spacing: 8) {
+            SessionShapeBar(segments: run.segments, thickness: 8, position: run.position)
+            Text(positionText)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(positionText)
     }
 }
 
@@ -54,6 +63,14 @@ extension SessionRun {
                 SessionEstimate.Segment(kind: nil, seconds: TimeInterval(seconds), loopID: item.loopID)
             }
         }
+    }
+}
+
+extension SessionStep {
+    /// "AMRAP · 4 min", "EMOM · 5 min · 50 reps", "For Time · 30 reps"
+    var kindAndSettingsText: String {
+        [kind.rawValue, primaryQuantity, kind == .emom ? secondaryQuantity : nil]
+            .compactMap { $0 }.joined(separator: UISeparator.dot)
     }
 }
 
@@ -88,7 +105,8 @@ private struct DoneCard: View {
                     .font(.caption.weight(.bold))
                     .tracking(0.6)
                     .foregroundStyle(.secondary)
-                Text("\(result.step.exerciseName)\(UISeparator.dot)\(result.step.kind.rawValue)")
+                // The name alone: with the kind beside it, a long name is cut off.
+                Text(result.step.exerciseName)
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
@@ -110,6 +128,7 @@ private struct DoneCard: View {
 
 /// Between two timers, and before the first: what was done, what comes next, and the
 /// buttons to start it, skip it or end the session. The session is paused here.
+/// Kept to few elements on purpose: one card, two lines, the progress, the buttons.
 struct SessionUpNextView: View {
     let run: SessionRun
     let onStart: () -> Void
@@ -123,31 +142,23 @@ struct SessionUpNextView: View {
             }
 
             if let step = run.currentStep {
-                VStack(spacing: 10) {
-                    Text("UP NEXT")
-                        .font(.footnote.weight(.semibold))
-                        .tracking(0.8)
-                        .foregroundStyle(.secondary)
-                    Pill(text: step.kind.rawValue, color: step.kind.color, fontSize: 13)
+                // Two lines only: what to do, and in which kind of timer.
+                VStack(spacing: 8) {
                     Text(step.exerciseName)
                         .font(.system(size: 40, weight: .bold))
                         .multilineTextAlignment(.center)
                         .minimumScaleFactor(0.6)
                         .lineLimit(2)
-                    Text([step.primaryQuantity, step.kind == .emom ? step.secondaryQuantity : nil]
-                        .compactMap { $0 }.joined(separator: UISeparator.dot))
-                        .font(.title2)
+                    Text(step.kindAndSettingsText)
+                        .font(.title3)
                         .foregroundStyle(.secondary)
-                    if let loopRound = run.currentLoopRound {
-                        Text("Round \(loopRound.round) of \(loopRound.of)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 6)
-                    }
                 }
                 .frame(maxHeight: .infinity)
                 .accessibilityElement(children: .combine)
+                .accessibilityLabel("Up next: \(step.exerciseName), \(step.kindAndSettingsText)")
             }
+
+            SessionProgressStrip(run: run)
 
             VStack(spacing: 14) {
                 Button(action: onStart) {
@@ -175,10 +186,6 @@ struct SessionUpNextView: View {
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
-
-                Text("Session paused\(UISeparator.dot)take your time")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 20)
@@ -239,20 +246,19 @@ struct SessionRestView: View {
 
                 if let step = run.currentStep {
                     VStack(spacing: 4) {
-                        Text(thenText)
-                            .font(.footnote.weight(.semibold))
-                            .tracking(0.8)
-                            .foregroundStyle(.secondary)
-                        Text(step.exerciseName)
+                        Text("Then \(step.exerciseName)")
                             .font(.title2.weight(.semibold))
                             .lineLimit(1)
-                        Text("\(step.kind.rawValue)\(UISeparator.dot)\(step.primaryQuantity)")
+                            .minimumScaleFactor(0.7)
+                        Text(step.kindAndSettingsText)
                             .foregroundStyle(.secondary)
                     }
                     .accessibilityElement(children: .combine)
                 }
             }
             .frame(maxHeight: .infinity)
+
+            SessionProgressStrip(run: run)
 
             VStack(spacing: 14) {
                 Button(action: onSkip) {
@@ -273,12 +279,6 @@ struct SessionRestView: View {
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 12)
-    }
-
-    /// "THEN · ROUND 2 OF 3"
-    private var thenText: String {
-        guard let loopRound = run.currentLoopRound else { return "THEN" }
-        return "THEN\(UISeparator.dot)ROUND \(loopRound.round) OF \(loopRound.of)"
     }
 }
 
