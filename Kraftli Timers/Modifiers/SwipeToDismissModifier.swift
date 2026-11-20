@@ -79,3 +79,28 @@ extension View {
         ))
     }
 }
+
+extension View {
+    /// Lets the athlete end what this screen runs by swiping down, with the drag handle
+    /// that shows it, and offers the same to VoiceOver as a named action.
+    func endsBySwipe(
+        named name: String,
+        dragOffset: Binding<CGFloat>,
+        isHandleActive: Binding<Bool>,
+        isDisabled: Bool = false,
+        onEnd: @escaping () -> Void
+    ) -> some View {
+        swipeToDismiss(
+            dragOffset: dragOffset, isHandleActive: isHandleActive, onDismiss: onEnd, isDisabled: isDisabled
+        )
+        .overlay {
+            if !isDisabled {
+                DragHandleView(isActive: isHandleActive.wrappedValue, dragOffset: dragOffset.wrappedValue)
+            }
+        }
+        // A swipe is invisible to VoiceOver; a named action puts it in the actions rotor.
+        .accessibilityAction(named: Text(name)) {
+            if !isDisabled { onEnd() }
+        }
+    }
+}

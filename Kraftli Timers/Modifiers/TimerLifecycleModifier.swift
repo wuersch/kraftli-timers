@@ -53,8 +53,8 @@ extension WorkoutCompletionData {
 struct TimerLifecycleModifier<Timer: TimerModel>: ViewModifier {
     /// The timer model being observed
     let timer: Timer
-    /// The session state for hint/confetti management
-    let session: TimerSessionState
+    /// The hint/confetti state shared with the presenting view
+    let chrome: TimerChrome
     /// Called when the timer should be paused (background, etc.)
     let onPause: () -> Void
     /// Called when the view disappears
@@ -74,7 +74,7 @@ struct TimerLifecycleModifier<Timer: TimerModel>: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onDisappear {
-                session.cleanup()
+                chrome.cleanup()
                 onDisappear()
                 UIApplication.shared.isIdleTimerDisabled = false
             }
@@ -95,7 +95,7 @@ struct TimerLifecycleModifier<Timer: TimerModel>: ViewModifier {
             }
             .onChange(of: timer.isCompleted) { _, isCompleted in
                 guard isCompleted else { return }
-                session.onTimerCompleted()
+                chrome.onTimerCompleted()
                 onWorkoutCompleted()
             }
     }
@@ -106,7 +106,7 @@ extension View {
     ///
     /// - Parameters:
     ///   - timer: The workout timer to observe
-    ///   - session: The session state for hint/confetti
+    ///   - chrome: The hint/confetti state shared with the presenting view
     ///   - onPause: Called when timer should pause (e.g., app backgrounded)
     ///   - onDisappear: Called when view disappears
     ///   - onWorkoutCompleted: Called when the workout completes
@@ -114,7 +114,7 @@ extension View {
     ///   - onForeground: Called on scenePhase `.active`
     func timerLifecycle<T: TimerModel>(
         timer: T,
-        session: TimerSessionState,
+        chrome: TimerChrome,
         onPause: @escaping () -> Void,
         onDisappear: @escaping () -> Void,
         onWorkoutCompleted: @escaping () -> Void = { },
@@ -123,7 +123,7 @@ extension View {
     ) -> some View {
         modifier(TimerLifecycleModifier(
             timer: timer,
-            session: session,
+            chrome: chrome,
             onPause: onPause,
             onDisappear: onDisappear,
             onWorkoutCompleted: onWorkoutCompleted,

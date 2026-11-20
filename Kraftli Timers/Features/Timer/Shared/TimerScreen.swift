@@ -44,20 +44,13 @@ struct TimerScreenLink {
     /// Names the run when the workout is a step of a session (ADR-0012).
     var session: SessionContext? = nil
 
-    /// Parent controls whether swipe is disabled (true during countdown).
-    var isSwipeDisabled: Binding<Bool> = .constant(false)
+    /// The state the presenting view shares with the screen. nil for a standalone screen
+    /// (previews), which then keeps its own.
+    var chrome: TimerChrome? = nil
 
-    /// Parent observes hint visibility for overlay.
-    var showHint: Binding<Bool> = .constant(true)
-
-    /// Parent manages confetti display (persists across summary transition).
-    var showConfetti: Binding<Bool> = .constant(false)
     /// Shown under the total time; a session puts its progress there. `AnyView` erases
     /// the view's type, so this struct needn't be generic over what a parent passes.
     var footer: AnyView? = nil
-
-    /// Callback to register cleanup action for parent to call on dismiss.
-    var onCleanupForDismiss: ((@escaping () -> Void) -> Void)? = nil
 
     /// Called when Watch sends a stop command - parent should dismiss.
     var onDismissRequested: (() -> Void)? = nil
@@ -244,7 +237,8 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
     @Environment(TimerSessionController.self) private var timerSession
     @Environment(PhoneWorkoutStarter.self) private var workoutStarter
 
-    @State private var session = TimerSessionState()
+    /// The chrome of a standalone screen; see `chrome`.
+    @State private var ownChrome = TimerChrome()
     /// The 3-2-1-GO countdown. Each count is signalled through the model's feedback.
     @State private var countdown = CountdownCoordinator()
 
@@ -276,6 +270,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
     // MARK: - Computed Properties
     private var isCompleted: Bool { model.isCompleted }
     private var workoutID: UUID { link.workoutID }
+    private var chrome: TimerChrome { link.chrome ?? ownChrome }
     private var runningTap: TimerRunningTap { config.kind.runningTap }
     private var style: TimerScreenStyle { config.kind.screenStyle }
 
@@ -334,7 +329,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
     /// The text for the hint line: a sync notice takes precedence over the tap hint.
     private var visibleHint: String? {
         guard !isCompleted else { return nil }
-        return syncNotice ?? (session.showHint ? hintText : nil)
+        return syncNotice ?? (chrome.showHint ? hintText : nil)
     }
 
     private func context(sizes: TimerSizes) -> TimerScreenContext {
@@ -453,8 +448,8 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
         countdown.startCountdown(
             scheduledStartTime: startDate,
             onCount: { [model] in model.countdownDidCount() }
-        ) { [session, model] in
-            session.onTimerStarted { model.isRunning }
+        ) { [chrome, model] in
+            chrome.onTimerStarted { model.isRunning }
         }
     }
 
@@ -472,11 +467,11 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
 
     /// Follows pause/resume from either device for the hint.
     private func pausedStateChanged(_ isPaused: Bool?) {
-        guard let isPaused, session.hasEverStarted else { return }
+        guard let isPaused, chrome.hasEverStarted else { return }
         if isPaused {
-            session.onTimerPaused()
+            chrome.onTimerPaused()
         } else {
-            session.onTimerStarted { [model] in model.isRunning }
+            chrome.onTimerStarted { [model] in model.isRunning }
         }
     }
 
@@ -540,7 +535,7 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
         }
         .timerLifecycle(
             timer: model,
-            session: session,
+            chrome: chrome,
             onPause: { timerSession.pause() },
             onDisappear: { cleanupForDismiss() },
             onWorkoutCompleted: {
@@ -556,8 +551,8 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
         .onAppear {
             TimerHaptics.light.prepare()
             TimerHaptics.medium.prepare()
-            // Register cleanup action with parent
-            link.onCleanupForDismiss?(cleanupForDismiss)
+            // Lets the presenting view end the workout (swipe-down).
+            chrome.endWorkout = cleanupForDismiss
             // Auto-start the countdown + timer when launched from the preset play button.
             // Guarded so a repeated onAppear can't cancel/restart an in-progress countdown.
             if link.autoStart && !didAutoStart {
@@ -582,19 +577,9 @@ struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
         .onChange(of: workoutStarter.lastFallbackDate) {
             showSyncNotice("Watch not available — running on iPhone")
         }
-        // Sync countdown state to parent for swipe disable
-        .onChange(of: countdown.isCountingDown) { _, newValue in
-            link.isSwipeDisabled.wrappedValue = newValue
-        }
-        // Sync hint visibility to parent for overlay
-        .onChange(of: session.showHint) { _, newValue in
-            link.showHint.wrappedValue = newValue
-        }
-        // Sync confetti trigger to parent (parent handles display and auto-hide)
-        .onChange(of: session.showConfetti) { _, newValue in
-            if newValue {
-                link.showConfetti.wrappedValue = true
-            }
+        // No swipe-down during the countdown.
+        .onChange(of: countdown.isCountingDown) { _, isCountingDown in
+            chrome.isSwipeDisabled = isCountingDown
         }
     }
 

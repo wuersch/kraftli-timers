@@ -54,10 +54,8 @@ struct SessionRunnerView: View {
     // The running step's swipe-down, as in `TimerRunnerView`.
     @State private var dragOffset: CGFloat = 0
     @State private var isHandleActive = false
-    @State private var isSwipeDisabled = false
-    @State private var showHint = true
-    /// Tears down the running step's timer; registered by its screen.
-    @State private var timerCleanup: (() -> Void)?
+    /// The state shared with the running step's timer screen.
+    @State private var chrome = TimerChrome()
 
     var body: some View {
         // A NavigationStack only for its bar: the title sits where a single timer has
@@ -74,20 +72,12 @@ struct SessionRunnerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(runner?.run.phase == .finished ? .hidden : .visible, for: .navigationBar)
         }
-        .overlay {
-            if showConfetti && settings.confettiEnabled {
-                ConfettiView()
-                    .ignoresSafeArea(.all)
-                    .allowsHitTesting(false)
-            }
-        }
+        .confetti(isPresented: $showConfetti)
         .animation(.easeInOut(duration: 0.3), value: runner?.run.phase)
         .onAppear(perform: setUp)
         .onChange(of: runner?.stepWorkoutID) {
-            // Each step gets a fresh timer screen, which reports only changes of these
-            // two: start every step from their initial values.
-            isSwipeDisabled = false
-            showHint = true
+            // Each step gets a fresh timer screen: start it from a fresh chrome.
+            chrome.reset()
         }
         .onChange(of: timerSession.renderedState?.owner) { _, owner in
             // The first step's owner holds the session's Health workout from then on.
@@ -178,12 +168,14 @@ struct SessionRunnerView: View {
                 // model, also when a loop runs the same step again.
                 .id(runner.stepWorkoutID)
 
-            SessionSwipeHint(text: "Swipe down to end this timer", isVisible: showHint && !isSwipeDisabled)
+            SessionSwipeHint(
+                text: "Swipe down to end this timer", isVisible: chrome.showHint && !chrome.isSwipeDisabled
+            )
                 .padding(.bottom, 12)
         }
         .endsBySwipe(
             named: "End timer", dragOffset: $dragOffset, isHandleActive: $isHandleActive,
-            isDisabled: isSwipeDisabled
+            isDisabled: chrome.isSwipeDisabled
         ) {
             endStep(runner)
         }
@@ -198,11 +190,9 @@ struct SessionRunnerView: View {
             autoStart: true,
             startsOnWatch: runner.startsStepsOnWatch,
             session: runner.context,
-            isSwipeDisabled: $isSwipeDisabled,
-            showHint: $showHint,
+            chrome: chrome,
             // The session's progress, under the timer's total time.
             footer: AnyView(SessionProgressBar(run: runner.run)),
-            onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
             onDismissRequested: { runner.stepClosed() }
         )
     }
@@ -211,9 +201,7 @@ struct SessionRunnerView: View {
 
     private func setUp() {
         guard runner == nil else { return }
-        let feedback: any FeedbackProvider = settings.audioEnabled
-            ? settings.completionSoundStyle.makeFeedbackProvider()
-            : SilentFeedback()
+        let feedback = settings.makeFeedbackProvider()
         feedbackProvider = feedback
 
         let timerSession = timerSession
@@ -233,8 +221,7 @@ struct SessionRunnerView: View {
     /// Swipe-down on a running step: ends that step, not the session.
     private func endStep(_ runner: SessionRunner) {
         // Stops the timer; if the step ran long enough, this reports it as stopped early.
-        timerCleanup?()
-        timerCleanup = nil
+        chrome.endWorkout()
         // Otherwise it was too short to record, and the session just moves on.
         runner.stepClosed()
         resetSwipe()
@@ -269,35 +256,6 @@ struct SessionRunnerView: View {
 
     private func celebrate() {
         showConfetti = true
-        Task {
-            try? await Task.sleep(for: .seconds(3))
-            showConfetti = false
-        }
-    }
-}
-
-private extension View {
-    /// Lets the athlete end what this screen runs by swiping down, with the drag handle
-    /// that shows it, and offers the same to VoiceOver as a named action.
-    func endsBySwipe(
-        named name: String,
-        dragOffset: Binding<CGFloat>,
-        isHandleActive: Binding<Bool>,
-        isDisabled: Bool = false,
-        onEnd: @escaping () -> Void
-    ) -> some View {
-        swipeToDismiss(
-            dragOffset: dragOffset, isHandleActive: isHandleActive, onDismiss: onEnd, isDisabled: isDisabled
-        )
-        .overlay {
-            if !isDisabled {
-                DragHandleView(isActive: isHandleActive.wrappedValue, dragOffset: dragOffset.wrappedValue)
-            }
-        }
-        // A swipe is invisible to VoiceOver; a named action puts it in the actions rotor.
-        .accessibilityAction(named: Text(name)) {
-            if !isDisabled { onEnd() }
-        }
     }
 }
 

@@ -104,6 +104,11 @@ final class AppSettings {
         return CompletionSoundStyle(rawValue: raw) ?? defaultValue
     }
 
+    /// Plays a workout's sounds in the chosen style, or none with Sound off (UC-0010).
+    func makeFeedbackProvider() -> any FeedbackProvider {
+        audioEnabled ? completionSoundStyle.makeFeedbackProvider() : SilentFeedback()
+    }
+
     // MARK: - Types
 
     /// Available completion sound styles.
