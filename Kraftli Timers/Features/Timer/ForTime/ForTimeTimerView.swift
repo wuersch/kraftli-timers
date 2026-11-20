@@ -19,10 +19,7 @@ struct ForTimeTimerView: View {
     private let accentColor = TimerKind.forTime.color
 
     init(
-        timerModel: ForTimeTimerModel = ForTimeTimerModel(
-            timerProvider: DisplayLinkTimerProvider(),
-            feedbackProvider: DefaultFeedback()
-        ),
+        timerModel: ForTimeTimerModel,
         link: TimerScreenLink = TimerScreenLink()
     ) {
         self.timerModel = timerModel

@@ -19,12 +19,7 @@ struct EMOMTimerView: View {
     private let showRepsInCenter: Bool
 
     init(
-        timerModel: EMOMTimerModel = EMOMTimerModel(
-            totalReps: 5,
-            totalMinutes: 1,
-            timerProvider: DisplayLinkTimerProvider(),
-            feedbackProvider: DefaultFeedback()
-        ),
+        timerModel: EMOMTimerModel,
         showRepsInCenter: Bool = false,
         link: TimerScreenLink = TimerScreenLink()
     ) {
@@ -212,8 +207,8 @@ struct EMOMTimerView: View {
     NavigationStack {
         EMOMTimerView(
             timerModel: EMOMTimerModel(
-                totalReps: 100,
-                totalMinutes: 20,
+                totalDuration: 20 * 60,
+                intervalCount: 100,
                 timerProvider: DisplayLinkTimerProvider(),
                 feedbackProvider: DefaultFeedback()
             )

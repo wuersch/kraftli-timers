@@ -15,19 +15,20 @@ import Foundation
 /// `TimerStateRendering`.
 @Observable
 final class ForTimeTimerModel: TimerStateRendering {
-    // MARK: - Published Properties (MainActor isolated)
-    /// Active time so far, pauses excluded; frozen while paused and once finished.
-    @MainActor private(set) var elapsedTime: TimeInterval = 0
-
-    // MARK: - Private Properties
     let targetReps: Int
     let core: TimerRenderCore
-
-    // MARK: - Computed Properties
 
     /// How long the comet takes for one lap: brisk enough to feel urgent, and a divisor of
     /// 60 s, so the head still passes 12 o'clock on every full minute.
     static let lapDuration: TimeInterval = 10
+
+    // MARK: - Displayed Values (derived from the core)
+
+    /// Active time so far, pauses excluded; frozen while paused and once finished.
+    @MainActor
+    var elapsedTime: TimeInterval {
+        core.elapsed
+    }
 
     /// Position within the current lap (0..<1), for the comet that circles the ring.
     @MainActor
@@ -68,7 +69,7 @@ final class ForTimeTimerModel: TimerStateRendering {
 
     // MARK: - Initialization
     init(
-        targetReps: Int = 100,
+        targetReps: Int,
         timerProvider: TimerProvider,
         feedbackProvider: FeedbackProvider,
         now: @escaping () -> Date = { Date() }
@@ -76,17 +77,5 @@ final class ForTimeTimerModel: TimerStateRendering {
         precondition(targetReps > 0, "targetReps must be > 0")
         self.targetReps = targetReps
         self.core = TimerRenderCore(timerProvider: timerProvider, feedbackProvider: feedbackProvider, now: now)
-    }
-
-    // MARK: - TimerStateRendering
-
-    @MainActor
-    func render(elapsed: TimeInterval) {
-        elapsedTime = elapsed
-    }
-
-    @MainActor
-    func resetDisplay() {
-        elapsedTime = 0
     }
 }

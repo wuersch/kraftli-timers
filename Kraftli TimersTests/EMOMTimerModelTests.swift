@@ -147,10 +147,10 @@ struct EMOMTimerModelTests {
         model.reset()
     }
 
-    @Test @MainActor func convenienceInit_calculatesIntervalFromReps() {
+    @Test @MainActor func init_calculatesIntervalFromReps() {
         let model = EMOMTimerModel(
-            totalReps: 10,
-            totalMinutes: 1,
+            totalDuration: 60,
+            intervalCount: 10,
             timerProvider: MockTimerProvider(),
             feedbackProvider: SilentFeedback()
         )
@@ -165,8 +165,8 @@ struct EMOMTimerModelTests {
         // truncated 113.9999… to 113 for certain rep counts (e.g. 114 over 20 min).
         for reps in [112, 113, 114, 137, 199] {
             let model = EMOMTimerModel(
-                totalReps: reps,
-                totalMinutes: 20,
+                totalDuration: 20 * 60,
+                intervalCount: reps,
                 timerProvider: MockTimerProvider(),
                 feedbackProvider: SilentFeedback()
             )

@@ -19,10 +19,7 @@ struct AMRAPTimerView: View {
     private let accentColor = TimerKind.amrap.color
 
     init(
-        timerModel: AMRAPTimerModel = AMRAPTimerModel(
-            timerProvider: DisplayLinkTimerProvider(),
-            feedbackProvider: DefaultFeedback()
-        ),
+        timerModel: AMRAPTimerModel,
         link: TimerScreenLink = TimerScreenLink()
     ) {
         self.timerModel = timerModel
