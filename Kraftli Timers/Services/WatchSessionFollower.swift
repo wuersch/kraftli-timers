@@ -27,6 +27,15 @@ final class WatchSessionFollower {
     /// The latest status of the held run, for showing what comes next.
     private(set) var status: SessionStatus?
 
+    /// A run that just finished with its Health workout saved here, kept until the
+    /// athlete has seen it ("DONE") or another workout begins.
+    private(set) var finishedRun: SessionContext?
+
+    /// True while the Watch has something of a session to show outside a step's timer.
+    var showsSession: Bool {
+        held != nil || finishedRun != nil
+    }
+
     @ObservationIgnored private let pauseHealthSession: () -> Void
     @ObservationIgnored private let resumeHealthSession: () -> Void
     @ObservationIgnored private let saveHealthSession: (SessionContext) -> Void
@@ -61,6 +70,7 @@ final class WatchSessionFollower {
         Logger.workoutSession.info("Holding the Health session for session run \(context.runID)")
         held = context
         status = nil
+        finishedRun = nil
     }
 
     /// The Health session is gone or belongs to something else now (a workout started
@@ -68,6 +78,23 @@ final class WatchSessionFollower {
     func release() {
         held = nil
         status = nil
+        finishedRun = nil
+    }
+
+    /// The athlete ends the run's workout from the Watch, between steps: the way out
+    /// when the iPhone, which would normally say so, is out of reach. The Health workout
+    /// is saved as far as it got. The iPhone isn't told (statuses are one-way); a step it
+    /// starts afterwards begins a workout of its own.
+    func endOnWatch() {
+        guard let held else { return }
+        Logger.workoutSession.info("Session run \(held.runID) ended on the Watch; saving its Health session")
+        saveHealthSession(held)
+        release()
+    }
+
+    /// The athlete has seen that the run is done.
+    func dismissFinished() {
+        finishedRun = nil
     }
 
     /// The iPhone reports how far the run has come.
@@ -88,6 +115,9 @@ final class WatchSessionFollower {
                 discardHealthSession()
             }
             release()
+            if save {
+                finishedRun = held
+            }
         }
     }
 }

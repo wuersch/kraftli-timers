@@ -264,6 +264,71 @@ struct WatchSessionTests {
         #expect(setup.health.saved == [setup.session])
     }
 
+    // MARK: - What the Watch shows
+
+    @Test func heldRun_isShown_withTheLatestStatus() async {
+        let setup = Setup()
+        #expect(!setup.follower.showsSession)
+
+        await setup.startFirstStep()
+        setup.follower.receive(setup.status(1, .upNext))
+
+        #expect(setup.follower.showsSession)
+        #expect(setup.follower.status?.phase == .upNext)
+    }
+
+    @Test func finishedRunThatWasSaved_staysShownAsDone_untilDismissed() async {
+        let setup = Setup()
+        await setup.startFirstStep()
+
+        setup.follower.receive(setup.status(1, .finished(save: true)))
+
+        #expect(setup.follower.held == nil)
+        #expect(setup.follower.finishedRun == setup.session)
+        #expect(setup.follower.showsSession)
+
+        setup.follower.dismissFinished()
+        #expect(!setup.follower.showsSession)
+    }
+
+    @Test func finishedRunThatWasDiscarded_isNotShownAsDone() async {
+        let setup = Setup()
+        await setup.startFirstStep()
+
+        setup.follower.receive(setup.status(1, .finished(save: false)))
+
+        #expect(setup.follower.finishedRun == nil)
+        #expect(!setup.follower.showsSession)
+    }
+
+    @Test func workoutStartedOnTheWatch_clearsAFinishedRun() async {
+        let setup = Setup()
+        await setup.startFirstStep()
+        setup.follower.receive(setup.status(1, .finished(save: true)))
+        setup.starter.workoutEnded()
+
+        setup.starter.startOnWatch(workoutID: UUID(), config: setup.config)
+
+        #expect(!setup.follower.showsSession)
+    }
+
+    @Test func endingOnTheWatch_savesTheHealthSession_andLetsGoOfTheRun() async {
+        let setup = Setup()
+        await setup.startFirstStep()
+        setup.follower.receive(setup.status(1, .upNext))
+
+        setup.follower.endOnWatch()
+
+        #expect(setup.health.saved == [setup.session])
+        #expect(setup.follower.held == nil)
+        #expect(!setup.follower.showsSession)
+
+        // The iPhone doesn't know and reports on: nothing more happens here.
+        setup.follower.receive(setup.status(2, .finished(save: true)))
+        #expect(setup.health.saved == [setup.session])
+        #expect(setup.health.discards == 0)
+    }
+
     // MARK: - Wire format
 
     @Test func startRequestFromAnAppWithoutSessions_stillDecodes() throws {
@@ -287,6 +352,8 @@ struct WatchSessionTests {
         status.timerCount = 8
         status.loopRound = 2
         status.loopRounds = 3
+        status.shape = [.init(kind: .amrap, seconds: 240), .init(kind: nil, seconds: 60)]
+        status.position = 1
 
         let payload = try TimerSyncPayload(data: TimerSyncPayload.sessionStatus(status).encoded())
 

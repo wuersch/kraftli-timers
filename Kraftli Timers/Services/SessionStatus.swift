@@ -32,6 +32,13 @@ nonisolated struct SessionStatus: Codable, Equatable, Sendable {
         case finished(save: Bool)
     }
 
+    /// One stretch of the run in running order, for drawing the session's shape: a timer,
+    /// or a loop's rest (`kind == nil`).
+    struct Segment: Codable, Equatable, Sendable {
+        let kind: TimerKind?
+        let seconds: TimeInterval
+    }
+
     let runID: UUID
     let name: String
     /// Counts up with every status of a run. The same status arrives over several
@@ -47,6 +54,9 @@ nonisolated struct SessionStatus: Codable, Equatable, Sendable {
     /// Its round in a loop, and the loop's rounds; `nil` outside a loop.
     var loopRound: Int?
     var loopRounds: Int?
+    /// The run's shape, and the index of the segment the run is at.
+    var shape: [Segment] = []
+    var position = 0
 
     /// True while the session's Health workout should be running rather than paused.
     var isActive: Bool {

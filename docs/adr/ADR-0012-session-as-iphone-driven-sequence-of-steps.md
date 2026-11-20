@@ -65,7 +65,8 @@ would put its tested behaviour at risk for no requirement. Three rules make it o
   session's owner in fact without that being enforced by the sync layer.
 - Bad, because the Watch's Health session depends on a message to end. If the iPhone app dies
   mid-session, the Watch keeps a paused session until the next workout starts and saves it then,
-  or until the Watch app is relaunched and recovers it.
+  or until the Watch app is relaunched and recovers it. Between steps the Watch therefore offers
+  to end its tracking itself, which saves the workout as far as it got without the iPhone.
 - Bad, because every step repeats the start request. On a poor connection a later step can fall
   back to the iPhone while the Watch holds the Health workout; that step is then timed on the
   iPhone, and the Watch tracks it only if it still receives the session status.

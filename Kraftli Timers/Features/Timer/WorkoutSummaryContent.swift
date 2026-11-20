@@ -137,9 +137,7 @@ struct WorkoutSummaryContent: View {
     @ViewBuilder
     private var footer: some View {
         if data.hasHealthData {
-            Button {
-                openHealthApp()
-            } label: {
+            Button(action: HealthApp.open) {
                 HStack(spacing: 6) {
                     Image(systemName: "heart.fill")
                         .font(.subheadline)
@@ -160,9 +158,14 @@ struct WorkoutSummaryContent: View {
         }
     }
 
-    // MARK: - Actions
+}
 
-    private func openHealthApp() {
+// MARK: - Health App
+
+/// Opens Apple's Health app, where a recorded workout can be looked at in full.
+enum HealthApp {
+    @MainActor
+    static func open() {
         if let url = URL(string: "x-apple-health://") {
             UIApplication.shared.open(url)
         }

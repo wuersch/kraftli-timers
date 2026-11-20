@@ -1,6 +1,6 @@
 # UC-0015: Run a training session
 
-- **Status:** approved
+- **Status:** implemented
 - **Primary Actor:** Athlete
 - **Goal:** As an athlete, I want to work through a whole session, from warm-up to the last set,
   as one workout with my Watch measuring it, so I don't have to start each timer separately and my
@@ -106,6 +106,9 @@ The athlete starts a session on the iPhone.
   (pause, resume, count, done, end) as in [UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md).
   Starting the next step, skipping a step and ending the session between steps happen on the
   iPhone only; between steps, the Watch only shows what comes next.
+- The Watch can always be freed from a session it tracks: between steps, the athlete can end the
+  tracking on the Watch, which saves the Health workout as far as it got. This is for an iPhone
+  that is out of reach; the session on the iPhone is not ended by it.
 - Single preset workouts on the Watch alone ([UC-0004](UC-0004-run-a-workout-on-apple-watch.md))
   are unaffected.
 

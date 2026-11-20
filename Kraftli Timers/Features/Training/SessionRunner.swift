@@ -213,6 +213,8 @@ extension SessionRunner {
         case .finished: .finished(save: run.recordedCount > 0)
         }
         var status = SessionStatus(runID: runID, name: run.name, sequence: statusSequence, phase: phase)
+        status.shape = run.segments.map { SessionStatus.Segment(kind: $0.kind, seconds: $0.seconds) }
+        status.position = run.position
         if let step = run.currentStep {
             status.step = step.timerConfig
             status.timerNumber = run.timerNumber

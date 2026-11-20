@@ -38,11 +38,15 @@ struct SessionRunnerView: View {
     @Environment(\.workoutRecorder) private var workoutRecorder
     @Environment(AppSettings.self) private var settings
     @Environment(TimerSessionController.self) private var timerSession
+    @Environment(PhoneMessageCoordinator.self) private var messageCoordinator
 
     /// Created in `onAppear`, because it needs the recorder from the environment.
     @State private var runner: SessionRunner?
     /// Plays the sounds of every step and, once, the session's completion sound.
     @State private var feedbackProvider: (any FeedbackProvider)?
+
+    /// The Watch's figures for the session's Health workout, for the summary.
+    @State private var watchData: WorkoutSessionEndedMessage?
 
     @State private var isConfirmingEnd = false
     @State private var showConfetti = false
@@ -84,6 +88,12 @@ struct SessionRunnerView: View {
                 runner.stepOwned(by: owner)
             }
         }
+        // The Watch reports the session's Health workout under the run's ID.
+        .onChange(of: messageCoordinator.lastWorkoutSessionEnded) { _, message in
+            if let message, message.correlationID == runner?.runID {
+                watchData = message
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             // A rest's timer doesn't fire while the app is suspended.
             if phase == .active { runner?.checkRest() }
@@ -106,7 +116,13 @@ struct SessionRunnerView: View {
 
         switch run.phase {
         case .finished:
-            SessionSummaryView(run: run, onDone: { dismiss() })
+            SessionSummaryView(
+                run: run,
+                // Nothing recorded means nothing saved on the Watch either.
+                expectsWatchData: runner.healthOwner == .watch && run.recordedCount > 0,
+                watchData: watchData,
+                onDone: { dismiss() }
+            )
                 .transition(.opacity)
 
         case .upNext:
@@ -291,5 +307,6 @@ struct SessionRunnerView: View {
         .loop(loop)
     ]))
     .environment(AppSettings())
+    .environment(PhoneMessageCoordinator())
     .previewTimerSession()
 }

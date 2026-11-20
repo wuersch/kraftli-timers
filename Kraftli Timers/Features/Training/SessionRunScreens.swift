@@ -284,10 +284,21 @@ struct SessionRestView: View {
 
 // MARK: - Summary
 
-/// The session's summary: total time and what every timer came to.
+/// The session's summary: total time, the Watch's heart rate and calories, and what
+/// every timer came to.
 struct SessionSummaryView: View {
     let run: SessionRun
+    /// True when the Watch recorded the session's Health workout: its figures are then
+    /// expected, and shown as "--" until they arrive.
+    let expectsWatchData: Bool
+    /// The Watch's figures for the session's Health workout, once they arrived.
+    let watchData: WorkoutSessionEndedMessage?
     let onDone: () -> Void
+
+    private var hasHealthData: Bool {
+        guard let watchData else { return false }
+        return watchData.averageHeartRate != nil || watchData.maxHeartRate != nil || watchData.activeCalories != nil
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -301,17 +312,7 @@ struct SessionSummaryView: View {
 
             ScrollView {
                 VStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Total Time")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(run.totalTime.formatted)
-                            .font(.system(size: 34, weight: .bold))
-                            .monospacedDigit()
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .cardStyle()
-                    .accessibilityElement(children: .combine)
+                    tiles
 
                     if !run.results.isEmpty {
                         VStack(alignment: .leading, spacing: 0) {
@@ -332,25 +333,58 @@ struct SessionSummaryView: View {
                         .cardStyle(padded: false)
                     }
 
-                    Text("Connect Apple Watch for heart rate and calories")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 4)
+                    if !expectsWatchData {
+                        Text("Connect Apple Watch for heart rate and calories")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 4)
+                    }
                 }
                 .padding(.horizontal, 20)
             }
 
-            Button(action: onDone) {
-                Text("Done")
-                    .font(.title3.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+            VStack(spacing: 12) {
+                if hasHealthData {
+                    Button(action: HealthApp.open) {
+                        Label("Open Health", systemImage: "heart.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .tint(.primary)
+                }
+
+                Button(action: onDone) {
+                    Text("Done")
+                        .font(.title3.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
             .padding(.horizontal, 20)
             .padding(.bottom, 12)
+        }
+        .animation(.easeInOut(duration: 0.4), value: watchData)
+    }
+
+    /// Total Time alone, or with the Watch's three figures in a grid of two columns.
+    @ViewBuilder
+    private var tiles: some View {
+        let totalTime = SummaryTile(title: "Total Time", value: run.totalTime.formatted)
+        if expectsWatchData {
+            // LazyVGrid lays its children out in columns; two flexible ones share the width.
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+                totalTime
+                SummaryTile(title: "Active Calories", number: watchData?.activeCalories, unit: "kcal")
+                SummaryTile(title: "Avg Heart Rate", number: watchData?.averageHeartRate, unit: "bpm")
+                SummaryTile(title: "Max Heart Rate", number: watchData?.maxHeartRate, unit: "bpm")
+            }
+        } else {
+            totalTime
         }
     }
 
@@ -366,6 +400,49 @@ struct SessionSummaryView: View {
             }
         }
         return "ROUND \(round)"
+    }
+}
+
+/// One figure of the summary: a title and its value, "--" while the value is pending.
+private struct SummaryTile: View {
+    let title: String
+    let value: String
+    var unit: String?
+
+    init(title: String, value: String) {
+        self.title = title
+        self.value = value
+    }
+
+    /// A whole number from the Watch; `nil` shows "--".
+    init(title: String, number: Double?, unit: String) {
+        self.title = title
+        self.value = number.map { "\(Int($0.rounded()))" } ?? "--"
+        self.unit = unit
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 30, weight: .bold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let unit {
+                    Text(unit)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle()
+        .accessibilityElement(children: .combine)
     }
 }
 
