@@ -178,35 +178,38 @@ case wins.
 
 - Full screen, opened by "Start" or a session's play button. It runs the session as it was at
   that moment. It closes only through "End Session" or the summary's "Done".
-- **Top line**, on every screen but the summary: one centered line where a single timer has its
-  title. Between timers and during a rest it is the session's name; while a timer runs it is
-  "Push-ups · AMRAP". Nothing else sits at the top, which belongs to the status bar and, while a
-  timer runs, the drag handle.
-- **Progress strip**, at the bottom of every screen but the summary, above the buttons: the
-  session's shape as a bar, and below it the position ("Timer 2 of 8", in a loop followed by
-  "· Round 1 of 3"). Finished and skipped segments are dimmed, the current one has a white ring.
-- **Between steps** (also before the first timer): a card "DONE" with the timer just finished
-  ("Jumping Jacks" — "5:00 · 50 reps"; titled "SKIPPED", without a result, for a skipped one,
-  and for one ended too early to be recorded; no card before the first timer). Centre, two lines
-  only: the exercise in large type and below it the kind with its settings ("AMRAP · 4 min",
-  "EMOM · 5 min · 50 reps", "For Time · 30 reps"). Then the progress strip and the buttons:
-  "Start" (prominent), below it "Skip" and "End Session" (red text) side by side. Swipe down
-  does nothing here.
+- **Title**, on every screen but the summary: in the navigation bar, as for a single timer.
+  Between timers and during a rest it is the session's name; while a timer runs it is
+  "Push-ups · AMRAP". Where swiping down does something (a running timer, a rest), the drag
+  handle is below the title, as on a single timer.
+- **Position dots**, at the bottom of every screen but the summary: one small dot per timer,
+  gray for those behind, white for the current or next one, dark for those to come. Rests have
+  no dot. A session of more than 12 timers shows "14 of 40" instead. The session's coloured
+  shape is not shown in the runner.
+- **Between steps** (also before the first timer): in the centre, two lines only: the exercise
+  in large type and below it the kind with its settings ("AMRAP · 4 min", "EMOM · 5 min ·
+  50 reps", "For Time · 30 reps"). Below, one gray line for the timer just finished ("Jumping
+  Jacks done · 5:00 · 50 reps"; "Squats skipped" for a skipped one and for one ended too early
+  to be recorded; none before the first timer), then the dots. Buttons: "Start" (tinted, as on
+  the Training tab), below it "Skip" and "End Session" as plain gray text side by side. No drag
+  handle; swipe down does nothing here.
   - "End Session" asks first: "End session?" — "Completed timers stay in your history." — "End
     Session" (destructive) / "Cancel". Then the summary appears.
   - "Skip" needs no confirmation and shows the next timer; skipping the last one ends the session.
 - **Running step:** the timer's own screen ([EMOM](#emom-timer), [AMRAP](#amrap-timer),
   [For Time](#for-time-timer)) with its countdown, gestures, signals and
-  [Watch sync indicators](#watch-sync-indicators). Swipe down ends this timer only, and the
-  hint line says so ("Swipe down to end this timer"); the progress strip is below it. When the timer
-  ends, the between-steps screen (or the loop rest) replaces it directly: no completion sound,
-  no confetti, no single-workout summary.
+  [Watch sync indicators](#watch-sync-indicators). Swipe down ends this timer only; the hint
+  line "Swipe down to end this timer" and the dots are below the timer. When the timer ends,
+  the between-steps screen (or the loop rest) replaces it directly: no completion sound, no
+  confetti, no single-workout summary.
 - **Loop rest:** after a round's last timer when another round follows and the loop has a rest.
-  The "DONE" card, a gray ring counting down with "REST" and M:SS, below it "Then Push-ups"
-  with "AMRAP · 4 min", the progress strip, and "Skip Rest". Footer "Counts as training time". When the rest
-  is over or skipped, that timer starts by itself, with its countdown. (A rest that ran out
-  while the app was in the background leads to the between-steps screen instead.) A skipped
-  timer is not followed by a rest.
+  A gray ring counting down with "REST" and the time, below it one gray line "Then Push-ups ·
+  AMRAP · 4 min". No buttons: swipe down skips the rest, with the drag handle and the hint
+  "Swipe down to skip the rest" above the dots. When the rest is over or skipped, that timer
+  starts by itself, with its countdown. (A rest that ran out while the app was in the background
+  leads to the between-steps screen instead.) A skipped timer is not followed by a rest.
+- **VoiceOver:** ending a running timer and skipping a rest are also offered as the actions
+  "End timer" and "Skip rest".
 - **End of the session:** completion sound and, if enabled, confetti for 3 s, once, after the
   last timer, when every timer was completed. Not when a timer was skipped or stopped early,
   and not when the session was ended with "End Session".

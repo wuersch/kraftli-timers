@@ -60,12 +60,19 @@ struct SessionRunnerView: View {
     @State private var timerCleanup: (() -> Void)?
 
     var body: some View {
-        ZStack {
-            Color(UIColor.systemBackground).ignoresSafeArea()
+        // A NavigationStack only for its bar: the title sits where a single timer has
+        // it (`TimerRunnerView`), and the drag handle comes out below it by itself.
+        NavigationStack {
+            ZStack {
+                Color(UIColor.systemBackground).ignoresSafeArea()
 
-            if let runner, let feedbackProvider {
-                content(runner, feedbackProvider: feedbackProvider)
+                if let runner, let feedbackProvider {
+                    content(runner, feedbackProvider: feedbackProvider)
+                }
             }
+            .navigationTitle(navigationTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(runner?.run.phase == .finished ? .hidden : .visible, for: .navigationBar)
         }
         .overlay {
             if showConfetti && settings.confettiEnabled {
@@ -127,23 +134,25 @@ struct SessionRunnerView: View {
                 .transition(.opacity)
 
         case .upNext:
-            VStack(spacing: 0) {
-                SessionRunTitle(text: run.name)
-                SessionUpNextView(
-                    run: run,
-                    onStart: { runner.startStep() },
-                    onSkip: { runner.skip() },
-                    onEnd: { isConfirmingEnd = true }
-                )
-            }
+            SessionUpNextView(
+                run: run,
+                onStart: { runner.startStep() },
+                onSkip: { runner.skip() },
+                onEnd: { isConfirmingEnd = true }
+            )
             .transition(.opacity)
 
         case .resting(let until):
-            VStack(spacing: 0) {
-                SessionRunTitle(text: run.name)
-                SessionRestView(run: run, until: until, onSkip: { runner.skipRest() })
-            }
-            .transition(.opacity)
+            SessionRestView(run: run, until: until)
+                // Swiping down ends what is running now: here the rest, as it ends
+                // the timer on a running step.
+                .endsBySwipe(
+                    named: "Skip rest", dragOffset: $dragOffset, isHandleActive: $isHandleActive
+                ) {
+                    runner.skipRest()
+                    resetSwipe()
+                }
+                .transition(.opacity)
 
         case .running:
             if let step = run.currentItem?.step {
@@ -158,9 +167,6 @@ struct SessionRunnerView: View {
         _ step: SessionStep, runner: SessionRunner, feedbackProvider: any FeedbackProvider
     ) -> some View {
         VStack(spacing: 0) {
-            // The top looks like a single timer's: the drag handle and the title.
-            SessionRunTitle(text: "\(step.exerciseName)\(UISeparator.dot)\(step.kind.rawValue)")
-
             KindTimerView(
                 kind: step.kind,
                 duration: step.durationInterval,
@@ -174,26 +180,17 @@ struct SessionRunnerView: View {
                 // model, also when a loop runs the same step again.
                 .id(runner.stepWorkoutID)
 
-            Text("Swipe down to end this timer")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .opacity(showHint && !isSwipeDisabled ? 1 : 0)
-                .padding(.bottom, 14)
+            SessionSwipeHint(text: "Swipe down to end this timer", isVisible: showHint && !isSwipeDisabled)
+                .padding(.bottom, 18)
 
-            SessionProgressStrip(run: runner.run)
-                .padding(.horizontal, 20)
+            SessionDots(run: runner.run)
                 .padding(.bottom, 12)
         }
-        .swipeToDismiss(
-            dragOffset: $dragOffset,
-            isHandleActive: $isHandleActive,
-            onDismiss: { endStep(runner) },
+        .endsBySwipe(
+            named: "End timer", dragOffset: $dragOffset, isHandleActive: $isHandleActive,
             isDisabled: isSwipeDisabled
-        )
-        .overlay {
-            if !isSwipeDisabled {
-                DragHandleView(isActive: isHandleActive, dragOffset: dragOffset)
-            }
+        ) {
+            endStep(runner)
         }
     }
 
@@ -244,8 +241,23 @@ struct SessionRunnerView: View {
         timerCleanup = nil
         // Otherwise it was too short to record, and the session just moves on.
         runner.stepClosed()
+        resetSwipe()
+    }
+
+    /// Puts the swipe back to rest for the next screen that uses it.
+    private func resetSwipe() {
         dragOffset = 0
         isHandleActive = false
+    }
+
+    /// The session's name between timers and during a rest, "Push-ups · AMRAP" while a
+    /// timer runs.
+    private var navigationTitle: String {
+        guard let run = runner?.run else { return request.name }
+        if run.phase == .running, let step = run.currentItem?.step {
+            return "\(step.exerciseName)\(UISeparator.dot)\(step.kind.rawValue)"
+        }
+        return run.name
     }
 
     /// The Watch saved the session's Health workout while the session was still going:
@@ -264,6 +276,31 @@ struct SessionRunnerView: View {
         Task {
             try? await Task.sleep(for: .seconds(3))
             showConfetti = false
+        }
+    }
+}
+
+private extension View {
+    /// Lets the athlete end what this screen runs by swiping down, with the drag handle
+    /// that shows it, and offers the same to VoiceOver as a named action.
+    func endsBySwipe(
+        named name: String,
+        dragOffset: Binding<CGFloat>,
+        isHandleActive: Binding<Bool>,
+        isDisabled: Bool = false,
+        onEnd: @escaping () -> Void
+    ) -> some View {
+        swipeToDismiss(
+            dragOffset: dragOffset, isHandleActive: isHandleActive, onDismiss: onEnd, isDisabled: isDisabled
+        )
+        .overlay {
+            if !isDisabled {
+                DragHandleView(isActive: isHandleActive.wrappedValue, dragOffset: dragOffset.wrappedValue)
+            }
+        }
+        // A swipe is invisible to VoiceOver; a named action puts it in the actions rotor.
+        .accessibilityAction(named: Text(name)) {
+            if !isDisabled { onEnd() }
         }
     }
 }

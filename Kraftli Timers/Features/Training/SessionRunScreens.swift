@@ -2,53 +2,72 @@
 //  SessionRunScreens.swift
 //  Kraftli Timers
 //
-//  The runner's screens around the timers: the header, between steps, the loop rest
-//  and the summary (UC-0015).
+//  The runner's screens around the timers: between steps, the loop rest and the
+//  summary, and the dots that show the position on all of them (UC-0015).
 //
 
 import SwiftUI
 
-// MARK: - Title and progress
+// MARK: - Position
 
-/// The line at the top of a runner screen: the session's name between timers, the
-/// exercise while a timer runs. It sits where a single timer has its title, and leaves
-/// the top of the screen to the status bar and the drag handle.
-struct SessionRunTitle: View {
-    let text: String
+/// Where the session is, as quietly as a page indicator: one small dot per timer, gray
+/// for those behind, white for the current one, dark for those to come. At the bottom
+/// of every runner screen but the summary.
+///
+/// A session with more timers than fit as dots says it in words: "14 of 40".
+struct SessionDots: View {
+    let run: SessionRun
+
+    static let mostDots = 12
+
+    private var positionText: String {
+        "\(run.timerNumber) of \(run.timerCount)"
+    }
 
     var body: some View {
-        Text(text)
-            .font(.headline)
-            .lineLimit(1)
-            .padding(.horizontal, 20)
-            .padding(.top, 28)
+        Group {
+            if run.timerCount <= Self.mostDots {
+                HStack(spacing: 8) {
+                    ForEach(1...max(run.timerCount, 1), id: \.self) { number in
+                        Circle()
+                            .fill(color(of: number))
+                            .frame(width: 6, height: 6)
+                    }
+                }
+            } else {
+                Text(positionText)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+        }
+        .frame(height: 16)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Timer \(positionText)")
+    }
+
+    private func color(of number: Int) -> Color {
+        if number < run.timerNumber {
+            Color(UIColor.systemGray)
+        } else if number == run.timerNumber {
+            .primary
+        } else {
+            Color(UIColor.systemGray4)
+        }
     }
 }
 
-/// Where the session is: its shape as a bar, with the position in words below. At the
-/// bottom of every runner screen but the summary.
-struct SessionProgressStrip: View {
-    let run: SessionRun
-
-    /// "Timer 2 of 8", in a loop followed by "· Round 1 of 3".
-    private var positionText: String {
-        var text = "Timer \(run.timerNumber) of \(run.timerCount)"
-        if let loopRound = run.currentLoopRound {
-            text += "\(UISeparator.dot)Round \(loopRound.round) of \(loopRound.of)"
-        }
-        return text
-    }
+/// The line under a runner screen's centre that says how to end what is running, in
+/// the place and look of the other hints.
+struct SessionSwipeHint: View {
+    let text: String
+    var isVisible = true
 
     var body: some View {
-        VStack(spacing: 8) {
-            SessionShapeBar(segments: run.segments, thickness: 8, position: run.position)
-            Text(positionText)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(positionText)
+        Text(text)
+            .font(.system(size: 15))
+            .foregroundStyle(.gray.opacity(0.6))
+            .opacity(isVisible ? 1 : 0)
     }
 }
 
@@ -91,44 +110,22 @@ extension SessionRun.StepResult {
     }
 }
 
-/// The timer that ended last, shown between steps and during a rest.
-private struct DoneCard: View {
-    let result: SessionRun.StepResult
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: result.outcome == .skipped ? "forward.circle" : "checkmark.circle")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(result.outcome == .skipped ? "SKIPPED" : "DONE")
-                    .font(.caption.weight(.bold))
-                    .tracking(0.6)
-                    .foregroundStyle(.secondary)
-                // The name alone: with the kind beside it, a long name is cut off.
-                Text(result.step.exerciseName)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            if result.outcome != .skipped {
-                Text(result.text)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .layoutPriority(1)
-            }
-        }
-        .font(.callout)
-        .padding(14)
-        .cardStyle(padded: false)
-        .accessibilityElement(children: .combine)
+extension SessionRun.StepResult {
+    /// "Jumping Jacks done · 5:00 · 50 reps", "Squats skipped"
+    var doneLine: String {
+        outcome == .skipped
+            ? "\(step.exerciseName) skipped"
+            : "\(step.exerciseName) done\(UISeparator.dot)\(text)"
     }
 }
 
 // MARK: - Between steps
 
-/// Between two timers, and before the first: what was done, what comes next, and the
-/// buttons to start it, skip it or end the session. The session is paused here.
-/// Kept to few elements on purpose: one card, two lines, the progress, the buttons.
+/// Between two timers, and before the first: what comes next, what was just done, and
+/// the buttons to start it, skip it or end the session. The session is paused here.
+///
+/// Kept quiet on purpose: two lines in the centre, one gray line, the dots, and only
+/// "Start" drawn as a button.
 struct SessionUpNextView: View {
     let run: SessionRun
     let onStart: () -> Void
@@ -136,13 +133,8 @@ struct SessionUpNextView: View {
     let onEnd: () -> Void
 
     var body: some View {
-        VStack(spacing: 18) {
-            if let result = run.lastResult {
-                DoneCard(result: result)
-            }
-
+        VStack(spacing: 22) {
             if let step = run.currentStep {
-                // Two lines only: what to do, and in which kind of timer.
                 VStack(spacing: 8) {
                     Text(step.exerciseName)
                         .font(.system(size: 40, weight: .bold))
@@ -158,34 +150,39 @@ struct SessionUpNextView: View {
                 .accessibilityLabel("Up next: \(step.exerciseName), \(step.kindAndSettingsText)")
             }
 
-            SessionProgressStrip(run: run)
+            if let result = run.lastResult {
+                Text(result.doneLine)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
 
-            VStack(spacing: 14) {
+            SessionDots(run: run)
+
+            VStack(spacing: 6) {
+                // The quiet form of a main action, as on the Training tab: a tinted
+                // label on a wash of the tint.
                 Button(action: onStart) {
                     Label("Start", systemImage: "play.fill")
-                        .font(.title3.weight(.semibold))
+                        .font(.headline)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-
-                HStack(spacing: 12) {
-                    Button(action: onSkip) {
-                        Text("Skip")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                    }
-                    .tint(.primary)
-
-                    Button(role: .destructive, action: onEnd) {
-                        Text("End Session")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                    }
+                        .padding(.vertical, 8)
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
+                .tint(.accentColor)
+
+                // Plain text, so the two ways out don't compete with Start.
+                HStack(spacing: 0) {
+                    Button("Skip", action: onSkip)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                    Button("End Session", action: onEnd)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 20)
@@ -196,11 +193,11 @@ struct SessionUpNextView: View {
 
 // MARK: - Loop rest
 
-/// A loop's rest: a ring counting down, and what comes after it.
+/// A loop's rest: a ring counting down, what comes after it, and the dots. No buttons:
+/// like a running timer, a rest is cut short by swiping down.
 struct SessionRestView: View {
     let run: SessionRun
     let until: Date
-    let onSkip: () -> Void
 
     /// The rest's full length, for the ring.
     private var restSeconds: TimeInterval {
@@ -209,11 +206,7 @@ struct SessionRestView: View {
 
     var body: some View {
         VStack(spacing: 18) {
-            if let result = run.lastResult {
-                DoneCard(result: result)
-            }
-
-            VStack(spacing: 22) {
+            VStack(spacing: 18) {
                 // TimelineView redraws its content on a schedule. The remaining time is
                 // computed from `until` on every redraw, so the display can't drift, and
                 // it is right again at once after the app was in the background.
@@ -221,8 +214,8 @@ struct SessionRestView: View {
                     let remaining = max(until.timeIntervalSince(context.date), 0)
                     ZStack {
                         ProgressRing(
-                            size: 240,
-                            lineWidth: 12,
+                            size: 260,
+                            lineWidth: 10,
                             progress: remaining / restSeconds,
                             color: Color(UIColor.systemGray),
                             backgroundColor: Color(UIColor.systemGray5),
@@ -233,48 +226,29 @@ struct SessionRestView: View {
                                 .font(.footnote.weight(.semibold))
                                 .tracking(1)
                                 .foregroundStyle(.secondary)
-                            Text(String(format: "%d:%02d", Int(remaining.rounded(.up)) / 60, Int(remaining.rounded(.up)) % 60))
+                            Text(TimeInterval(remaining.rounded(.up)).formatted)
                                 .font(.system(size: 64, weight: .bold))
                                 .monospacedDigit()
                         }
                     }
-                    .frame(width: 240, height: 240)
+                    .frame(width: 260, height: 260)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Rest")
                     .accessibilityValue("\(Int(remaining.rounded(.up))) seconds left")
                 }
 
                 if let step = run.currentStep {
-                    VStack(spacing: 4) {
-                        Text("Then \(step.exerciseName)")
-                            .font(.title2.weight(.semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Text(step.kindAndSettingsText)
-                            .foregroundStyle(.secondary)
-                    }
-                    .accessibilityElement(children: .combine)
+                    Text("Then \(step.exerciseName)\(UISeparator.dot)\(step.kindAndSettingsText)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
             }
             .frame(maxHeight: .infinity)
 
-            SessionProgressStrip(run: run)
-
-            VStack(spacing: 14) {
-                Button(action: onSkip) {
-                    Text("Skip Rest")
-                        .font(.title3.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .tint(.primary)
-
-                Text("Counts as training time")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            SessionSwipeHint(text: "Swipe down to skip the rest")
+            SessionDots(run: run)
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
