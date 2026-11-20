@@ -31,13 +31,26 @@ struct WorkoutCompletionData {
     var sessionRunID: UUID?
 }
 
+extension WorkoutCompletionData {
+    /// The report of a workout with `result`, run by the iPhone or the Watch.
+    init(_ result: WorkoutResult, ownedByWatch: Bool, correlationID: UUID, stoppedEarly: Bool = false) {
+        self.init(
+            durationSeconds: result.duration,
+            repsCompleted: result.reps,
+            roundsCompleted: result.rounds,
+            ownedByWatch: ownedByWatch,
+            correlationID: correlationID,
+            stoppedEarly: stoppedEarly
+        )
+    }
+}
+
 /// A view modifier that handles common timer lifecycle events:
 /// - Pauses timer when app enters background
 /// - Manages screen idle timer
 /// - Triggers completion events
-/// - Logs completed workouts
 /// - Cleans up on disappear
-struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
+struct TimerLifecycleModifier<Timer: TimerModel>: ViewModifier {
     /// The timer model being observed
     let timer: Timer
     /// The session state for hint/confetti management
@@ -46,8 +59,8 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
     let onPause: () -> Void
     /// Called when the view disappears
     let onDisappear: () -> Void
-    /// Called when the workout completes (timer reaches zero). Used for logging.
-    let onWorkoutCompleted: ((WorkoutCompletionData) -> Void)?
+    /// Called when the workout completes (timer reaches zero, or declared done).
+    let onWorkoutCompleted: () -> Void
     /// Whether going to the background pauses the workout. True only for a workout this
     /// iPhone owns; one the Watch owns keeps running there, and the display catches up
     /// from its state on foreground (ADR-006).
@@ -80,17 +93,10 @@ struct TimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
                     break
                 }
             }
-            .onChange(of: timer.didComplete) { _, didComplete in
-                // Key off the model's explicit completion signal, not a zero-crossing of
-                // totalTimeRemaining — a stopped workout or stray tick must not "complete" it.
-                guard didComplete else { return }
+            .onChange(of: timer.isCompleted) { _, isCompleted in
+                guard isCompleted else { return }
                 session.onTimerCompleted()
-                let completionData = WorkoutCompletionData(
-                    durationSeconds: timer.recordedDuration,
-                    repsCompleted: timer.completedReps,
-                    roundsCompleted: timer.completedRounds
-                )
-                onWorkoutCompleted?(completionData)
+                onWorkoutCompleted()
             }
     }
 }
@@ -103,15 +109,15 @@ extension View {
     ///   - session: The session state for hint/confetti
     ///   - onPause: Called when timer should pause (e.g., app backgrounded)
     ///   - onDisappear: Called when view disappears
-    ///   - onWorkoutCompleted: Called when workout completes (timer reaches zero)
+    ///   - onWorkoutCompleted: Called when the workout completes
     ///   - pausesInBackground: Whether backgrounding the app pauses the workout
     ///   - onForeground: Called on scenePhase `.active`
-    func timerLifecycle<T: WorkoutTimer>(
+    func timerLifecycle<T: TimerModel>(
         timer: T,
         session: TimerSessionState,
         onPause: @escaping () -> Void,
         onDisappear: @escaping () -> Void,
-        onWorkoutCompleted: ((WorkoutCompletionData) -> Void)? = nil,
+        onWorkoutCompleted: @escaping () -> Void = { },
         pausesInBackground: @escaping () -> Bool = { true },
         onForeground: @escaping () -> Void = { }
     ) -> some View {

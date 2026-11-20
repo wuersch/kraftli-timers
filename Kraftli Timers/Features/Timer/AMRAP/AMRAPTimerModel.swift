@@ -8,9 +8,9 @@
 import Foundation
 
 /// Renders an AMRAP workout from a `TimerState` (ADR-006): the time remaining and the
-/// round count. Adopting states, ticking and completion come from `TimerStateRendering`.
+/// round count. Adopting states, ticking and completion come from `TimerModel`.
 @Observable
-final class AMRAPTimerModel: TimerStateRendering {
+final class AMRAPTimerModel: TimerModel {
     let totalDuration: TimeInterval
     let core: TimerRenderCore
 
@@ -38,24 +38,10 @@ final class AMRAPTimerModel: TimerStateRendering {
         core.elapsed
     }
 
-    // MARK: - WorkoutTimer Protocol
+    /// A time-boxed workout records its full duration, and the rounds counted.
     @MainActor
-    var isCompleted: Bool {
-        totalTimeRemaining <= 0
-    }
-
-    /// A time-boxed workout records its full duration.
-    var recordedDuration: TimeInterval {
-        totalDuration
-    }
-
-    var completedReps: Int? {
-        nil
-    }
-
-    @MainActor
-    var completedRounds: Int? {
-        roundsCompleted
+    var result: WorkoutResult {
+        WorkoutResult(duration: totalDuration, rounds: roundsCompleted)
     }
 
     // MARK: - Initialization

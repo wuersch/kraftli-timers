@@ -99,9 +99,8 @@
 				Features/Timer/ForTime/ForTimeTimerModel.swift,
 				Features/Timer/Shared/CountdownCoordinator.swift,
 				Features/Timer/Shared/TimerCoordinator.swift,
-				Features/Timer/Shared/TimerStateRendering.swift,
+				Features/Timer/Shared/TimerModel.swift,
 				Features/Timer/Shared/UISeparator.swift,
-				Features/Timer/Shared/WorkoutTimer.swift,
 				"kraftli-icon-v1.icon",
 				Models/Difficulty.swift,
 				Models/Exercise.swift,
@@ -132,6 +131,7 @@
 				Services/WatchSessionFollower.swift,
 				Services/WatchWorkoutStarter.swift,
 				Services/WorkoutLoggingService.swift,
+				Services/WorkoutResult.swift,
 			);
 			target = 4C74D6BC2F1CE4E6009A425D /* Kraftli Timers Watch App */;
 		};

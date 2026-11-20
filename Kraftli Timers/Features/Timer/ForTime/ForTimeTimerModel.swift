@@ -11,10 +11,9 @@ import Foundation
 ///
 /// The workout is open-ended: the state has no duration, and only a `done` intent —
 /// sent through `TimerSessionController.done()` — completes it. It gives no signals
-/// during the workout. Adopting states, ticking and completion come from
-/// `TimerStateRendering`.
+/// during the workout. Adopting states, ticking and completion come from `TimerModel`.
 @Observable
-final class ForTimeTimerModel: TimerStateRendering {
+final class ForTimeTimerModel: TimerModel {
     let targetReps: Int
     let core: TimerRenderCore
 
@@ -48,23 +47,10 @@ final class ForTimeTimerModel: TimerStateRendering {
         finishTime / Double(targetReps)
     }
 
-    // MARK: - WorkoutTimer Protocol
+    /// The finish time, and the target reps, all done.
     @MainActor
-    var isCompleted: Bool {
-        didComplete
-    }
-
-    @MainActor
-    var recordedDuration: TimeInterval {
-        finishTime
-    }
-
-    var completedReps: Int? {
-        targetReps
-    }
-
-    var completedRounds: Int? {
-        nil
+    var result: WorkoutResult {
+        WorkoutResult(duration: finishTime, reps: targetReps)
     }
 
     // MARK: - Initialization

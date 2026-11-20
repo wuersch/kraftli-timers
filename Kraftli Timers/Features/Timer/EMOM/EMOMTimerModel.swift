@@ -9,9 +9,9 @@ import Foundation
 
 /// Renders an EMOM workout from a `TimerState` (ADR-006): the total and interval time
 /// remaining, with a beep per interval. Adopting states, ticking and completion come
-/// from `TimerStateRendering`.
+/// from `TimerModel`.
 @Observable
-final class EMOMTimerModel: TimerStateRendering {
+final class EMOMTimerModel: TimerModel {
     let totalDuration: TimeInterval
     /// The integer interval count is the source of truth; `intervalDuration` is derived
     /// from it once, so the count is never decoded back out of a float.
@@ -68,24 +68,10 @@ final class EMOMTimerModel: TimerStateRendering {
         min(completedIntervals + 1, totalIntervals)
     }
 
-    // MARK: - WorkoutTimer Protocol
+    /// A time-boxed workout records its full duration, and a rep per interval done.
     @MainActor
-    var isCompleted: Bool {
-        totalTimeRemaining <= 0
-    }
-
-    /// A time-boxed workout records its full duration.
-    var recordedDuration: TimeInterval {
-        totalDuration
-    }
-
-    @MainActor
-    var completedReps: Int? {
-        completedIntervals
-    }
-
-    var completedRounds: Int? {
-        nil
+    var result: WorkoutResult {
+        WorkoutResult(duration: totalDuration, reps: completedIntervals)
     }
 
     // MARK: - Initialization
@@ -109,7 +95,7 @@ final class EMOMTimerModel: TimerStateRendering {
         self.core = TimerRenderCore(timerProvider: timerProvider, feedbackProvider: feedbackProvider, now: now)
     }
 
-    // MARK: - TimerStateRendering
+    // MARK: - TimerModel
 
     /// A state that continues the current one (same workout, same elapsed time — e.g. a
     /// pause or resume) keeps the interval/warning trackers. A state that jumps (another

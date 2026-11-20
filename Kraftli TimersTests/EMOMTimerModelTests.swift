@@ -183,7 +183,7 @@ struct EMOMTimerModelTests {
 
     // MARK: - Completion signal & tick guards (issue #47)
 
-    /// Reaching zero while running sets the explicit `didComplete` signal.
+    /// Reaching zero while running completes the model (`isCompleted`).
     @Test @MainActor func update_reachingZero_setsDidComplete() async {
         var fakeNow = Date(timeIntervalSince1970: 1_000_000)
         let provider = MockTimerProvider()
@@ -194,13 +194,13 @@ struct EMOMTimerModelTests {
 
         let driver = StateDriver(emom: model, now: { fakeNow })
         driver.start()
-        #expect(model.didComplete == false)
+        #expect(model.isCompleted == false)
 
         fakeNow += 61  // past the natural end
         provider.simulateTick()
         await Self.drainMainQueue()
 
-        #expect(model.didComplete == true)
+        #expect(model.isCompleted == true)
         #expect(model.isRunning == false)
         #expect(model.totalTimeRemaining == 0)
     }
@@ -222,13 +222,13 @@ struct EMOMTimerModelTests {
         driver.start()
         driver.pause(at: start.addingTimeInterval(60))  // date at the natural end
 
-        #expect(model.didComplete == false)
+        #expect(model.isCompleted == false)
 
         fakeNow += 61
         provider.simulateTick()
         await Self.drainMainQueue()
 
-        #expect(model.didComplete == true)
+        #expect(model.isCompleted == true)
         #expect(model.totalTimeRemaining == 0)
         #expect(spy.workoutCompleteCount == 1)
     }
@@ -342,7 +342,7 @@ struct EMOMTimerModelTests {
         model.apply(state)
 
         #expect(model.isRunning == false)
-        #expect(model.didComplete == false)
+        #expect(model.isCompleted == false)
         #expect(model.totalTimeRemaining == 570)
     }
 
@@ -360,7 +360,7 @@ struct EMOMTimerModelTests {
 
         model.apply(state)
 
-        #expect(model.didComplete == true)
+        #expect(model.isCompleted == true)
         #expect(model.totalTimeRemaining == 0)
         #expect(model.intervalTimeRemaining == 0)
         #expect(spy.workoutCompleteCount == 0)
@@ -391,7 +391,7 @@ struct EMOMTimerModelTests {
         await Self.drainMainQueue()  // the stray update() now runs — must do nothing
 
         #expect(model.totalTimeRemaining == frozen)
-        #expect(model.didComplete == false)
+        #expect(model.isCompleted == false)
         #expect(spy.workoutCompleteCount == 0)
     }
 
@@ -408,9 +408,9 @@ struct EMOMTimerModelTests {
         fakeNow += 61
         provider.simulateTick()
         await Self.drainMainQueue()
-        #expect(model.didComplete == true)
+        #expect(model.isCompleted == true)
 
         model.reset()
-        #expect(model.didComplete == false)
+        #expect(model.isCompleted == false)
     }
 }

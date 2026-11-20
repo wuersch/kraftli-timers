@@ -19,7 +19,7 @@ nonisolated enum EarlyStop: Equatable {
 
     /// Recorded as stopped early, with the active time and the count so far (1a).
     /// A For Time workout has no rep count, because the reps done are unknown.
-    case record(activeTime: TimeInterval, reps: Int?, rounds: Int?)
+    case record(WorkoutResult)
 
     /// The active time, pauses excluded, from which an early stop is recorded.
     static let minimumActiveTime: TimeInterval = 60
@@ -38,13 +38,15 @@ nonisolated enum EarlyStop: Equatable {
             return
         }
 
-        switch state.config.kind {
+        self = switch state.config.kind {
         case .emom:
-            self = .record(activeTime: activeTime, reps: Self.completedIntervals(of: state.config, in: activeTime), rounds: nil)
+            .record(WorkoutResult(
+                duration: activeTime, reps: Self.completedIntervals(of: state.config, in: activeTime)
+            ))
         case .amrap:
-            self = .record(activeTime: activeTime, reps: nil, rounds: state.roundCount)
+            .record(WorkoutResult(duration: activeTime, rounds: state.roundCount))
         case .forTime:
-            self = .record(activeTime: activeTime, reps: nil, rounds: nil)
+            .record(WorkoutResult(duration: activeTime))
         }
     }
 

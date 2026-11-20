@@ -149,7 +149,7 @@ enum TimerHaptics {
 /// the workout (the Watch if it answers, otherwise the iPhone). Every state the
 /// controller renders is handed to `model.apply(_:)`, and gestures become controller
 /// actions, so the screen looks the same whichever device owns the timer.
-struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
+struct TimerScreen<Model: TimerModel, Ring: View, Center: View>: View {
     // MARK: - Properties
     @Environment(TimerSessionController.self) private var timerSession
     @Environment(PhoneWorkoutStarter.self) private var workoutStarter
@@ -304,17 +304,20 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
     private func reportEarlyStop() {
         guard !isEnding, timerSession.workoutID == workoutID,
               let state = timerSession.renderedState,
-              case .record(let activeTime, let reps, let rounds) = EarlyStop(of: state, at: Date())
+              case .record(let result) = EarlyStop(of: state, at: Date())
         else { return }
-        link.onWorkoutStopped?(WorkoutCompletionData(
-            durationSeconds: activeTime,
-            repsCompleted: reps,
-            roundsCompleted: rounds,
-            // Whoever owns the timer saves the Health workout (ADR-006 §1).
-            ownedByWatch: state.owner == .watch,
+        link.onWorkoutStopped?(completionData(result, stoppedEarly: true))
+    }
+
+    /// The report of this workout with `result`. Whoever owns the timer saves the Health
+    /// workout (ADR-006 §1).
+    private func completionData(_ result: WorkoutResult, stoppedEarly: Bool = false) -> WorkoutCompletionData {
+        WorkoutCompletionData(
+            result,
+            ownedByWatch: timerSession.renderedState?.owner == .watch,
             correlationID: workoutID,
-            stoppedEarly: true
-        ))
+            stoppedEarly: stoppedEarly
+        )
     }
 
     /// Shows the 3-2-1-GO countdown toward the workout's shared start date. The timer
@@ -416,12 +419,8 @@ struct TimerScreen<Model: TimerStateRendering, Ring: View, Center: View>: View {
             session: session,
             onPause: { timerSession.pause() },
             onDisappear: { cleanupForDismiss() },
-            onWorkoutCompleted: { data in
-                var augmented = data
-                // Whoever owns the timer saves the Health workout (ADR-006 §1).
-                augmented.ownedByWatch = timerSession.renderedState?.owner == .watch
-                augmented.correlationID = workoutID
-                link.onWorkoutCompleted?(augmented)
+            onWorkoutCompleted: {
+                link.onWorkoutCompleted?(completionData(model.result))
             },
             // Backgrounding pauses only a workout the iPhone owns. A Watch-owned one keeps
             // running there, and the display catches up from the state on foreground.
