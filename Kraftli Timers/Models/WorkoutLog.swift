@@ -120,4 +120,16 @@ final class WorkoutLog {
         self.sessionName = sessionName
         self.sessionRunID = sessionRunID
     }
+
+    /// The history entry of a workout with `result`.
+    convenience init(exerciseName: String, timerKind: TimerKind, result: WorkoutResult, stoppedEarly: Bool = false) {
+        self.init(
+            exerciseName: exerciseName,
+            timerKind: timerKind,
+            durationSeconds: result.duration,
+            repsCompleted: result.reps,
+            roundsCompleted: result.rounds,
+            stoppedEarly: stoppedEarly
+        )
+    }
 }

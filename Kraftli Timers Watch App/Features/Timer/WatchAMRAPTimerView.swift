@@ -57,14 +57,6 @@ struct WatchAMRAPTimerView: View {
             startedOnPhone: startedOnPhone,
             syncService: syncService,
             metricsTap: .countRound,
-            makeWorkoutLog: {
-                WorkoutLog(
-                    exerciseName: exerciseName,
-                    timerKind: timerKind,
-                    durationSeconds: totalDuration,
-                    roundsCompleted: timerModel.roundsCompleted
-                )
-            }
         ) {
             // Total remaining
             WatchMetricRow(

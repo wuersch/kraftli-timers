@@ -31,7 +31,7 @@ enum WatchMetricsTap {
 ///
 /// Like the iPhone's `TimerScreen`, this is a container view: a kind passes its metric
 /// rows as a `@ViewBuilder` closure and the screen places them above the heart rate.
-struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
+struct WatchWorkoutScreen<Model: TimerModel, KindRows: View>: View {
     // MARK: - Properties
     @State private var countdown = CountdownCoordinator()
     @State private var hasLoggedWorkout = false
@@ -65,10 +65,6 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
 
     /// What a tap on the metrics page does while running; nil for a kind without one.
     let metricsTap: WatchMetricsTap?
-
-    /// Creates the `WorkoutLog` of the completed workout (without its HealthKit UUID).
-    /// Called the moment the workout completes, for Watch-started workouts only.
-    let makeWorkoutLog: () -> WorkoutLog
 
     /// The kind's own metric rows, shown above heart rate and calories.
     @ViewBuilder let kindRows: () -> KindRows
@@ -166,15 +162,8 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
             switch EarlyStop(of: state, at: Date()) {
             case .discard:
                 sessionManager.discardSession()
-            case .record(let activeTime, let reps, let rounds) where !startedOnPhone:
-                stoppedLog = WorkoutLog(
-                    exerciseName: config.exerciseName,
-                    timerKind: timerKind,
-                    durationSeconds: activeTime,
-                    repsCompleted: reps,
-                    roundsCompleted: rounds,
-                    stoppedEarly: true
-                )
+            case .record(let result) where !startedOnPhone:
+                stoppedLog = workoutLog(result, stoppedEarly: true)
             case .record, nil:
                 break
             }
@@ -187,6 +176,12 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
             dismiss: dismiss
         )
         starter.workoutEnded()
+    }
+
+    /// The history entry of a Watch-started workout with `result` (without its HealthKit
+    /// UUID).
+    private func workoutLog(_ result: WorkoutResult, stoppedEarly: Bool = false) -> WorkoutLog {
+        WorkoutLog(exerciseName: config.exerciseName, timerKind: timerKind, result: result, stoppedEarly: stoppedEarly)
     }
 
     /// Shows the 3-2-1-GO countdown toward the shared start date. The model already
@@ -270,10 +265,8 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
             model.reset()
             dismiss()
         }
-        .onChange(of: model.didComplete) { _, didComplete in
-            // Key off the model's explicit completion signal, not isCompleted — a pause
-            // clamp must not log/celebrate a workout the user just paused.
-            guard didComplete && !hasLoggedWorkout else { return }
+        .onChange(of: model.isCompleted) { _, isCompleted in
+            guard isCompleted && !hasLoggedWorkout else { return }
             hasLoggedWorkout = true
             if isSessionStep {
                 // Publish the completion before letting go of the step, then close: the
@@ -284,7 +277,7 @@ struct WatchWorkoutScreen<Model: TimerStateRendering, KindRows: View>: View {
             }
             // Build the log now, while the model still holds the result: pressing End
             // while the HealthKit save below is pending resets the model.
-            let log = startedOnPhone ? nil : makeWorkoutLog()
+            let log = startedOnPhone ? nil : workoutLog(model.result)
             Task {
                 await coordinator.handleWorkoutCompleted(log: log, modelContext: modelContext)
             }

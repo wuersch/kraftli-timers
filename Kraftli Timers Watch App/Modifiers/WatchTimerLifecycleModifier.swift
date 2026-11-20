@@ -12,7 +12,7 @@ import SwiftUI
 /// The `HKWorkoutSession` itself is started by `WatchWorkoutStarter` and ended by
 /// `WatchWorkoutCoordinator`. This modifier only keeps its paused state in line with
 /// the timer's running state, so Apple Health records active time only.
-struct WatchTimerLifecycleModifier<Timer: WorkoutTimer>: ViewModifier {
+struct WatchTimerLifecycleModifier<Timer: TimerModel>: ViewModifier {
     let timer: Timer
     let sessionManager: WorkoutSessionManager
     /// True once the screen is closing its workout. The timer stopping then is not a
@@ -38,7 +38,7 @@ extension View {
     /// - Parameters:
     ///   - timer: The workout timer to observe for running state changes
     ///   - sessionManager: The workout session manager owning the HealthKit session
-    func watchTimerLifecycle<T: WorkoutTimer>(
+    func watchTimerLifecycle<T: TimerModel>(
         timer: T,
         sessionManager: WorkoutSessionManager,
         isEnding: Bool = false

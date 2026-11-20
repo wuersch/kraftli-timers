@@ -1,5 +1,5 @@
 //
-//  TimerStateRendering.swift
+//  TimerModel.swift
 //  Kraftli Timers
 //
 //  What the three timer models (EMOM, AMRAP, For Time) have in common: adopting a
@@ -7,7 +7,7 @@
 //  Shared by the iPhone and Watch targets.
 //
 //  ## Why a protocol extension plus a core object
-//  The shared *behavior* lives in the `TimerStateRendering` extension, the shared
+//  The shared *behavior* lives in the `TimerModel` extension, the shared
 //  *stored state* in `TimerRenderCore`: protocol extensions can't add stored properties,
 //  and `@Observable` doesn't mix well with class inheritance. Each model owns a core
 //  (composition) and supplies only what differs per kind through the protocol's hooks.
@@ -69,7 +69,7 @@ final class TimerRenderCore {
 
 // MARK: - Protocol
 
-/// A timer model that renders a `TimerState`.
+/// A timer model: renders a `TimerState` for the timer views (ADR-006).
 ///
 /// All timing comes from the state: on every adopted state and tick the core stores
 /// `state.elapsed(at: now())`, and the model derives its displayed values from
@@ -77,10 +77,15 @@ final class TimerRenderCore {
 /// its own. `apply(_:)` adopts each state the `TimerSessionController` renders; the model
 /// never changes the state itself.
 ///
-/// A conforming model provides its `core` and, if it needs them, the hooks below.
-/// `apply(_:)`, `reset()`, `isRunning` and `didComplete` come from the extension.
-protocol TimerStateRendering: WorkoutTimer {
+/// Starting, pausing and resuming go through `TimerSessionController`, never to the
+/// model. A conforming model provides its `core`, its `result` and, if it needs them, the
+/// hooks below. `apply(_:)`, `reset()`, `isRunning` and `isCompleted` come from the
+/// extension.
+protocol TimerModel: AnyObject {
     var core: TimerRenderCore { get }
+
+    /// What the workout achieved so far; recorded when it completes.
+    var result: WorkoutResult { get }
 
     /// Called when a new state is adopted, before it is rendered (e.g. to re-seed
     /// feedback trackers after a jump).
@@ -92,22 +97,22 @@ protocol TimerStateRendering: WorkoutTimer {
     func didTick(elapsed: TimeInterval)
 }
 
-extension TimerStateRendering {
+extension TimerModel {
     func didAdopt(_ newState: TimerState, replacing previous: TimerState?, at date: Date) {}
     func didTick(elapsed: TimeInterval) {}
 }
 
 // MARK: - Shared behavior
 
-extension TimerStateRendering {
+extension TimerModel {
     var isRunning: Bool {
         core.isRunning
     }
 
-    /// Explicit completion signal: true only once the workout reached zero or was declared
-    /// done (observed on a tick, or adopted from a completed state), never for a pause or
-    /// a stop.
-    var didComplete: Bool {
+    /// True once the workout reached zero or was declared done (observed on a tick, or
+    /// adopted from a completed state), never for a pause or a stop. Cleared by `reset()`
+    /// and by adopting another workout. Completion observers key off this.
+    var isCompleted: Bool {
         core.didComplete
     }
 

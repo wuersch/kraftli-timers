@@ -65,14 +65,6 @@ struct WatchEMOMTimerView: View {
             startedOnPhone: startedOnPhone,
             syncService: syncService,
             metricsTap: nil,
-            makeWorkoutLog: {
-                WorkoutLog(
-                    exerciseName: exerciseName,
-                    timerKind: timerKind,
-                    durationSeconds: totalDuration,
-                    repsCompleted: timerModel.totalIntervals
-                )
-            }
         ) {
             // Total remaining
             WatchMetricRow(

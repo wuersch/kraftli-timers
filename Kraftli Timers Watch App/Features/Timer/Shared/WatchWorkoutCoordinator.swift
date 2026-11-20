@@ -42,7 +42,7 @@ struct WatchWorkoutCoordinator {
     ///   early and ran long enough to be recorded (UC-0005 extension 1a). The iPhone
     ///   writes the entry of a workout it started.
     func stopAndCleanup(
-        timer: some WorkoutTimer,
+        timer: some TimerModel,
         countdown: CountdownCoordinator,
         stoppedLog: WorkoutLog? = nil,
         modelContext: ModelContext,

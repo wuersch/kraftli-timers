@@ -58,14 +58,6 @@ struct WatchForTimeTimerView: View {
             startedOnPhone: startedOnPhone,
             syncService: syncService,
             metricsTap: .declareDone,
-            makeWorkoutLog: {
-                WorkoutLog(
-                    exerciseName: exerciseName,
-                    timerKind: timerKind,
-                    durationSeconds: timerModel.finishTime,
-                    repsCompleted: timerModel.targetReps
-                )
-            }
         ) {
             // Elapsed time, counting up; the finish time once done
             WatchMetricRow(

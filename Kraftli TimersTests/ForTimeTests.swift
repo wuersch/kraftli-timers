@@ -182,12 +182,12 @@ struct ForTimeTests {
         state = applying(.done, at: 3 + 125.6, to: state)
         model.apply(state)
 
-        #expect(model.didComplete)
+        #expect(model.isCompleted)
         #expect(model.isCompleted)
         #expect(!model.isRunning)
         #expect(model.finishTime == 125)  // whole seconds
-        #expect(model.recordedDuration == 125)
-        #expect(model.completedReps == 50)
+        #expect(model.result.duration == 125)
+        #expect(model.result.reps == 50)
         #expect(model.pace == 2.5)
         #expect(feedback.workoutCompleteCount == 1)
         #expect(feedback.intervalCompleteCount == 0)
@@ -205,7 +205,7 @@ struct ForTimeTests {
 
         model.apply(applying(.stop, at: 3 + 90, to: makeState()))
 
-        #expect(!model.didComplete)
+        #expect(!model.isCompleted)
         #expect(!model.isCompleted)
         #expect(!model.isRunning)
     }

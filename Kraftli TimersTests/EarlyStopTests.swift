@@ -55,24 +55,24 @@ struct EarlyStopTests {
     // MARK: - Recorded as stopped early (1a)
 
     @Test func fromOneMinuteOn_theActiveTimeIsRecorded_inWholeSeconds() {
-        #expect(EarlyStop(of: state(amrap), at: at(60)) == .record(activeTime: 60, reps: nil, rounds: 0))
-        #expect(EarlyStop(of: state(amrap), at: at(163.8)) == .record(activeTime: 163, reps: nil, rounds: 0))
+        #expect(EarlyStop(of: state(amrap), at: at(60)) == .record(WorkoutResult(duration: 60, reps: nil, rounds: 0)))
+        #expect(EarlyStop(of: state(amrap), at: at(163.8)) == .record(WorkoutResult(duration: 163, reps: nil, rounds: 0)))
     }
 
     @Test func amrap_recordsTheRoundsCountedSoFar() {
         var counted = state(amrap)
         counted.roundCount = 5
 
-        #expect(EarlyStop(of: counted, at: at(163)) == .record(activeTime: 163, reps: nil, rounds: 5))
+        #expect(EarlyStop(of: counted, at: at(163)) == .record(WorkoutResult(duration: 163, reps: nil, rounds: 5)))
     }
 
     @Test func emom_recordsTheIntervalsFullyDone() {
         // Ten one-minute intervals; the third is under way.
-        #expect(EarlyStop(of: state(emom), at: at(150)) == .record(activeTime: 150, reps: 2, rounds: nil))
+        #expect(EarlyStop(of: state(emom), at: at(150)) == .record(WorkoutResult(duration: 150, reps: 2, rounds: nil)))
     }
 
     @Test func forTime_recordsNoReps_becauseTheyAreUnknown() {
-        #expect(EarlyStop(of: state(forTime), at: at(95)) == .record(activeTime: 95, reps: nil, rounds: nil))
+        #expect(EarlyStop(of: state(forTime), at: at(95)) == .record(WorkoutResult(duration: 95, reps: nil, rounds: nil)))
     }
 
     @Test func stoppedState_isJudgedAtItsStop_notAtTheTimeOfAsking() {
@@ -81,7 +81,7 @@ struct EarlyStopTests {
         #expect(EarlyStop(of: stopped, at: at(500)) == .discard)
 
         stopped.finish = .stopped(at: at(200))
-        #expect(EarlyStop(of: stopped, at: at(500)) == .record(activeTime: 200, reps: nil, rounds: 0))
+        #expect(EarlyStop(of: stopped, at: at(500)) == .record(WorkoutResult(duration: 200, reps: nil, rounds: 0)))
     }
 
     // MARK: - Not an early stop
