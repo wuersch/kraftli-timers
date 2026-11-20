@@ -15,9 +15,6 @@ struct SessionShapeBar: View {
     var thickness: CGFloat = 8
     /// Draws a bracket under each loop.
     var showsLoops = false
-    /// While the session runs: the index of the segment it is at. Segments before it
-    /// are dimmed, the segment itself gets a ring. `nil` draws the plain shape.
-    var position: Int?
 
     private let preferredSpacing: CGFloat = 2
     private let bracketHeight: CGFloat = 6
@@ -37,16 +34,7 @@ struct SessionShapeBar: View {
                     ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
                         RoundedRectangle(cornerRadius: min(3, thickness / 2))
                             .fill(segment.color)
-                            .opacity(position.map { index < $0 ? 0.35 : 1 } ?? 1)
                             .frame(width: lengths[index], height: thickness)
-                            .overlay {
-                                if index == position {
-                                    // Negative padding lets the ring sit around the segment.
-                                    RoundedRectangle(cornerRadius: min(3, thickness / 2) + 2.5)
-                                        .strokeBorder(.primary, lineWidth: 1.5)
-                                        .padding(-2.5)
-                                }
-                            }
                     }
                 }
                 if showsLoops {
