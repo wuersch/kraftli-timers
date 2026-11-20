@@ -181,9 +181,6 @@ struct SessionRunnerView: View {
                 .id(runner.stepWorkoutID)
 
             SessionSwipeHint(text: "Swipe down to end this timer", isVisible: showHint && !isSwipeDisabled)
-                .padding(.bottom, 18)
-
-            SessionDots(run: runner.run)
                 .padding(.bottom, 12)
         }
         .endsBySwipe(
@@ -206,6 +203,8 @@ struct SessionRunnerView: View {
             session: runner.context,
             isSwipeDisabled: $isSwipeDisabled,
             showHint: $showHint,
+            // The session's progress, under the timer's total time.
+            footer: AnyView(SessionProgressBar(run: runner.run)),
             onCleanupForDismiss: { cleanup in timerCleanup = cleanup },
             onDismissRequested: { runner.stepClosed() }
         )
