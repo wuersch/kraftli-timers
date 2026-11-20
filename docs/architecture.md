@@ -199,7 +199,10 @@ a Watch that already holds the run owns the step at once and keeps its `HKWorkou
 iPhone sends a numbered `SessionStatus` on every change of phase, from which
 `WatchSessionFollower` pauses the Health session between steps, keeps it running through steps
 and loop rests, and saves it when the session is finished. The Watch reports the saved workout
-under the run's ID, and the iPhone links it to every step's `WorkoutLog`.
+under the run's ID, and the iPhone links it to every step's `WorkoutLog` and shows its heart
+rate and calories in the session summary. The status also carries what is up next and the
+session's shape, which `WatchSessionView` shows between steps, layered over the Watch's timer
+list while the follower holds a run.
 
 **Start handshake** (iPhone-started, `PhoneWorkoutStarter` ↔ `WatchWorkoutStarter`):
 1. iPhone sends a `StartRequest` (workout ID + config) and calls
@@ -293,7 +296,7 @@ Plain values and pure functions in `Features/Training/`, next to the views that 
 | `TimerState` / `TimerStateReducer` | Shared: replicated timer state and the only code that changes it |
 | `EarlyStop` | Shared: whether a workout ended early is recorded or discarded, and with what |
 | `SessionContext` / `SessionStatus` | Shared: the run a step's start request belongs to, and the session's progress the iPhone sends the Watch one way (ADR-0012) |
-| `WatchSessionFollower` | Watch: holds one Health session for a session's run across its steps; pauses, resumes, saves or discards it from the `SessionStatus` (@Observable) |
+| `WatchSessionFollower` | Watch: holds one Health session for a session's run across its steps; pauses, resumes, saves or discards it from the `SessionStatus`; keeps the latest status and a just-finished run for `WatchSessionView`; can end the tracking on the Watch alone (@Observable) |
 | `TimerSessionController` | Shared: one device's role (owner/viewer), confirmed state, pending intents (@Observable) |
 | `TimerSyncTransport` | Shared: payloads, inbox filtering, composite + WatchConnectivity channels |
 | `HealthKitTimerSyncTransport` | Shared: payloads over the mirrored `HKWorkoutSession` data channel |

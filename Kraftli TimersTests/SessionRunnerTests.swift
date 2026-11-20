@@ -255,6 +255,11 @@ struct SessionRunnerTests {
         #expect(sent[0].timerCount == 2)
         #expect(sent[2].loopRound == 2)
         #expect(sent[3].step == nil)
+
+        // The session's shape (timer, rest, timer) and the place in it.
+        #expect(sent[0].shape.map(\.kind) == [.amrap, nil, .amrap])
+        #expect(sent[0].shape.map(\.seconds) == [240, 60, 240])
+        #expect(sent.map(\.position).prefix(3) == [0, 1, 2])
     }
 
     @Test func sessionThatRecordedNothing_tellsTheWatchNotToSave() {

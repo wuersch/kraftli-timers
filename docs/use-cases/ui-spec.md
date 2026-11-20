@@ -207,11 +207,11 @@ case wins.
   and not when the session was ended with "End Session".
 - **Session summary:** header "Summary" with "Name · 7 of 8 timers" (timers completed or stopped
   early, of all). Cards: Total Time (the active time: timers and loop rests, without the waits
-  between timers), Active Calories, Avg Heart Rate, Max Heart Rate ("--" while Watch data is
-  pending). Then every timer in running order with its kind colour, exercise and result
+  between timers) and, when the Watch tracked the session, Active Calories, Avg Heart Rate and
+  Max Heart Rate in a grid of two columns ("--" while Watch data is pending). Then every timer in running order with its kind colour, exercise and result
   ("4:00 · 9 rounds"; "· stopped early" appended; "Skipped" in gray), a loop's timers under
   "ROUND 1", "ROUND 2" … Without a Watch: footer "Connect Apple Watch for heart rate and
-  calories". "Open Health" when Health data exists; "Done" (prominent) closes the runner.
+  calories". "Open Health" above "Done" once the Watch's data arrived; "Done" (prominent) closes the runner.
 
 ### Stats
 
@@ -267,7 +267,10 @@ case wins.
   "DONE" at the end until End is pressed. No sounds, no haptics, no confetti, no summary.
 - **iPhone-started:** "Starting…" until ownership is settled.
 - **Session (iPhone-started):** a step runs like an iPhone-started workout, without "DONE" at its
-  end. Between steps: the session's shape bar with the position, "UP NEXT", the exercise,
-  "AMRAP · 4 min", in a loop "Round 1 of 3", and "Start on iPhone"; no controls. During a loop
-  rest: "REST" with the countdown and what comes next. After the last step: "DONE" until End is
-  pressed, as for a single workout.
+  end: its screen closes by itself. Between steps, over the timer list: the session's shape bar
+  with the position, "UP NEXT", the exercise, "AMRAP · 4 min", in a loop "Round 1 of 3", and
+  "Start on iPhone". During a loop rest: "REST" with the countdown and "Then Push-ups". A page
+  to the left, as for a timer's controls, has one button, "End" (red ✕), with "Saves the workout
+  on this Watch": it ends the Watch's tracking only, for an iPhone out of reach. After the last
+  step: "DONE" with the session's name until "End" is pressed. Shown only when the Watch tracks
+  the session.
