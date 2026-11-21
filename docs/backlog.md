@@ -106,6 +106,22 @@ implemented ([UC-0005](use-cases/UC-0005-record-a-workout.md), [ADR-0002](adr/AD
 - Heart rate for iPhone-owned workouts via an iOS 26 `HKWorkoutSession` on iPhone (AirPods / BLE straps)
 - Programs integration (single session spanning multiple exercises)
 
+### Known limitation: Health access asked during an iPhone-started workout
+
+Seen on device on 2026-11-21 (fresh TestFlight install). The Watch asks for Health access at its
+first workout start ([ADR-0002](adr/ADR-0002-healthkit-integration.md)). When that start comes
+from the iPhone, the iPhone doesn't wait for the answer: it takes the workout over after 5 s
+([UC-0003](use-cases/UC-0003-run-an-iphone-started-workout-with-the-watch.md) extension 1a), and
+the Watch, once the athlete has answered, doesn't join it. For a training session this lasts the
+whole session: no heart rate or calories ([UC-0015](use-cases/UC-0015-run-a-training-session.md)
+extension 3a). It happens once per installation.
+
+Ideas, not decided:
+- Ask when the Watch app is first opened in the foreground (ADR-0002 rejected asking at launch,
+  so this needs an amendment). It doesn't help when the iPhone's start is what opens the Watch
+  app for the first time.
+- Let a Watch that answers late follow the running workout or session (UC-0003 extension 1b).
+
 ---
 
 ## Settings Enhancements

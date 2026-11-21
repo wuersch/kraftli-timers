@@ -12,7 +12,7 @@ import SwiftUI
 /// Runs a session on the iPhone.
 ///
 /// The rules live in `SessionRun`, a value; this object adds what a value can't have:
-/// the current time, the rest's timer, and the recorder. It is `@Observable`, so the
+/// the current time, the timer of a rest or changeover, and the recorder. It is `@Observable`, so the
 /// runner's views redraw whenever `run` is replaced by a changed copy.
 ///
 /// Each step is an ordinary workout of its own, with its own ID and timer state
@@ -63,8 +63,8 @@ final class SessionRunner {
     ///   - recorder: Writes the steps' history entries and the session's Health workout.
     ///   - sendStatus: Sends the session's progress to the Watch.
     ///   - now: Wall-clock source. Injectable so tests can drive time.
-    ///   - schedulesRest: Whether to end a rest by itself when its time is up. Tests turn
-    ///     it off and call `checkRest()` directly.
+    ///   - schedulesRest: Whether to end a rest or changeover by itself when its time is
+    ///     up. Tests turn it off and call `checkTimedPhase()` directly.
     init(
         name: String,
         elements: [SessionElement],
@@ -119,10 +119,12 @@ final class SessionRunner {
         stepEnded(.stoppedEarly, completion)
     }
 
-    /// The step's screen closed. If the step is still counted as running, it was ended
-    /// too early to be recorded: the session moves on as after a skip.
-    func stepClosed() {
-        guard run.phase == .running else { return }
+    /// The screen of the step started as `workoutID` closed. If that step is still
+    /// counted as running, it was ended too early to be recorded: the session moves on
+    /// as after a skip. A screen that closes late, after the loop's next step began, is
+    /// told apart by its ID.
+    func stepClosed(_ workoutID: UUID) {
+        guard run.phase == .running, workoutID == stepWorkoutID else { return }
         run.stepEnded(.skipped, at: now())
         phaseChanged()
     }
@@ -152,16 +154,23 @@ final class SessionRunner {
         endRest()
     }
 
-    /// Ends the rest if its time is up. Scheduled when a rest begins; also called when
-    /// the app returns to the foreground, where a suspended timer may be late.
-    func checkRest() {
-        guard case .resting(let until) = run.phase, now() >= until else { return }
-        endRest()
+    /// Ends the rest or changeover if its time is up. Scheduled when one begins; also
+    /// called when the app returns to the foreground, where a suspended timer may be late.
+    func checkTimedPhase() {
+        switch run.phase {
+        case .resting(let until), .changeover(let until):
+            guard now() >= until else { return }
+            endRest()
+        case .upNext, .running, .finished:
+            break
+        }
     }
 
-    /// Ends the rest. The timer after it normally starts by itself, as a workout of its own.
+    /// Ends the rest or changeover. The timer after it normally starts by itself, as a
+    /// workout of its own.
     private func endRest() {
         run.restEnded(at: now())
+        run.changeoverEnded(at: now())
         if run.phase == .running {
             stepWorkoutID = UUID()
         }
@@ -178,12 +187,12 @@ final class SessionRunner {
         publishStatus()
 
         switch run.phase {
-        case .resting(let until):
+        case .resting(let until), .changeover(let until):
             guard schedulesRest else { return }
             restTask = Task { [weak self, now] in
                 try? await Task.sleep(for: .seconds(max(until.timeIntervalSince(now()), 0)))
                 guard !Task.isCancelled else { return }
-                self?.checkRest()
+                self?.checkTimedPhase()
             }
         case .finished:
             guard !hasFinished else { return }
@@ -209,12 +218,18 @@ extension SessionRunner {
         let phase: SessionStatus.Phase = switch run.phase {
         case .upNext: .upNext
         case .running: .running
-        case .resting(let until): .resting(until: until)
+        // Sent as a rest, which is what it is to the Watch's Health session and to a
+        // Watch app that doesn't know changeovers; `isChangeover` tells the two apart.
+        case .resting(let until), .changeover(let until): .resting(until: until)
         case .finished: .finished(save: run.recordedCount > 0)
         }
         var status = SessionStatus(runID: runID, name: run.name, sequence: statusSequence, phase: phase)
         status.shape = run.segments.map { SessionStatus.Segment(kind: $0.kind, seconds: $0.seconds) }
         status.position = run.position
+        if case .changeover = run.phase {
+            status.isChangeover = true
+        }
+        status.loopStepCount = run.openingLoop?.steps.count
         if let step = run.currentStep {
             status.step = step.timerConfig
             status.loopRound = run.currentLoopRound?.round

@@ -70,7 +70,6 @@ struct LoopRailView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Repeat \(rounds) times")
-        .accessibilityHint("Changes rounds and rest")
     }
 }
 

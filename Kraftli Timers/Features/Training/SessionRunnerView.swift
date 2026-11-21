@@ -94,8 +94,8 @@ struct SessionRunnerView: View {
             endSessionEndedOnWatch(runner)
         }
         .onChange(of: scenePhase) { _, phase in
-            // A rest's timer doesn't fire while the app is suspended.
-            if phase == .active { runner?.checkRest() }
+            // The timer of a rest or changeover doesn't fire while the app is suspended.
+            if phase == .active { runner?.checkTimedPhase() }
         }
         .alert("End session?", isPresented: $isConfirmingEnd) {
             Button("End Session", role: .destructive) { runner?.endSession() }
@@ -144,6 +144,10 @@ struct SessionRunnerView: View {
                 }
                 .transition(.opacity)
 
+        case .changeover:
+            SessionChangeoverView(run: run)
+                .transition(.opacity)
+
         case .running:
             if let step = run.currentItem?.step {
                 runningStep(step, runner: runner, feedbackProvider: feedbackProvider)
@@ -183,17 +187,19 @@ struct SessionRunnerView: View {
 
     /// Connects a step's timer screen to the run instead of to a single workout's summary.
     private func timerScreenLink(for runner: SessionRunner) -> TimerScreenLink {
-        TimerScreenLink(
+        // Captured now, so a screen that closes late reports the step it showed.
+        let workoutID = runner.stepWorkoutID
+        return TimerScreenLink(
             onWorkoutCompleted: { runner.stepCompleted($0) },
             onWorkoutStopped: { runner.stepStopped($0) },
-            workoutID: runner.stepWorkoutID,
+            workoutID: workoutID,
             autoStart: true,
             startsOnWatch: runner.startsStepsOnWatch,
             session: runner.context,
             chrome: chrome,
             // The session's progress, under the timer's total time.
             footer: AnyView(SessionProgressBar(run: runner.run)),
-            onDismissRequested: { runner.stepClosed() }
+            onDismissRequested: { runner.stepClosed(workoutID) }
         )
     }
 
@@ -221,9 +227,10 @@ struct SessionRunnerView: View {
     /// Swipe-down on a running step: ends that step, not the session.
     private func endStep(_ runner: SessionRunner) {
         // Stops the timer; if the step ran long enough, this reports it as stopped early.
+        let workoutID = runner.stepWorkoutID
         chrome.endWorkout()
         // Otherwise it was too short to record, and the session just moves on.
-        runner.stepClosed()
+        runner.stepClosed(workoutID)
         resetSwipe()
     }
 
