@@ -197,12 +197,24 @@ case wins.
   - "End Session" asks first: "End session?" — "Completed timers stay in your history." — "End
     Session" (destructive) / "Cancel". Then the summary appears.
   - "Skip" needs no confirmation and shows the next timer; skipping the last one ends the session.
+  - **Before a loop** (the next timer is the first of the loop's first round): instead of the two
+    lines, the loop as the [Session Editor](#session-editor-sheet) draws it, read-only: the rail
+    with "3×", one block per timer and, if the loop has a rest, the row "Rest between rounds ·
+    15 sec". A loop too long for the space scrolls; a short one stays centred. Progress bar, gray
+    line and buttons as above.
 - **Running step:** the timer's own screen ([EMOM](#emom-timer), [AMRAP](#amrap-timer),
   [For Time](#for-time-timer)) with its countdown, gestures, signals and
   [Watch sync indicators](#watch-sync-indicators). Swipe down ends this timer only; the hint
   line "Swipe down to end this timer" is at the bottom, the progress bar under the total time. When the timer ends,
-  the between-steps screen (or the loop rest) replaces it directly: no completion sound, no
-  confetti, no single-workout summary.
+  the between-steps screen (or, inside a loop, the changeover or the loop rest) replaces it
+  directly: no completion sound, no confetti, no single-workout summary.
+- **Changeover:** after a completed timer inside a loop when another timer of the loop follows
+  without a rest. For 2 s: "NEXT" in small gray capitals, the exercise in large type, the kind
+  with its settings, "Round 2 of 3" and the progress bar. No buttons, no drag handle; swipe down
+  does nothing. Then that timer starts by itself, with its countdown, so the athlete has 5 s to
+  change position. (A changeover that ran out while the app was in the background leads to the
+  between-steps screen instead.) A timer that was stopped early or ended too early to be
+  recorded leads to the between-steps screen, not to a changeover.
 - **Loop rest:** after a round's last timer when another round follows and the loop has a rest.
   A gray ring counting down with "REST" and the time, below it one gray line "Then Push-ups ·
   AMRAP · 4 min" and the progress bar. No buttons: swipe down skips the rest, with the drag
@@ -278,8 +290,10 @@ case wins.
 - **Session (iPhone-started):** a step runs like an iPhone-started workout, without "DONE" at its
   end: its screen closes by itself. Between steps, over the timer list: "UP NEXT", the exercise,
   "AMRAP · 4 min", in a loop "Round 1 of 3", under them the session's progress bar as on the
-  iPhone (thin, finished segments dimmed), and "Start on iPhone" at the bottom. During a loop
-  rest: "REST" with the countdown, "Then Push-ups" and the progress bar. If a step runs on the iPhone only (the Watch
+  iPhone (thin, finished segments dimmed), and "Start on iPhone" at the bottom. Before a loop:
+  "UP NEXT", "3 × 5 timers", "First: Pull-ups". During a loop
+  rest: "REST" with the countdown, "Then Push-ups" and the progress bar. During a changeover:
+  "NEXT", the exercise, "For Time · 12 reps" and "Round 2 of 3". If a step runs on the iPhone only (the Watch
   didn't get its start): "NOW", the exercise and "Running on iPhone". A page
   to the left, as for a timer's controls, has one button, "End" (red ✕), with "Saves the workout
   on this Watch": it ends the session; the iPhone shows the summary as soon as it hears of it. After the last

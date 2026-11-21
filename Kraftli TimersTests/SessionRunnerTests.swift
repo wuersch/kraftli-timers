@@ -78,11 +78,13 @@ struct SessionRunnerTests {
 
     @Test func everyStart_isAWorkoutOfItsOwn() {
         let loop = SessionLoop(rounds: 2, restSeconds: 0, steps: [pushUps])
-        let (runner, recorder, _) = makeRunner([.loop(loop)])
+        let (runner, recorder, clock) = makeRunner([.loop(loop)])
 
         runner.startStep()
         runner.stepCompleted(completion(240, rounds: 9))
-        runner.startStep()
+        // The second round starts by itself, after the changeover.
+        clock.advance(2)
+        runner.checkTimedPhase()
         runner.stepCompleted(completion(240, rounds: 8))
 
         let ids = recorder.steps.map(\.completion.correlationID)
@@ -98,7 +100,7 @@ struct SessionRunnerTests {
         runner.startStep()
         runner.stepStopped(stopped)
         // The step's screen closes after reporting; that must not count it twice.
-        runner.stepClosed()
+        runner.stepClosed(runner.stepWorkoutID)
 
         #expect(recorder.steps.count == 1)
         #expect(recorder.steps[0].completion.stoppedEarly)
@@ -110,7 +112,7 @@ struct SessionRunnerTests {
         let (runner, recorder, _) = makeRunner([.step(pushUps), .step(squats)])
 
         runner.startStep()
-        runner.stepClosed()
+        runner.stepClosed(runner.stepWorkoutID)
 
         #expect(recorder.steps.isEmpty)
         #expect(runner.run.results.map(\.outcome) == [.skipped])
@@ -191,12 +193,12 @@ struct SessionRunnerTests {
 
         let firstStep = runner.stepWorkoutID
         clock.advance(59)
-        runner.checkRest()
+        runner.checkTimedPhase()
         #expect(runner.run.phase != .running)
 
         // When the rest is up, the next timer starts by itself, as a workout of its own.
         clock.advance(1)
-        runner.checkRest()
+        runner.checkTimedPhase()
         #expect(runner.run.phase == .running)
         #expect(runner.run.restTime == 60)
         #expect(runner.stepWorkoutID != firstStep)
@@ -229,6 +231,44 @@ struct SessionRunnerTests {
         #expect(runner.run.endedEarly)
         #expect(runner.run.restTime == 15)
         #expect(recorder.sessions.count == 1)
+    }
+
+    // MARK: - Changeover
+
+    @Test func changeover_endsWhenItsTimeIsUp_andTheNextStepIsAWorkoutOfItsOwn() {
+        let loop = SessionLoop(rounds: 2, restSeconds: 0, steps: [pushUps, squats])
+        let (runner, recorder, clock) = makeRunner([.loop(loop)])
+        runner.startStep()
+        clock.advance(243)
+        runner.stepCompleted(completion(240, rounds: 9))
+        #expect(runner.run.phase == .changeover(until: clock.now.addingTimeInterval(2)))
+        #expect(recorder.steps.count == 1)
+
+        let firstStep = runner.stepWorkoutID
+        clock.advance(1)
+        runner.checkTimedPhase()
+        #expect(runner.run.phase != .running)
+
+        clock.advance(1)
+        runner.checkTimedPhase()
+        #expect(runner.run.phase == .running)
+        #expect(runner.run.currentStep == squats)
+        #expect(runner.stepWorkoutID != firstStep)
+    }
+
+    @Test func screenOfAnEarlierStepClosingLate_doesNotEndTheRunningStep() {
+        let loop = SessionLoop(rounds: 2, restSeconds: 0, steps: [pushUps, squats])
+        let (runner, _, clock) = makeRunner([.loop(loop)])
+        runner.startStep()
+        let firstStep = runner.stepWorkoutID
+        runner.stepCompleted(completion(240, rounds: 9))
+        clock.advance(2)
+        runner.checkTimedPhase()
+
+        runner.stepClosed(firstStep)
+
+        #expect(runner.run.phase == .running)
+        #expect(runner.run.currentStep == squats)
     }
 
     // MARK: - The Watch (ADR-0012)
@@ -274,6 +314,29 @@ struct SessionRunnerTests {
         #expect(sent[0].shape.map(\.kind) == [.amrap, nil, .amrap])
         #expect(sent[0].shape.map(\.seconds) == [240, 60, 240])
         #expect(sent.map(\.position).prefix(3) == [0, 1, 2])
+    }
+
+    @Test func loopAboutToBegin_isReportedWithItsSize_andAChangeoverAsARestMarkedAsOne() {
+        let loop = SessionLoop(rounds: 3, restSeconds: 0, steps: [pushUps, squats])
+        let (runner, _, statuses) = makeReportingRunner([.step(squats), .loop(loop)])
+
+        runner.skip()                                       // 1: up next, the loop
+        runner.startStep()                                  // 2: running
+        runner.stepCompleted(completion(240, rounds: 9))    // 3: changeover
+
+        let sent = statuses()
+        #expect(sent[0].phase == .upNext)
+        #expect(sent[0].loopStepCount == 2)
+        #expect(sent[0].loopRounds == 3)
+        #expect(sent[0].step?.kind == .amrap)
+        #expect(sent[1].loopStepCount == nil)
+        #expect(sent[1].isChangeover == nil)
+
+        // To the Watch a changeover is a rest: its Health session keeps running.
+        if case .resting = sent[2].phase {} else { Issue.record("expected the changeover to be reported as a rest") }
+        #expect(sent[2].isChangeover == true)
+        #expect(sent[2].isActive)
+        #expect(sent[2].step?.kind == .forTime)
     }
 
     @Test func sessionThatRecordedNothing_tellsTheWatchNotToSave() {

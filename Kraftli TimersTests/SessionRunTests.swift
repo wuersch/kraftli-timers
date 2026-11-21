@@ -34,7 +34,9 @@ struct SessionRunTests {
     }
 
     /// Starts the step that is up next at `start` and completes it `duration` later.
+    /// Inside a loop the step starts by itself, when the changeover before it ends.
     private func complete(_ run: inout SessionRun, from start: TimeInterval, duration: TimeInterval) {
+        run.changeoverEnded(at: at(start))
         run.startStep(at: at(start))
         run.stepEnded(.completed, duration: duration, at: at(start + duration))
     }
@@ -115,8 +117,9 @@ struct SessionRunTests {
         complete(&run, from: 0, duration: 300)
         complete(&run, from: 400, duration: 240)
 
-        run.startStep(at: at(700))
-        run.stepEnded(.completed, duration: 130, reps: 30, at: at(833))
+        // Squats started by themselves, two seconds after the push-ups.
+        run.changeoverEnded(at: at(642))
+        run.stepEnded(.completed, duration: 188, reps: 30, at: at(833))
 
         #expect(run.phase == .resting(until: at(893)))
         // During the rest, the timer that follows it is the one announced.
@@ -128,7 +131,152 @@ struct SessionRunTests {
         #expect(run.phase == .running)
         #expect(run.currentStep == pushUps)
         #expect(run.timerNumber == 4)
-        #expect(run.restTime == 60)
+        // The rest, and the changeover before the squats.
+        #expect(run.restTime == 62)
+    }
+
+    // MARK: - Changeovers inside a loop
+
+    /// Two rounds of push-ups and squats without a rest, then a finisher.
+    private func restlessLoop() -> SessionRun {
+        SessionRun(name: "Loop", elements: [.loop(loop(rounds: 2, rest: 0)), .step(finisher)])
+    }
+
+    @Test func completedTimerInALoop_changesOverToTheNext_whichStartsByItself() {
+        var run = restlessLoop()
+        run.startStep(at: at(0))
+        run.stepEnded(.completed, duration: 240, at: at(243))
+
+        #expect(run.phase == .changeover(until: at(245)))
+        #expect(run.currentStep == squats)
+        #expect(run.lastResult?.step == pushUps)
+
+        run.changeoverEnded(at: at(245))
+        #expect(run.phase == .running)
+        #expect(run.currentStep == squats)
+        #expect(run.restTime == 2)
+    }
+
+    @Test func roundWithoutARest_changesOverToTheNextRound() {
+        var run = restlessLoop()
+        complete(&run, from: 0, duration: 240)
+        complete(&run, from: 245, duration: 100)
+
+        #expect(run.phase == .changeover(until: at(347)))
+        #expect(run.currentStep == pushUps)
+        #expect(run.currentLoopRound?.round == 2)
+    }
+
+    @Test func lastTimerOfALoop_waitsForTheAthlete() {
+        var run = restlessLoop()
+        complete(&run, from: 0, duration: 240)
+        complete(&run, from: 245, duration: 100)
+        complete(&run, from: 347, duration: 240)
+        complete(&run, from: 589, duration: 100)
+
+        #expect(run.phase == .upNext)
+        #expect(run.currentStep == finisher)
+    }
+
+    @Test func timerBeforeALoop_waitsForTheAthlete() {
+        var run = fullBody()
+        complete(&run, from: 0, duration: 300)
+
+        #expect(run.phase == .upNext)
+        #expect(run.currentStep == pushUps)
+    }
+
+    @Test func timerStoppedOrClosedEarlyInALoop_waitsForTheAthlete() {
+        var stopped = restlessLoop()
+        stopped.startStep(at: at(0))
+        stopped.stepEnded(.stoppedEarly, duration: 90, at: at(93))
+        #expect(stopped.phase == .upNext)
+        #expect(stopped.currentStep == squats)
+
+        var closed = restlessLoop()
+        closed.startStep(at: at(0))
+        closed.stepEnded(.skipped, at: at(10))
+        #expect(closed.phase == .upNext)
+        #expect(closed.currentStep == squats)
+    }
+
+    @Test func changeoverThatRanOutUnnoticed_endedWhenItWasDue_andWaitsForTheAthlete() {
+        var run = restlessLoop()
+        run.startStep(at: at(0))
+        run.stepEnded(.completed, duration: 240, at: at(243))
+
+        // The app was suspended and comes back a minute later.
+        run.changeoverEnded(at: at(305))
+
+        #expect(run.phase == .upNext)
+        #expect(run.currentStep == squats)
+        #expect(run.restTime == 2)
+        #expect(run.activeIntervals == [DateInterval(start: at(0), end: at(245))])
+    }
+
+    @Test func loopWithoutRest_isOneActiveStretch() {
+        var run = restlessLoop()
+        complete(&run, from: 0, duration: 240)      // 0…243 with the countdown
+        run.changeoverEnded(at: at(245))
+        run.stepEnded(.completed, duration: 100, at: at(348))
+        run.changeoverEnded(at: at(350))
+        run.stepEnded(.completed, duration: 240, at: at(593))
+        run.changeoverEnded(at: at(595))
+        run.stepEnded(.completed, duration: 100, at: at(698))
+
+        #expect(run.activeIntervals == [DateInterval(start: at(0), end: at(698))])
+        #expect(run.pauses.isEmpty)
+        #expect(run.restTime == 6)
+    }
+
+    @Test func sessionEndedDuringAChangeover_endsItToo() {
+        var run = restlessLoop()
+        run.startStep(at: at(0))
+        run.stepEnded(.completed, duration: 240, at: at(243))
+
+        run.endSession(at: at(244))
+
+        #expect(run.phase == .finished)
+        #expect(run.endedEarly)
+        #expect(run.restTime == 1)
+        #expect(run.activeIntervals == [DateInterval(start: at(0), end: at(244))])
+    }
+
+    // MARK: - The loop about to begin
+
+    @Test func beforeALoopsFirstTimer_theWholeLoopIsKnown() {
+        var run = fullBody()
+        #expect(run.openingLoop == nil)             // the warm-up is up next
+
+        complete(&run, from: 0, duration: 300)
+
+        let opening = run.openingLoop
+        #expect(opening?.rounds == 3)
+        #expect(opening?.restSeconds == 60)
+        #expect(opening?.steps == [pushUps, squats])
+    }
+
+    @Test func loopWithoutRest_isKnownWithoutOne_alsoAsTheSessionsFirstElement() {
+        let run = restlessLoop()
+
+        #expect(run.openingLoop?.rounds == 2)
+        #expect(run.openingLoop?.restSeconds == 0)
+        #expect(run.openingLoop?.steps == [pushUps, squats])
+    }
+
+    @Test func insideALoop_noLoopIsAboutToBegin() {
+        var run = restlessLoop()
+        run.startStep(at: at(0))
+        #expect(run.openingLoop == nil)             // running
+
+        run.stepEnded(.stoppedEarly, duration: 90, at: at(93))
+        #expect(run.phase == .upNext)
+        #expect(run.openingLoop == nil)             // the loop's second timer is up next
+
+        // Nor before the first timer of a later round.
+        run.skip(at: at(100))
+        #expect(run.currentLoopRound?.round == 2)
+        #expect(run.openingLoop == nil)
     }
 
     @Test func restCutShort_countsOnlyTheTimeRested() {
@@ -180,7 +328,9 @@ struct SessionRunTests {
     @Test func skippingTheLastTimerOfARound_skipsItsRestToo() {
         var run = fullBody()
         complete(&run, from: 0, duration: 300)
-        complete(&run, from: 400, duration: 240)
+        // The push-ups are stopped early, so the session waits before the squats.
+        run.startStep(at: at(400))
+        run.stepEnded(.stoppedEarly, duration: 120, at: at(523))
 
         run.skip(at: at(700))
 

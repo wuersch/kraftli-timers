@@ -53,13 +53,26 @@ struct WatchSessionView: View {
             VStack(alignment: .leading, spacing: 8) {
                 switch status.phase {
                 case .upNext:
-                    centered { stepInfo(heading: "UP NEXT", status: status) }
+                    centered {
+                        if let count = status.loopStepCount, let rounds = status.loopRounds {
+                            loopInfo(rounds: rounds, stepCount: count, status: status)
+                        } else {
+                            stepInfo(heading: "UP NEXT", status: status)
+                        }
+                    }
                     footer("Start on iPhone")
                 case .running:
                     centered { stepInfo(heading: "NOW", status: status) }
                     footer("Running on iPhone")
                 case .resting(let until):
-                    centered { restInfo(until: until, status: status) }
+                    centered {
+                        if status.isChangeover == true {
+                            // Two seconds before a loop's next timer starts by itself.
+                            stepInfo(heading: "NEXT", status: status)
+                        } else {
+                            restInfo(until: until, status: status)
+                        }
+                    }
                 case .finished:
                     // Not reached: a finished run is released or shown as done.
                     EmptyView()
@@ -104,6 +117,33 @@ struct WatchSessionView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// Before a loop: "UP NEXT", "3 × 5 timers" and "First: Pull-ups". The loop's timers
+    /// are listed on the iPhone, where it is started.
+    private func loopInfo(rounds: Int, stepCount: Int, status: SessionStatus) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("UP NEXT")
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
+                .foregroundStyle(.secondary)
+            Text("\(rounds) × \(stepCount) \(stepCount == 1 ? "timer" : "timers")")
+                .font(.system(size: 24, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            if let step = status.step {
+                Text("First: \(step.exerciseName)")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Up next: \(rounds) rounds of \(stepCount) \(stepCount == 1 ? "timer" : "timers")"
+                + (status.step.map { ", first \($0.exerciseName)" } ?? "")
+        )
     }
 
     /// "REST" with the countdown, and the timer that starts by itself after it.
@@ -263,6 +303,42 @@ private extension TimerConfig {
         .init(kind: .amrap, seconds: 240), .init(kind: .forTime, seconds: 120)
     ]
     status.position = 1
+    follower.receive(status)
+    return WatchSessionView(follower: follower)
+}
+
+#Preview("Before a loop") {
+    let follower = WatchSessionFollower(
+        pauseHealthSession: {}, resumeHealthSession: {}, saveHealthSession: { _ in }, discardHealthSession: {}
+    )
+    let context = SessionContext(runID: UUID(), name: "Little Torture")
+    follower.hold(context)
+    var status = SessionStatus(runID: context.runID, name: context.name, sequence: 1, phase: .upNext)
+    status.step = TimerConfig(kind: .forTime, totalDuration: nil, intervalCount: nil, exerciseName: "Pull-ups", targetReps: 5)
+    status.loopRound = 1
+    status.loopRounds = 3
+    status.loopStepCount = 5
+    status.shape = [.init(kind: .amrap, seconds: 60)] + Array(repeating: .init(kind: .forTime, seconds: 60), count: 5)
+    status.position = 1
+    follower.receive(status)
+    return WatchSessionView(follower: follower)
+}
+
+#Preview("Changeover") {
+    let follower = WatchSessionFollower(
+        pauseHealthSession: {}, resumeHealthSession: {}, saveHealthSession: { _ in }, discardHealthSession: {}
+    )
+    let context = SessionContext(runID: UUID(), name: "Little Torture")
+    follower.hold(context)
+    var status = SessionStatus(
+        runID: context.runID, name: context.name, sequence: 1, phase: .resting(until: .now.addingTimeInterval(2))
+    )
+    status.step = TimerConfig(kind: .forTime, totalDuration: nil, intervalCount: nil, exerciseName: "Lunges", targetReps: 12)
+    status.loopRound = 2
+    status.loopRounds = 3
+    status.isChangeover = true
+    status.shape = Array(repeating: .init(kind: .forTime, seconds: 60), count: 6)
+    status.position = 3
     follower.receive(status)
     return WatchSessionView(follower: follower)
 }

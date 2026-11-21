@@ -375,4 +375,29 @@ struct WatchSessionTests {
         #expect(payload == .sessionStatus(status))
         #expect(status.isActive)
     }
+
+    @Test func sessionStatusOfALoop_survivesTheWire() throws {
+        var status = SessionStatus(runID: UUID(), name: "Full Body", sequence: 3, phase: .upNext)
+        status.loopRounds = 3
+        status.loopStepCount = 5
+        status.isChangeover = true
+
+        let payload = try TimerSyncPayload(data: TimerSyncPayload.sessionStatus(status).encoded())
+
+        #expect(payload == .sessionStatus(status))
+    }
+
+    /// A status from an app version without loop overviews and changeovers has neither field.
+    @Test func sessionStatusWithoutTheLoopFields_stillDecodes() throws {
+        let status = SessionStatus(runID: UUID(), name: "Full Body", sequence: 3, phase: .upNext)
+        var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(status)) as? [String: Any])
+        json["isChangeover"] = nil
+        json["loopStepCount"] = nil
+
+        let decoded = try JSONDecoder().decode(SessionStatus.self, from: JSONSerialization.data(withJSONObject: json))
+
+        #expect(decoded.isChangeover == nil)
+        #expect(decoded.loopStepCount == nil)
+        #expect(decoded.sequence == 3)
+    }
 }

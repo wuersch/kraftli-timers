@@ -72,6 +72,9 @@ nonisolated struct SessionRun: Equatable, Sendable {
         case running
         /// A loop's rest is counting down to `until`. The session is not paused.
         case resting(until: Date)
+        /// A step of a loop was completed and the loop's next step starts by itself at
+        /// `until`: time to change position. The session is not paused.
+        case changeover(until: Date)
         case finished
     }
 
@@ -109,7 +112,7 @@ nonisolated struct SessionRun: Equatable, Sendable {
     /// The stretches in which the session wasn't paused: each from a step's start to its
     /// end, through a loop's rest if one followed. The gaps are the Health workout's pauses.
     private(set) var activeIntervals: [DateInterval] = []
-    /// Time spent in loop rests, in seconds.
+    /// Time spent in loop rests and changeovers, in seconds.
     private(set) var restTime: TimeInterval = 0
 
     private var activeSince: Date?
@@ -139,6 +142,26 @@ nonisolated struct SessionRun: Equatable, Sendable {
     /// The step that is up next or running; during a rest, the step that follows it.
     var currentStep: SessionStep? {
         items[min(position, items.count)...].lazy.compactMap(\.step).first
+    }
+
+    /// The loop that is about to begin: set between steps when the step up next is the
+    /// first of a loop's first round. The athlete then sees the whole loop, because once
+    /// started its steps follow each other without waiting.
+    ///
+    /// Put together from the running order, the only thing a run keeps of its session.
+    var openingLoop: SessionLoop? {
+        guard phase == .upNext, let item = currentItem, let loopID = item.loopID, item.loopRound == 1,
+              position == 0 || items[position - 1].loopID != loopID else { return nil }
+        let firstRound = items[position...].prefix { $0.loopID == loopID && $0.loopRound == 1 }
+        let restSeconds = firstRound.lazy.compactMap { item -> Int? in
+            if case .rest(let seconds) = item.content { seconds } else { nil }
+        }.first
+        return SessionLoop(
+            id: loopID,
+            rounds: item.loopRounds ?? 1,
+            restSeconds: restSeconds ?? 0,
+            steps: firstRound.compactMap(\.step)
+        )
     }
 
     /// The loop round of `currentStep`, as (round, of rounds); `nil` outside a loop.
@@ -191,6 +214,10 @@ nonisolated struct SessionRun: Equatable, Sendable {
     /// waits for them instead of running a timer nobody is ready for.
     static let restEndTolerance: TimeInterval = 5
 
+    /// How long the next step of a loop is shown before it starts by itself. With the
+    /// timer's own countdown, the athlete has 5 s to change position.
+    static let changeoverDuration: TimeInterval = 2
+
     // MARK: - Changes
 
     /// The athlete starts the step that is up next.
@@ -215,6 +242,13 @@ nonisolated struct SessionRun: Equatable, Sendable {
             // The rest follows at once and the session stays active through it.
             restingSince = now
             phase = .resting(until: now.addingTimeInterval(TimeInterval(seconds)))
+        } else if outcome == .completed, let loopID = item.loopID,
+                  currentItem?.loopID == loopID, currentItem?.step != nil {
+            // Inside a loop a completed step leads straight to the next one. A step that
+            // was stopped or skipped doesn't: the athlete broke the flow, and says when
+            // it goes on.
+            restingSince = now
+            phase = .changeover(until: now.addingTimeInterval(Self.changeoverDuration))
         } else {
             settle(at: now)
         }
@@ -242,32 +276,45 @@ nonisolated struct SessionRun: Equatable, Sendable {
     /// it was due, and the session then waits for the athlete.
     mutating func restEnded(at now: Date) {
         guard case .resting(let until) = phase else { return }
-        let end = min(now, until)
+        closeRest(at: min(now, until))
+        position += 1
+        startNextStep(due: until, at: now)
+    }
+
+    /// The changeover is over: the loop's next step starts by itself, as after a rest.
+    mutating func changeoverEnded(at now: Date) {
+        guard case .changeover(let until) = phase else { return }
+        closeRest(at: min(now, until))
+        startNextStep(due: until, at: now)
+    }
+
+    /// Counts the rest or changeover that ran from `restingSince` to `end`.
+    private mutating func closeRest(at end: Date) {
         if let restingSince {
             restTime += max(end.timeIntervalSince(restingSince), 0)
         }
         restingSince = nil
-        position += 1
+    }
 
-        if currentItem?.step != nil, now.timeIntervalSince(until) <= Self.restEndTolerance {
+    /// Starts the current step by itself if `now` is close enough to when that was due;
+    /// otherwise the session waits for the athlete, paused since it was due.
+    private mutating func startNextStep(due: Date, at now: Date) {
+        if currentItem?.step != nil, now.timeIntervalSince(due) <= Self.restEndTolerance {
             phase = .running
         } else {
-            settle(at: end)
+            settle(at: min(now, due))
         }
     }
 
-    /// The athlete ends the session: between steps, or during a rest, which ends with
-    /// it. A running step has to end first.
+    /// The athlete ends the session: between steps, or during a rest or changeover,
+    /// which ends with it. A running step has to end first.
     mutating func endSession(at now: Date) {
         switch phase {
         case .upNext:
             break
-        case .resting(let until):
+        case .resting(let until), .changeover(let until):
             let end = min(now, until)
-            if let restingSince {
-                restTime += max(end.timeIntervalSince(restingSince), 0)
-            }
-            restingSince = nil
+            closeRest(at: end)
             settle(at: end)
         case .running, .finished:
             return

@@ -27,7 +27,8 @@
   each entry is marked with the session's name ([UC-0005](UC-0005-record-a-workout.md)).
 - Apple Health holds exactly one workout for the whole session, from the start of the first step to
   the end of the last, with heart rate and active calories when the Watch tracked it. The time
-  between steps counts as paused.
+  the session waits for the athlete between steps counts as paused; a loop's rests and changeovers
+  don't.
 - The athlete has seen a summary of the session.
 
 ## Minimal Guarantee
@@ -48,7 +49,7 @@ The athlete starts a session on the iPhone.
 3. System starts the session on the Watch, as for a single workout
    ([UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md) steps 1–2). The Watch tracks
    heart rate and calories while a step or a loop's rest runs.
-4. System shows the first step: its kind, exercise and settings, and the athlete's position in the
+4. System shows the next step: its kind, exercise and settings, and the athlete's position in the
    session.
 5. Athlete starts the step when ready.
 6. System runs the step exactly as the matching single workout runs, on both devices
@@ -57,7 +58,7 @@ The athlete starts a session on the iPhone.
    instead of showing the single-workout summary.
 7. System records the step ([UC-0005](UC-0005-record-a-workout.md)), pauses the session, and shows
    the step's result together with the next step.
-   Steps 5–7 repeat for each step, each round of a loop in turn.
+   Steps 4–7 repeat for each step, each round of a loop in turn.
 8. After the last step, System ends the session. If every step was completed, it plays the
    completion sound and, if enabled, shows confetti.
 9. The Watch saves one Health workout for the whole session ([UC-0005](UC-0005-record-a-workout.md)).
@@ -74,6 +75,11 @@ The athlete starts a session on the iPhone.
   - 3a1. The iPhone runs the session itself, as in [UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md)
     extension 1a. No heart rate or calories are tracked.
   - 3a2. Use case continues at step 4.
+- 4a. The next step opens a loop (the first step of its first round):
+  - 4a1. System shows the whole loop instead: its number of rounds, every step with its kind,
+    exercise and settings, and the rest between rounds if it has one. The Watch shows the loop in
+    short: its rounds, its number of steps and the first exercise.
+  - 4a2. Use case continues at step 5.
 - 5a. Athlete skips the step:
   - 5a1. The skipped step isn't recorded. System moves on to the next step; after the last step,
     the session ends as in step 8.
@@ -85,16 +91,21 @@ The athlete starts a session on the iPhone.
   - 6a1. System records it as stopped early under the usual rule
     ([UC-0005](UC-0005-record-a-workout.md) extensions 1a–1b).
   - 6a2. Use case continues at step 7.
-- 7a. A round of a loop ends and another follows:
-  - 7a1. If the loop has a rest, System counts it down on both devices without pausing the session,
-    and then starts the loop's first step again without waiting for the athlete. Athlete may cut
-    the rest short. Use case continues at step 6.
-  - 7a2. Without a rest, use case continues at step 5.
-- 7b. Athlete stays between steps, however long:
-  - 7b1. The session stays paused: the time counts toward neither the Health workout's active
+- 7a. The step was completed inside a loop, and another step of the same loop follows:
+  - 7a1. System doesn't pause the session. It records the step and shows the next step on both
+    devices for a short changeover (2 s), or, after a round's last step in a loop with a rest,
+    counts that rest down on both devices. Athlete may cut a rest short.
+  - 7a2. System starts the next step without waiting for the athlete.
+  - 7a3. Use case continues at step 6.
+- 7b. A changeover or a rest ran out unnoticed (the app wasn't active, and more than 5 s have
+  passed since):
+  - 7b1. System pauses the session as of the moment the changeover or rest ran out.
+  - 7b2. Use case continues at step 4.
+- 7c. Athlete stays between steps, however long:
+  - 7c1. The session stays paused: the time counts toward neither the Health workout's active
     time nor any step's entry, and heart rate and calories aren't tracked. The session doesn't
     end by itself.
-  - 7b2. Use case continues at step 5.
+  - 7c2. Use case continues at step 5.
 - 9a. The Watch didn't track the session:
   - 9a1. The iPhone saves the Health workout without heart rate and calories
     ([UC-0005](UC-0005-record-a-workout.md) extension 3c).
@@ -106,6 +117,10 @@ The athlete starts a session on the iPhone.
   (pause, resume, count, done, end) as in [UC-0003](UC-0003-run-an-iphone-started-workout-with-the-watch.md).
   Starting the next step, skipping a step and ending the session between steps happen on the
   iPhone only; between steps, the Watch shows what comes next and can only end the session.
+- Inside a loop the session waits for the athlete only where the flow was broken: after a step
+  that was skipped, stopped early or ended too early to be recorded (extensions 5a and 6a lead to
+  step 7 and on to step 4, not to extension 7a). A loop's first step and the step after its last
+  one are started by the athlete, like any step outside a loop.
 - The Watch can always be freed from a session it tracks: between steps, the athlete can end the
   session on the Watch. The Watch saves the Health workout as far as it got, and the session
   ends on the iPhone too, as when ended there (extension 5b), as soon as the iPhone learns of it.

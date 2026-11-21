@@ -185,6 +185,7 @@ struct SessionEditorView: View {
                 LoopRailView(rounds: loop.rounds)
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Changes rounds and rest")
             .overlay(alignment: .bottom) {
                 BlockMenu(id: loop.id, name: "loop", draft: $draft)
             }

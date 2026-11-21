@@ -96,7 +96,8 @@ extension SessionRun.StepResult {
 /// the buttons to start it, skip it or end the session. The session is paused here.
 ///
 /// Kept quiet on purpose: two lines and the progress bar in the centre, one gray line,
-/// and only "Start" drawn as a button.
+/// and only "Start" drawn as a button. Before a loop the two lines give way to the whole
+/// loop, because its timers then follow each other without stopping here again.
 struct SessionUpNextView: View {
     let run: SessionRun
     let onStart: () -> Void
@@ -105,7 +106,24 @@ struct SessionUpNextView: View {
 
     var body: some View {
         VStack(spacing: 22) {
-            if let step = run.currentStep {
+            if let loop = run.openingLoop {
+                VStack(spacing: 22) {
+                    // ViewThatFits shows the first of its children that fits the space
+                    // it is offered: the loop as it is, centred, or, when it is too
+                    // tall for that, the same loop in a ScrollView.
+                    ViewThatFits(in: .vertical) {
+                        LoopOverview(loop: loop)
+                        ScrollView {
+                            LoopOverview(loop: loop)
+                        }
+                        .scrollIndicators(.visible)
+                    }
+                    .frame(maxHeight: .infinity)
+
+                    SessionProgressBar(run: run)
+                }
+                .frame(maxHeight: .infinity)
+            } else if let step = run.currentStep {
                 VStack(spacing: 30) {
                     VStack(spacing: 8) {
                         Text(step.exerciseName)
@@ -158,6 +176,73 @@ struct SessionUpNextView: View {
                 .foregroundStyle(.secondary)
             }
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+    }
+}
+
+/// A loop before it begins, drawn like the session editor's loop block but without its
+/// controls: the rail with the rounds, one block per timer, and the rest between rounds.
+private struct LoopOverview: View {
+    let loop: SessionLoop
+
+    var body: some View {
+        HStack(spacing: 2) {
+            LoopRailView(rounds: loop.rounds)
+            VStack(spacing: 2) {
+                ForEach(loop.steps) { step in
+                    StepBlockView(step: step)
+                }
+                if loop.restSeconds > 0 {
+                    LoopRestRowView(loop: loop)
+                }
+            }
+        }
+        // The rail has no height of its own: without this the HStack would take all the
+        // height it is offered instead of the height of its timers.
+        .fixedSize(horizontal: false, vertical: true)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Up next: loop")
+    }
+}
+
+// MARK: - Changeover
+
+/// Inside a loop, between a completed timer and the next: what comes now, for the two
+/// seconds before it starts by itself. Nothing to tap; the session isn't paused.
+struct SessionChangeoverView: View {
+    let run: SessionRun
+
+    var body: some View {
+        VStack(spacing: 30) {
+            if let step = run.currentStep {
+                VStack(spacing: 8) {
+                    Text("NEXT")
+                        .font(.footnote.weight(.semibold))
+                        .tracking(1)
+                        .foregroundStyle(.secondary)
+                    Text(step.exerciseName)
+                        .font(.system(size: 40, weight: .bold))
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(2)
+                    Text(step.kindAndSettingsText)
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    if let loop = run.currentLoopRound {
+                        Text("Round \(loop.round) of \(loop.of)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+
+            SessionProgressBar(run: run)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 12)
@@ -425,4 +510,30 @@ private struct ResultRow: View {
         .frame(minHeight: 34)
         .accessibilityElement(children: .combine)
     }
+}
+
+// MARK: - Previews
+
+/// A run that stands before a loop of `count` For Time timers.
+private func previewRun(loopOf count: Int) -> SessionRun {
+    let steps = (0..<count).map { SessionStep(kind: .forTime, exerciseId: nil, durationInterval: 0, targetReps: 5 + $0) }
+    return SessionRun(name: "Little Torture", elements: [
+        .loop(SessionLoop(rounds: 3, restSeconds: 15, steps: steps)),
+        .step(SessionStep(kind: .emom, exerciseId: nil, durationInterval: 600, targetReps: 40))
+    ])
+}
+
+#Preview("Before a short loop") {
+    SessionUpNextView(run: previewRun(loopOf: 3), onStart: {}, onSkip: {}, onEnd: {})
+}
+
+#Preview("Before a long loop") {
+    SessionUpNextView(run: previewRun(loopOf: 12), onStart: {}, onSkip: {}, onEnd: {})
+}
+
+#Preview("Changeover") {
+    var run = previewRun(loopOf: 3)
+    run.startStep(at: .now)
+    run.stepEnded(.completed, duration: 42, at: .now)
+    return SessionChangeoverView(run: run)
 }

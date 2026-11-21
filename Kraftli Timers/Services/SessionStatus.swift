@@ -51,6 +51,12 @@ nonisolated struct SessionStatus: Codable, Equatable, Sendable {
     /// Its round in a loop, and the loop's rounds; `nil` outside a loop.
     var loopRound: Int?
     var loopRounds: Int?
+    /// True when the `resting` phase is a changeover: the short wait before a loop's
+    /// next step starts by itself, not a rest of the loop. Optional, like
+    /// `loopStepCount`, so either app version decodes the other's status.
+    var isChangeover: Bool?
+    /// Set between steps when `step` opens a loop: the number of timers in one round.
+    var loopStepCount: Int?
     /// The run's shape, and the index of the segment the run is at.
     var shape: [Segment] = []
     var position = 0
